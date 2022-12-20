@@ -3,15 +3,14 @@
  */
 package com.gtnewhorizons.retrofuturagradle;
 
-import org.gradle.testkit.runner.BuildResult;
-import org.gradle.testkit.runner.GradleRunner;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import org.gradle.testkit.runner.BuildResult;
+import org.gradle.testkit.runner.GradleRunner;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A simple functional test for the 'retrofuturagradle.greeting' plugin.
@@ -31,14 +30,14 @@ class RetroFuturaGradlePluginFunctionalTest {
     @Test
     void canFetchVersionManifests() throws IOException {
         writeString(getSettingsFile(), "");
-        writeString(getBuildFile(),
-                "plugins {\n" +
-                        "  id('com.gtnewhorizons.retrofuturagradle')\n" +
-                        "}\n" +
-                        "\n" +
-                        "minecraft {\n" +
-                        "  mcVersion = '1.7.10'\n" +
-                        "}\n");
+        writeString(
+                getBuildFile(),
+                "plugins {\n" + "  id('com.gtnewhorizons.retrofuturagradle')\n"
+                        + "}\n"
+                        + "\n"
+                        + "minecraft {\n"
+                        + "  mcVersion = '1.7.10'\n"
+                        + "}\n");
 
         // Run the build
         GradleRunner runner = GradleRunner.create();

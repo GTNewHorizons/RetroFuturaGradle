@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
 import java.util.stream.Stream;
 
 /**
@@ -23,7 +22,8 @@ public class LauncherManifest {
                 .map(JsonElement::getAsJsonObject)
                 .filter(entry -> entry.get("id").getAsString().equals(mcVersion))
                 .findAny()
-                .orElseThrow(() -> new IllegalStateException("Could not find a minecraft version matching " + mcVersion + " in the launcher manifest"));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Could not find a minecraft version matching " + mcVersion + " in the launcher manifest"));
         return matchingVersion.get("url").getAsString();
     }
 }

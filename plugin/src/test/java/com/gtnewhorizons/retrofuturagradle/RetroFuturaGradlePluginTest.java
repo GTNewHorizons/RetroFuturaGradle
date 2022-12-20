@@ -3,16 +3,18 @@
  */
 package com.gtnewhorizons.retrofuturagradle;
 
-import org.gradle.testfixtures.ProjectBuilder;
-import org.gradle.api.Project;
-import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.gradle.api.Project;
+import org.gradle.testfixtures.ProjectBuilder;
+import org.junit.jupiter.api.Test;
 
 /**
  * A simple unit test for the 'retrofuturagradle.greeting' plugin.
  */
 class RetroFuturaGradlePluginTest {
-    @Test void pluginRegistersTasks() {
+    @Test
+    void pluginRegistersTasks() {
         // Create a test project and apply the plugin
         Project project = ProjectBuilder.builder().build();
         project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle");
