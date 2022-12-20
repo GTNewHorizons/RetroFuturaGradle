@@ -12,12 +12,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * A simple unit test for the 'retrofuturagradle.greeting' plugin.
  */
 class RetroFuturaGradlePluginTest {
-    @Test void pluginRegistersATask() {
+    @Test void pluginRegistersTasks() {
         // Create a test project and apply the plugin
         Project project = ProjectBuilder.builder().build();
-        project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle.greeting");
+        project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle");
 
         // Verify the result
-        assertNotNull(project.getTasks().findByName("greeting"));
+        assertNotNull(project.getTasks().findByName("downloadLauncherAllVersionsManifest"));
+        assertNotNull(project.getTasks().findByName("downloadLauncherVersionManifest"));
     }
 }

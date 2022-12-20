@@ -12,11 +12,18 @@ plugins {
 }
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
+    gradlePluginPortal()
 }
 
 dependencies {
+    // Apache Commons utilities
+    implementation("org.apache.commons:commons-lang3:3.12.0")
+    implementation("commons-io:commons-io:2.11.0")
+    // Provides a file-downloading task implementation for Gradle
+    implementation(group = "de.undercouch.download", name = "de.undercouch.download.gradle.plugin", version = "5.3.0")
+    // JSON handling for Minecraft manifests etc.
+    implementation("com.google.code.gson:gson:2.10")
     // Use JUnit Jupiter for testing.
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
 }
@@ -31,7 +38,7 @@ java {
 gradlePlugin {
     // Define the plugin
     val greeting by plugins.creating {
-        id = "com.gtnewhorizons.retrofuturagradle.greeting"
+        id = "com.gtnewhorizons.retrofuturagradle"
         implementationClass = "com.gtnewhorizons.retrofuturagradle.RetroFuturaGradlePlugin"
     }
 }
