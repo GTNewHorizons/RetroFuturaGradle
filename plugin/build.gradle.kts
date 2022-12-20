@@ -21,11 +21,18 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+        vendor.set(JvmVendorSpec.ADOPTIUM)
+    }
+}
+
 gradlePlugin {
     // Define the plugin
     val greeting by plugins.creating {
-        id = "retrofuturagradle.greeting"
-        implementationClass = "retrofuturagradle.RetroFuturaGradlePlugin"
+        id = "com.gtnewhorizons.retrofuturagradle.greeting"
+        implementationClass = "com.gtnewhorizons.retrofuturagradle.RetroFuturaGradlePlugin"
     }
 }
 
