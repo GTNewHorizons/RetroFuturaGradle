@@ -3,15 +3,9 @@
  */
 package com.gtnewhorizons.retrofuturagradle;
 
-import com.gtnewhorizons.retrofuturagradle.minecraft.LauncherManifest;
-import de.undercouch.gradle.tasks.download.Download;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import org.apache.commons.io.FileUtils;
+import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.tasks.TaskProvider;
 
 /**
  * A plugin for modding 1.7.10 Minecraft
@@ -19,35 +13,8 @@ import org.gradle.api.tasks.TaskProvider;
 public class RetroFuturaGradlePlugin implements Plugin<Project> {
     public void apply(Project project) {
         // Register the `minecraft {...}` block
-        MinecraftExtension mcExt = project.getExtensions().create("minecraft", MinecraftExtension.class);
+        final MinecraftExtension mcExt = project.getExtensions().create("minecraft", MinecraftExtension.class);
 
-        final File allVersionsManifestLocation = new File(project.getBuildDir(), "all_versions_manifest.json");
-        final TaskProvider<Download> taskDownloadLauncherAllVersionsManifest = project.getTasks()
-                .register("downloadLauncherAllVersionsManifest", Download.class, task -> {
-                    task.src(Constants.URL_LAUNCHER_VERSION_MANIFEST);
-                    task.onlyIfModified(true);
-                    task.useETag(true);
-                    task.dest(allVersionsManifestLocation);
-                });
-
-        final File versionManifestLocation = new File(project.getBuildDir(), "mc_version_manifest.json");
-        final TaskProvider<Download> taskDownloadLauncherVersionManifest = project.getTasks()
-                .register("downloadLauncherVersionManifest", Download.class, task -> {
-                    task.dependsOn(taskDownloadLauncherAllVersionsManifest);
-                    task.src(project.getProviders().provider(() -> {
-                        final String mcVersion = mcExt.getMcVersion().get();
-                        final String allVersionsManifestJson;
-                        try {
-                            allVersionsManifestJson =
-                                    FileUtils.readFileToString(allVersionsManifestLocation, StandardCharsets.UTF_8);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        return LauncherManifest.getVersionManifestUrl(allVersionsManifestJson, mcVersion);
-                    }));
-                    task.onlyIfModified(true);
-                    task.useETag(true);
-                    task.dest(versionManifestLocation);
-                });
+        final MinecraftTasks mcTasks = new MinecraftTasks(project, mcExt);
     }
 }
