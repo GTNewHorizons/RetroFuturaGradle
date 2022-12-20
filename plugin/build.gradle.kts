@@ -8,7 +8,8 @@
 
 plugins {
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
-    `java-gradle-plugin`
+    id("java-gradle-plugin")
+    id("com.diffplug.spotless") version "6.12.0"
 }
 
 repositories {
@@ -32,6 +33,23 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))
         vendor.set(JvmVendorSpec.ADOPTIUM)
+    }
+}
+
+spotless {
+    encoding("UTF-8")
+    java {
+        toggleOffOn()
+        importOrder()
+        removeUnusedImports()
+        palantirJavaFormat("1.1.0")
+    }
+    kotlinGradle {
+        toggleOffOn()
+        ktfmt("0.39")
+        trimTrailingWhitespace()
+        indentWithSpaces(4)
+        endWithNewline()
     }
 }
 
