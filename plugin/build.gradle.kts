@@ -4,7 +4,6 @@
  * This generated file contains a sample Gradle plugin project to get you started.
  * For more details take a look at the Writing Custom Plugins chapter in the Gradle
  * User Manual available at https://docs.gradle.org/7.6/userguide/custom_plugins.html
- * This project uses @Incubating APIs which are subject to change.
  */
 
 plugins {
@@ -17,29 +16,9 @@ repositories {
     mavenCentral()
 }
 
-testing {
-    suites {
-        // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
-            // Use JUnit Jupiter test framework
-            useJUnitJupiter("5.9.1")
-        }
-
-        // Create a new test suite
-        val functionalTest by registering(JvmTestSuite::class) {
-            dependencies {
-                // functionalTest test suite depends on the production code in tests
-                implementation(project())
-            }
-
-            targets {
-                all {
-                    // This test suite should run after the built-in test suite has run its tests
-                    testTask.configure { shouldRunAfter(test) } 
-                }
-            }
-        }
-    }
+dependencies {
+    // Use JUnit Jupiter for testing.
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
 }
 
 gradlePlugin {
@@ -50,9 +29,27 @@ gradlePlugin {
     }
 }
 
-gradlePlugin.testSourceSets(sourceSets["functionalTest"])
+// Add a source set for the functional test suite
+val functionalTestSourceSet = sourceSets.create("functionalTest") {
+}
+
+configurations["functionalTestImplementation"].extendsFrom(configurations["testImplementation"])
+
+// Add a task to run the functional tests
+val functionalTest by tasks.registering(Test::class) {
+    testClassesDirs = functionalTestSourceSet.output.classesDirs
+    classpath = functionalTestSourceSet.runtimeClasspath
+    useJUnitPlatform()
+}
+
+gradlePlugin.testSourceSets(functionalTestSourceSet)
 
 tasks.named<Task>("check") {
-    // Include functionalTest as part of the check lifecycle
-    dependsOn(testing.suites.named("functionalTest"))
+    // Run the functional tests as part of `check`
+    dependsOn(functionalTest)
+}
+
+tasks.named<Test>("test") {
+    // Use JUnit Jupiter for unit tests.
+    useJUnitPlatform()
 }
