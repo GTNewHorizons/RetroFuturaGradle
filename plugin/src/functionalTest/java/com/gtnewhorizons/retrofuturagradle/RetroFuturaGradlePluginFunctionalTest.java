@@ -28,7 +28,7 @@ class RetroFuturaGradlePluginFunctionalTest {
     }
 
     @Test
-    void canFetchVersionManifests() throws IOException {
+    void canFetchManifests() throws IOException {
         writeString(getSettingsFile(), "");
         writeString(
                 getBuildFile(),
@@ -43,7 +43,7 @@ class RetroFuturaGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "downloadLauncherVersionManifest");
+        runner.withArguments("--stacktrace", "--", "downloadLauncherVersionManifest", "downloadAssetManifest");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
     }

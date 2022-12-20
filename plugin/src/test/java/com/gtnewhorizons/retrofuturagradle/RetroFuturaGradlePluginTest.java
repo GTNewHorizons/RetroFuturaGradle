@@ -22,5 +22,6 @@ class RetroFuturaGradlePluginTest {
         // Verify the result
         assertNotNull(project.getTasks().findByName("downloadLauncherAllVersionsManifest"));
         assertNotNull(project.getTasks().findByName("downloadLauncherVersionManifest"));
+        assertNotNull(project.getTasks().findByName("downloadAssetManifest"));
     }
 }

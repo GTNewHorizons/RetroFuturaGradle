@@ -26,4 +26,20 @@ public class LauncherManifest {
                         "Could not find a minecraft version matching " + mcVersion + " in the launcher manifest"));
         return matchingVersion.get("url").getAsString();
     }
+
+    private final JsonObject root;
+    private final JsonObject assetIndex;
+
+    public LauncherManifest(final String versionManifestContents) {
+        root = JsonParser.parseString(versionManifestContents).getAsJsonObject();
+        assetIndex = root.getAsJsonObject("assetIndex");
+    }
+
+    public String getAssetIndexUrl() {
+        return assetIndex.get("url").getAsString();
+    }
+
+    public String getAssetIndexSha1() {
+        return assetIndex.get("sha1").getAsString();
+    }
 }

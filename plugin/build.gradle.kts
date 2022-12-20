@@ -21,6 +21,7 @@ dependencies {
   // Apache Commons utilities
   implementation("org.apache.commons:commons-lang3:3.12.0")
   implementation("commons-io:commons-io:2.11.0")
+  implementation("commons-codec:commons-codec:1.15")
   // Provides a file-downloading task implementation for Gradle
   implementation(
       group = "de.undercouch.download",
