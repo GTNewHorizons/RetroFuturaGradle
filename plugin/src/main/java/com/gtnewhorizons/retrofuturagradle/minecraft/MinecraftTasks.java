@@ -312,6 +312,7 @@ public final class MinecraftTasks {
             mvn.mavenContent(content -> {
                 content.includeGroup("net.minecraftforge");
                 content.includeGroup("de.oceanlabs.mcp");
+                content.includeGroup("cpw.mods");
             });
             // Allow pom-less artifacts (e.g. MCP data zips)
             mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
@@ -319,6 +320,8 @@ public final class MinecraftTasks {
         repos.mavenCentral().mavenContent(content -> {
             content.excludeGroup("com.mojang");
             content.excludeGroup("net.minecraftforge");
+            content.excludeGroup("de.oceanlabs.mcp");
+            content.excludeGroup("cpw.mods");
         });
         DependencyHandler deps = project.getDependencies();
 

@@ -14,7 +14,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.tasks.TaskProvider;
 
 /**
- * Tasks reproducing the MCP toolchain for deobfuscation
+ * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
  */
 public class MCPTasks {
     private static final String TASK_GROUP_INTERNAL = "Internal MCP";
@@ -26,12 +26,15 @@ public class MCPTasks {
     private final MinecraftTasks mcTasks;
 
     private final Configuration mcpMappingDataConfiguration;
+    private final Configuration forgeUserdevConfiguration;
 
     private final File fernflowerLocation;
     private final TaskProvider<Download> taskDownloadFernflower;
 
     private final File mcpDataLocation;
     private final TaskProvider<ExtractZipsTask> taskExtractMcpData;
+    private final File forgeUserdevLocation;
+    private final TaskProvider<ExtractZipsTask> taskExtractForgeUserdev;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -41,6 +44,7 @@ public class MCPTasks {
         project.afterEvaluate(p -> this.afterEvaluate());
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
+        forgeUserdevConfiguration = project.getConfigurations().create("fmlUserdev");
 
         fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.jar");
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
@@ -59,6 +63,13 @@ public class MCPTasks {
             task.getJars().setFrom(getMcpMappingDataConfiguration());
             task.getOutputDir().set(mcpDataLocation);
         });
+
+        forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "userdev");
+        taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", ExtractZipsTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.getJars().setFrom(getForgeUserdevConfiguration());
+            task.getOutputDir().set(forgeUserdevLocation);
+        });
     }
 
     private void afterEvaluate() {
@@ -75,10 +86,19 @@ public class MCPTasks {
                                         + mcExt.getMcVersion().get(),
                                 "ext",
                                 "zip"));
+
+        project.getDependencies()
+                .add(
+                        forgeUserdevConfiguration.getName(),
+                        "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
     }
 
     public Configuration getMcpMappingDataConfiguration() {
         return mcpMappingDataConfiguration;
+    }
+
+    public Configuration getForgeUserdevConfiguration() {
+        return forgeUserdevConfiguration;
     }
 
     public File getFernflowerLocation() {
@@ -95,5 +115,13 @@ public class MCPTasks {
 
     public TaskProvider<ExtractZipsTask> getTaskExtractMcpData() {
         return taskExtractMcpData;
+    }
+
+    public File getForgeUserdevLocation() {
+        return forgeUserdevLocation;
+    }
+
+    public TaskProvider<ExtractZipsTask> getTaskExtractForgeUserdev() {
+        return taskExtractForgeUserdev;
     }
 }
