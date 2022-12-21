@@ -1,4 +1,4 @@
-package com.gtnewhorizons.retrofuturagradle.minecraft;
+package com.gtnewhorizons.retrofuturagradle.util;
 
 import java.io.File;
 import org.gradle.api.DefaultTask;
@@ -11,7 +11,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 
 @DisableCachingByDefault(because = "Not worth caching zip copies")
-public abstract class ExtractNativesTask extends DefaultTask {
+public abstract class ExtractZipsTask extends DefaultTask {
     @InputFiles
     public abstract ConfigurableFileCollection getJars();
 

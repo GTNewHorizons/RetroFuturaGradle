@@ -3,6 +3,7 @@
  */
 package com.gtnewhorizons.retrofuturagradle;
 
+import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -19,5 +20,8 @@ public class RetroFuturaGradlePlugin implements Plugin<Project> {
         final MinecraftExtension mcExt = project.getExtensions().create("minecraft", MinecraftExtension.class);
 
         final MinecraftTasks mcTasks = new MinecraftTasks(project, mcExt);
+        project.getExtensions().add("minecraftTasks", mcTasks);
+        final MCPTasks mcpTasks = new MCPTasks(project, mcExt, mcTasks);
+        project.getExtensions().add("mcpTasks", mcpTasks);
     }
 }

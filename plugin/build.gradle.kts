@@ -22,6 +22,8 @@ dependencies {
   implementation("org.apache.commons:commons-lang3:3.12.0")
   implementation("commons-io:commons-io:2.11.0")
   implementation("commons-codec:commons-codec:1.15")
+  // Guava utilities
+  implementation("com.google.guava:guava:31.1-jre")
   // Provides a file-downloading task implementation for Gradle
   implementation(
       group = "de.undercouch.download",

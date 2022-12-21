@@ -10,7 +10,13 @@ public abstract class MinecraftExtension {
         getMcVersion().convention("1.7.10");
         getApplyMcDependencies().convention(Boolean.TRUE);
         getLwjglVersion().convention("2.9.3");
+        getJavaVersion().convention(8);
+
+        getMcpMappingChannel().convention("stable");
+        getMcpMappingVersion().convention("12");
     }
+
+    // Vanilla configs
 
     /**
      * MC version to download&use, only 1.7.10 is supported now and it is the default.
@@ -26,4 +32,21 @@ public abstract class MinecraftExtension {
      * LWJGL version to use. Default is 2.9.3
      */
     public abstract Property<String> getLwjglVersion();
+
+    /**
+     * Java version to use. Default is 8.
+     */
+    public abstract Property<Integer> getJavaVersion();
+
+    // MCP configs
+
+    /**
+     * stable/snapshot
+     */
+    public abstract Property<String> getMcpMappingChannel();
+
+    /**
+     * From <a href="https://maven.minecraftforge.net/de/oceanlabs/mcp/versions.json">the MCP versions.json file</a>
+     */
+    public abstract Property<String> getMcpMappingVersion();
 }

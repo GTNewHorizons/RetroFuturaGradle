@@ -2,6 +2,7 @@ package com.gtnewhorizons.retrofuturagradle.minecraft;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.util.ExtractZipsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
@@ -15,9 +16,12 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaToolchainService;
 
 /**
  * Registers vanilla Minecraft-related gradle tasks
@@ -50,7 +54,7 @@ public final class MinecraftTasks {
 
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
-    private final TaskProvider<ExtractNativesTask> taskExtractNatives;
+    private final TaskProvider<ExtractZipsTask> taskExtractNatives;
     private final TaskProvider<JavaExec> taskRunVanillaClient;
     private final TaskProvider<JavaExec> taskRunVanillaServer;
 
@@ -204,7 +208,7 @@ public final class MinecraftTasks {
         this.vanillaMcConfiguration = project.getConfigurations().create("vanilla_minecraft");
         applyMcDependencies();
 
-        taskExtractNatives = project.getTasks().register("extractNatives", ExtractNativesTask.class, task -> {
+        taskExtractNatives = project.getTasks().register("extractNatives", ExtractZipsTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.getJars()
                     .setFrom(getVanillaMcConfiguration().filter(f -> f.getName().contains("natives")));
@@ -248,6 +252,16 @@ public final class MinecraftTasks {
                     "{}",
                     "--accessToken",
                     "0");
+            task.getJavaLauncher().set(project.getProviders().provider(() -> {
+                JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
+                return jts.launcherFor(toolchain -> {
+                            toolchain
+                                    .getLanguageVersion()
+                                    .set(JavaLanguageVersion.of(
+                                            mcExt.getJavaVersion().get()));
+                        })
+                        .get();
+            }));
         });
         taskRunVanillaServer = project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
@@ -266,14 +280,24 @@ public final class MinecraftTasks {
             task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
             task.args("nogui");
+            task.getJavaLauncher().set(project.getProviders().provider(() -> {
+                JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
+                return jts.launcherFor(toolchain -> {
+                            toolchain
+                                    .getLanguageVersion()
+                                    .set(JavaLanguageVersion.of(
+                                            mcExt.getJavaVersion().get()));
+                        })
+                        .get();
+            }));
         });
     }
 
-    public void applyMcDependencies() {
+    private void applyMcDependencies() {
         RepositoryHandler repos = project.getRepositories();
         repos.maven(mvn -> {
             mvn.setName("mojang");
-            mvn.setUrl("https://libraries.minecraft.net");
+            mvn.setUrl(Constants.URL_MOJANG_LIBRARIES_MAVEN);
             mvn.mavenContent(content -> {
                 content.includeGroup("com.ibm.icu");
                 content.includeGroup("com.mojang");
@@ -284,10 +308,13 @@ public final class MinecraftTasks {
         });
         repos.maven(mvn -> {
             mvn.setName("forge");
-            mvn.setUrl("https://maven.minecraftforge.net");
+            mvn.setUrl(Constants.URL_FORGE_MAVEN);
             mvn.mavenContent(content -> {
                 content.includeGroup("net.minecraftforge");
+                content.includeGroup("de.oceanlabs.mcp");
             });
+            // Allow pom-less artifacts (e.g. MCP data zips)
+            mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
         });
         repos.mavenCentral().mavenContent(content -> {
             content.excludeGroup("com.mojang");
@@ -307,8 +334,6 @@ public final class MinecraftTasks {
         project.getExtensions().add("lwjglNatives", lwjglNatives);
 
         project.afterEvaluate(_p -> {
-            System.err.println(mcExt.getApplyMcDependencies().toString());
-            System.err.println(mcExt.getApplyMcDependencies().get().toString());
             if (mcExt.getApplyMcDependencies().get()) {
                 final String VANILLA_MC_CFG = vanillaMcConfiguration.getName();
                 deps.add(VANILLA_MC_CFG, "com.mojang:netty:1.8.8");
@@ -411,7 +436,7 @@ public final class MinecraftTasks {
         return vanillaMcConfiguration;
     }
 
-    public TaskProvider<ExtractNativesTask> getTaskExtractNatives() {
+    public TaskProvider<ExtractZipsTask> getTaskExtractNatives() {
         return taskExtractNatives;
     }
 
