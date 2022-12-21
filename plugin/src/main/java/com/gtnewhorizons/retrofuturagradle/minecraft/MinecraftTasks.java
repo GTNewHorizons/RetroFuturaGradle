@@ -46,7 +46,12 @@ public final class MinecraftTasks {
 
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
+    private final TaskProvider<ExtractNativesTask> taskExtractNatives;
+    private final TaskProvider<JavaExec> taskRunVanillaClient;
+    private final TaskProvider<JavaExec> taskRunVanillaServer;
+
     private final File runDirectory;
+    private final File nativesDirectory;
     private Configuration vanillaMcConfiguration;
 
     public MinecraftTasks(Project project, MinecraftExtension mcExt) {
@@ -190,10 +195,21 @@ public final class MinecraftTasks {
         });
 
         runDirectory = new File(project.getProjectDir(), "run");
-        project.getTasks().register("runVanillaClient", JavaExec.class, task -> {
+        nativesDirectory = new File(runDirectory, "natives");
+
+        applyMcDependencies();
+
+        taskExtractNatives = project.getTasks().register("extractNatives", ExtractNativesTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.getJars()
+                    .setFrom(getVanillaMcConfiguration().filter(f -> f.getName().contains("natives")));
+            task.getOutputDir().set(nativesDirectory);
+        });
+
+        taskRunVanillaClient = project.getTasks().register("runVanillaClient", JavaExec.class, task -> {
             task.setDescription("Runs the vanilla (unmodified) game client, use --debug-jvm for debugging");
             task.setGroup(TASK_GROUP_USER);
-            task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
+            task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets, taskExtractNatives);
             task.doFirst(_t -> {
                 System.out.println("Starting the vanilla client...");
                 runDirectory.mkdirs();
@@ -207,6 +223,9 @@ public final class MinecraftTasks {
             task.setStandardOutput(System.out);
             task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.client.main.Main");
+            String libraryPath =
+                    nativesDirectory.getAbsolutePath() + File.pathSeparator + System.getProperty("java.library.path");
+            task.jvmArgs("-Djava.library.path=" + libraryPath);
             task.args(
                     "--username",
                     "Developer",
@@ -217,11 +236,15 @@ public final class MinecraftTasks {
                     "--assetsDir",
                     vanillaAssetsLocation.getAbsolutePath(),
                     "--assetIndex",
-                    assetManifestLocation.getAbsolutePath(),
+                    mcExt.getMcVersion().get(),
                     "--uuid",
-                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}));
+                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}),
+                    "--userProperties",
+                    "{}",
+                    "--accessToken",
+                    "0");
         });
-        project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
+        taskRunVanillaServer = project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars);
@@ -239,8 +262,6 @@ public final class MinecraftTasks {
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
             task.args("nogui");
         });
-
-        applyMcDependencies();
     }
 
     public void applyMcDependencies() {
@@ -371,7 +392,23 @@ public final class MinecraftTasks {
         return runDirectory;
     }
 
+    public File getNativesDirectory() {
+        return nativesDirectory;
+    }
+
     public Configuration getVanillaMcConfiguration() {
         return vanillaMcConfiguration;
+    }
+
+    public TaskProvider<ExtractNativesTask> getTaskExtractNatives() {
+        return taskExtractNatives;
+    }
+
+    public TaskProvider<JavaExec> getTaskRunVanillaClient() {
+        return taskRunVanillaClient;
+    }
+
+    public TaskProvider<JavaExec> getTaskRunVanillaServer() {
+        return taskRunVanillaServer;
     }
 }
