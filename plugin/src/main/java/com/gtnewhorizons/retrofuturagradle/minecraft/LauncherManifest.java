@@ -4,7 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
+import org.apache.commons.io.FileUtils;
 
 /**
  * A model of the launcher manifest JSON of a Minecraft version
@@ -35,11 +39,51 @@ public class LauncherManifest {
         assetIndex = root.getAsJsonObject("assetIndex");
     }
 
+    public LauncherManifest(final File versionManifestLocation) throws IOException {
+        this(FileUtils.readFileToString(versionManifestLocation, StandardCharsets.UTF_8));
+    }
+
+    public static LauncherManifest read(final File versionManifestLocation) {
+        try {
+            return new LauncherManifest(versionManifestLocation);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     public String getAssetIndexUrl() {
         return assetIndex.get("url").getAsString();
     }
 
     public String getAssetIndexSha1() {
         return assetIndex.get("sha1").getAsString();
+    }
+
+    public String getClientUrl() {
+        return root.getAsJsonObject("downloads")
+                .getAsJsonObject("client")
+                .get("url")
+                .getAsString();
+    }
+
+    public String getClientSha1() {
+        return root.getAsJsonObject("downloads")
+                .getAsJsonObject("client")
+                .get("sha1")
+                .getAsString();
+    }
+
+    public String getServerUrl() {
+        return root.getAsJsonObject("downloads")
+                .getAsJsonObject("server")
+                .get("url")
+                .getAsString();
+    }
+
+    public String getServerSha1() {
+        return root.getAsJsonObject("downloads")
+                .getAsJsonObject("server")
+                .get("sha1")
+                .getAsString();
     }
 }
