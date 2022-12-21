@@ -12,8 +12,12 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.internal.os.OperatingSystem;
 
 /**
  * Registers vanilla Minecraft-related gradle tasks
@@ -22,6 +26,7 @@ public final class MinecraftTasks {
     public static final String MC_DOWNLOAD_PATH = "mc-vanilla";
     private static final String TASK_GROUP_INTERNAL = "Internal Vanilla Minecraft";
     private static final String TASK_GROUP_USER = "Vanilla Minecraft";
+    private final Project project;
     private final MinecraftExtension mcExt;
 
     private final File allVersionsManifestLocation;
@@ -42,8 +47,10 @@ public final class MinecraftTasks {
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
     private final File runDirectory;
+    private Configuration vanillaMcConfiguration;
 
     public MinecraftTasks(Project project, MinecraftExtension mcExt) {
+        this.project = project;
         this.mcExt = mcExt;
         allVersionsManifestLocation =
                 FileUtils.getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "all_versions_manifest.json");
@@ -194,6 +201,7 @@ public final class MinecraftTasks {
 
             task.workingDir(runDirectory);
             task.classpath(vanillaClientLocation);
+            task.classpath(this.getVanillaMcConfiguration());
             task.setEnableAssertions(true);
             task.setStandardInput(System.in);
             task.setStandardOutput(System.out);
@@ -231,6 +239,84 @@ public final class MinecraftTasks {
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
             task.args("nogui");
         });
+
+        applyMcDependencies();
+    }
+
+    public void applyMcDependencies() {
+        RepositoryHandler repos = project.getRepositories();
+        repos.maven(mvn -> {
+            mvn.setName("mojang");
+            mvn.setUrl("https://libraries.minecraft.net");
+            mvn.mavenContent(content -> {
+                content.includeGroup("com.ibm.icu");
+                content.includeGroup("com.mojang");
+                content.includeGroup("com.paulscode");
+                content.includeGroup("org.lwjgl.lwjgl");
+                content.includeGroup("tv.twitch");
+            });
+        });
+        repos.maven(mvn -> {
+            mvn.setName("forge");
+            mvn.setUrl("https://maven.minecraftforge.net");
+            mvn.mavenContent(content -> {
+                content.includeGroup("net.minecraftforge");
+            });
+        });
+        repos.mavenCentral().mavenContent(content -> {
+            content.excludeGroup("com.mojang");
+            content.excludeGroup("net.minecraftforge");
+        });
+        Configuration mcCfg = project.getConfigurations().create("vanilla_minecraft");
+        DependencyHandler deps = project.getDependencies();
+
+        final OperatingSystem os = OperatingSystem.current();
+        final String lwjglNatives;
+        if (os.isWindows()) {
+            lwjglNatives = "natives-windows";
+        } else if (os.isMacOsX()) {
+            lwjglNatives = "natives-osx";
+        } else {
+            lwjglNatives = "natives-linux";
+        }
+
+        deps.add("vanilla_minecraft", "com.mojang:netty:1.8.8");
+        deps.add("vanilla_minecraft", "com.mojang:realms:1.3.5");
+        deps.add("vanilla_minecraft", "org.apache.commons:commons-compress:1.8.1");
+        deps.add("vanilla_minecraft", "org.apache.httpcomponents:httpclient:4.3.3");
+        deps.add("vanilla_minecraft", "commons-logging:commons-logging:1.1.3");
+        deps.add("vanilla_minecraft", "org.apache.httpcomponents:httpcore:4.3.2");
+        deps.add("vanilla_minecraft", "java3d:vecmath:1.3.1");
+        deps.add("vanilla_minecraft", "net.sf.trove4j:trove4j:3.0.3");
+        deps.add("vanilla_minecraft", "com.ibm.icu:icu4j-core-mojang:51.2");
+        deps.add("vanilla_minecraft", "net.sf.jopt-simple:jopt-simple:4.5");
+        deps.add("vanilla_minecraft", "com.paulscode:codecjorbis:20101023");
+        deps.add("vanilla_minecraft", "com.paulscode:codecwav:20101023");
+        deps.add("vanilla_minecraft", "com.paulscode:libraryjavasound:20101123");
+        deps.add("vanilla_minecraft", "com.paulscode:librarylwjglopenal:20100824");
+        deps.add("vanilla_minecraft", "com.paulscode:soundsystem:20120107");
+        deps.add("vanilla_minecraft", "io.netty:netty-all:4.0.10.Final");
+        deps.add("vanilla_minecraft", "com.google.guava:guava:15.0");
+        deps.add("vanilla_minecraft", "org.apache.commons:commons-lang3:3.1");
+        deps.add("vanilla_minecraft", "commons-io:commons-io:2.4");
+        deps.add("vanilla_minecraft", "commons-codec:commons-codec:1.9");
+        deps.add("vanilla_minecraft", "net.java.jinput:jinput:2.0.5");
+        deps.add("vanilla_minecraft", "net.java.jutils:jutils:1.0.0");
+        deps.add("vanilla_minecraft", "com.google.code.gson:gson:2.2.4");
+        deps.add("vanilla_minecraft", "com.mojang:authlib:1.5.21");
+        deps.add("vanilla_minecraft", "org.apache.logging.log4j:log4j-api:2.0-beta9");
+        deps.add("vanilla_minecraft", "org.apache.logging.log4j:log4j-core:2.0-beta9");
+        final String lwjglVersion = mcExt.getLwjglVersion().get();
+        deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl:" + lwjglVersion);
+        deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl_util:" + lwjglVersion);
+        deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl-platform:" + lwjglVersion + ":" + lwjglNatives);
+        deps.add("vanilla_minecraft", "net.java.jinput:jinput-platform:2.0.5:" + lwjglNatives);
+        deps.add("vanilla_minecraft", "tv.twitch:twitch:5.16");
+        if (os.isWindows()) {
+            deps.add("vanilla_minecraft", "tv.twitch:twitch-platform:5.16:natives-windows-64");
+            deps.add("vanilla_minecraft", "tv.twitch:twitch-external-platform:4.5:natives-windows-64");
+        }
+        this.vanillaMcConfiguration = mcCfg;
     }
 
     public File getAllVersionsManifestLocation() {
@@ -283,5 +369,9 @@ public final class MinecraftTasks {
 
     public File getRunDirectory() {
         return runDirectory;
+    }
+
+    public Configuration getVanillaMcConfiguration() {
+        return vanillaMcConfiguration;
     }
 }
