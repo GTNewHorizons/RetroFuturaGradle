@@ -37,6 +37,8 @@ public class MCPTasks {
     private final TaskProvider<ExtractZipsTask> taskExtractForgeUserdev;
     private final File forgeSrgLocation;
     private final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
+    private final File mergedVanillaJarLocation;
+    private final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -91,6 +93,18 @@ public class MCPTasks {
                     task.getMcpToNotch().set(FileUtils.getFile(forgeSrgLocation, "mcp-notch.srg"));
                     task.getSrgExc().set(FileUtils.getFile(forgeSrgLocation, "srg.exc"));
                     task.getMcpExc().set(FileUtils.getFile(forgeSrgLocation, "mcp.exc"));
+                });
+
+        mergedVanillaJarLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "vanilla_merged_minecraft.jar");
+        taskMergeVanillaSidedJars = project.getTasks()
+                .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskExtractForgeUserdev, mcTasks.getTaskDownloadVanillaJars());
+                    task.getClientJar().set(mcTasks.getVanillaClientLocation());
+                    task.getServerJar().set(mcTasks.getVanillaServerLocation());
+                    task.getMergedJar().set(mergedVanillaJarLocation);
+                    task.getMergeConfigFile().set(FileUtils.getFile(forgeUserdevLocation, "conf", "mcp_merge.cfg"));
+                    task.getMcVersion().set(mcExt.getMcVersion());
                 });
     }
 
