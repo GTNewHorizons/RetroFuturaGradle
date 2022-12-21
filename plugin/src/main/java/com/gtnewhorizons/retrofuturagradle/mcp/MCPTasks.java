@@ -35,6 +35,8 @@ public class MCPTasks {
     private final TaskProvider<ExtractZipsTask> taskExtractMcpData;
     private final File forgeUserdevLocation;
     private final TaskProvider<ExtractZipsTask> taskExtractForgeUserdev;
+    private final File forgeSrgLocation;
+    private final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -70,6 +72,26 @@ public class MCPTasks {
             task.getJars().setFrom(getForgeUserdevConfiguration());
             task.getOutputDir().set(forgeUserdevLocation);
         });
+
+        forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "forge_srg");
+        taskGenerateForgeSrgMappings = project.getTasks()
+                .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
+                    // inputs
+                    task.getInputSrg().set(FileUtils.getFile(forgeUserdevLocation, "conf", "packaged.srg"));
+                    task.getInputExc().set(FileUtils.getFile(forgeUserdevLocation, "conf", "packaged.exc"));
+                    task.getMethodsCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+                    task.getFieldsCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
+                    // outputs
+                    task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
+                    task.getNotchToMcp().set(FileUtils.getFile(forgeSrgLocation, "notch-mcp.srg"));
+                    task.getSrgToMcp().set(FileUtils.getFile(forgeSrgLocation, "srg-mcp.srg"));
+                    task.getMcpToSrg().set(FileUtils.getFile(forgeSrgLocation, "mcp-srg.srg"));
+                    task.getMcpToNotch().set(FileUtils.getFile(forgeSrgLocation, "mcp-notch.srg"));
+                    task.getSrgExc().set(FileUtils.getFile(forgeSrgLocation, "srg.exc"));
+                    task.getMcpExc().set(FileUtils.getFile(forgeSrgLocation, "mcp.exc"));
+                });
     }
 
     private void afterEvaluate() {
