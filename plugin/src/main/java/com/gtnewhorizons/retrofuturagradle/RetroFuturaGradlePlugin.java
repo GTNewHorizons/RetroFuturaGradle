@@ -6,12 +6,15 @@ package com.gtnewhorizons.retrofuturagradle;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.JavaPlugin;
 
 /**
  * A plugin for modding 1.7.10 Minecraft
  */
 public class RetroFuturaGradlePlugin implements Plugin<Project> {
     public void apply(Project project) {
+        project.getPluginManager().apply(JavaPlugin.class);
+
         // Register the `minecraft {...}` block
         final MinecraftExtension mcExt = project.getExtensions().create("minecraft", MinecraftExtension.class);
 

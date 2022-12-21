@@ -106,7 +106,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
                     IOUtils.copy(bis, bos);
                     bos.flush();
                     System.out.printf(
-                            "Downloaded asset (%3d/%3d) %s",
+                            "Downloaded asset (%3d/%3d) %s\n",
                             downloaded.incrementAndGet(),
                             toDownload.get(),
                             params.getSha1().get());

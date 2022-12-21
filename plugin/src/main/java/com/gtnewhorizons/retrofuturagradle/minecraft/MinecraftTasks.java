@@ -7,10 +7,12 @@ import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
+import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskProvider;
 
 /**
@@ -18,6 +20,8 @@ import org.gradle.api.tasks.TaskProvider;
  */
 public final class MinecraftTasks {
     public static final String MC_DOWNLOAD_PATH = "mc-vanilla";
+    private static final String TASK_GROUP_INTERNAL = "Internal Vanilla Minecraft";
+    private static final String TASK_GROUP_USER = "Vanilla Minecraft";
     private final MinecraftExtension mcExt;
 
     private final File allVersionsManifestLocation;
@@ -37,12 +41,15 @@ public final class MinecraftTasks {
 
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
+    private final File runDirectory;
+
     public MinecraftTasks(Project project, MinecraftExtension mcExt) {
         this.mcExt = mcExt;
         allVersionsManifestLocation =
                 FileUtils.getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "all_versions_manifest.json");
         taskDownloadLauncherAllVersionsManifest = project.getTasks()
                 .register("downloadLauncherAllVersionsManifest", Download.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
                     task.src(Constants.URL_LAUNCHER_VERSION_MANIFEST);
                     task.onlyIf(t -> !allVersionsManifestLocation.exists());
                     task.overwrite(false);
@@ -55,6 +62,7 @@ public final class MinecraftTasks {
                 FileUtils.getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "mc_version_manifest.json");
         taskDownloadLauncherVersionManifest = project.getTasks()
                 .register("downloadLauncherVersionManifest", Download.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskDownloadLauncherAllVersionsManifest);
                     task.src(project.getProviders().provider(() -> {
                         final String mcVersion = mcExt.getMcVersion().get();
@@ -86,6 +94,7 @@ public final class MinecraftTasks {
         assetManifestLocation = Utilities.getCacheDir(
                 project, "assets", "indexes", mcExt.getMcVersion().get() + ".json");
         taskDownloadAssetManifest = project.getTasks().register("downloadAssetManifest", Download.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDownloadLauncherVersionManifest);
             task.src(project.getProviders().provider(() -> {
                 final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
@@ -117,6 +126,7 @@ public final class MinecraftTasks {
         vanillaServerLocation = Utilities.getCacheDir(
                 project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "server.jar");
         taskDownloadVanillaJars = project.getTasks().register("downloadVanillaJars", Download.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDownloadLauncherVersionManifest);
             task.doFirst((_t) -> {
                 vanillaClientLocation.getParentFile().mkdirs();
@@ -153,12 +163,15 @@ public final class MinecraftTasks {
         vanillaAssetsLocation = Utilities.getCacheDir(project, "assets");
         taskDownloadVanillaAssets = project.getTasks()
                 .register("downloadVanillaAssets", DownloadAssetsTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskDownloadAssetManifest);
                     task.getManifest().set(assetManifestLocation);
                     task.getObjectsDir().set(new File(vanillaAssetsLocation, "objects"));
                 });
 
         taskCleanVanillaAssets = project.getTasks().register("cleanVanillaAssets", DefaultTask.class, task -> {
+            task.setDescription("Removes the cached game assets from your gradle cache");
+            task.setGroup(TASK_GROUP_USER);
             task.doLast("cleanVanillaAssetFolders", (_t) -> {
                 System.out.println("Cleaning asset folders at " + vanillaAssetsLocation.getAbsolutePath());
                 try {
@@ -167,6 +180,56 @@ public final class MinecraftTasks {
                     System.out.println("Couldn't delete assets: " + e.toString());
                 }
             });
+        });
+
+        runDirectory = new File(project.getProjectDir(), "run");
+        project.getTasks().register("runVanillaClient", JavaExec.class, task -> {
+            task.setDescription("Runs the vanilla (unmodified) game client, use --debug-jvm for debugging");
+            task.setGroup(TASK_GROUP_USER);
+            task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
+            task.doFirst(_t -> {
+                System.out.println("Starting the vanilla client...");
+                runDirectory.mkdirs();
+            });
+
+            task.workingDir(runDirectory);
+            task.classpath(vanillaClientLocation);
+            task.setEnableAssertions(true);
+            task.setStandardInput(System.in);
+            task.setStandardOutput(System.out);
+            task.setErrorOutput(System.err);
+            task.getMainClass().set("net.minecraft.client.main.Main");
+            task.args(
+                    "--username",
+                    "Developer",
+                    "--version",
+                    mcExt.getMcVersion().get(),
+                    "--gameDir",
+                    runDirectory.getAbsolutePath(),
+                    "--assetsDir",
+                    vanillaAssetsLocation.getAbsolutePath(),
+                    "--assetIndex",
+                    assetManifestLocation.getAbsolutePath(),
+                    "--uuid",
+                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}));
+        });
+        project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
+            task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
+            task.setGroup(TASK_GROUP_USER);
+            task.dependsOn(taskDownloadVanillaJars);
+            task.doFirst(_t -> {
+                System.out.println("Starting the vanilla server...");
+                runDirectory.mkdirs();
+            });
+
+            task.workingDir(runDirectory);
+            task.classpath(vanillaServerLocation);
+            task.setEnableAssertions(true);
+            task.setStandardInput(System.in);
+            task.setStandardOutput(System.out);
+            task.setErrorOutput(System.err);
+            task.getMainClass().set("net.minecraft.server.MinecraftServer");
+            task.args("nogui");
         });
     }
 
@@ -216,5 +279,9 @@ public final class MinecraftTasks {
 
     public TaskProvider<DefaultTask> getTaskCleanVanillaAssets() {
         return taskCleanVanillaAssets;
+    }
+
+    public File getRunDirectory() {
+        return runDirectory;
     }
 }

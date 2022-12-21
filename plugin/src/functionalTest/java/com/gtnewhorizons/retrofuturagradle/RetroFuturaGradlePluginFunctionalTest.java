@@ -16,6 +16,13 @@ import org.junit.jupiter.api.io.TempDir;
  * A simple functional test for the 'retrofuturagradle.greeting' plugin.
  */
 class RetroFuturaGradlePluginFunctionalTest {
+    public static final String SIMPLE_BUILDSCRIPT = "plugins {\n" + "  id('com.gtnewhorizons.retrofuturagradle')\n"
+            + "}\n"
+            + "\n"
+            + "minecraft {\n"
+            + "  mcVersion = '1.7.10'\n"
+            + "}\n";
+
     @TempDir
     File projectDir;
 
@@ -30,20 +37,27 @@ class RetroFuturaGradlePluginFunctionalTest {
     @Test
     void canFetchManifests() throws IOException {
         writeString(getSettingsFile(), "");
-        writeString(
-                getBuildFile(),
-                "plugins {\n" + "  id('com.gtnewhorizons.retrofuturagradle')\n"
-                        + "}\n"
-                        + "\n"
-                        + "minecraft {\n"
-                        + "  mcVersion = '1.7.10'\n"
-                        + "}\n");
+        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
         runner.withArguments("--stacktrace", "--", "downloadLauncherVersionManifest", "downloadAssetManifest");
+        runner.withProjectDir(projectDir);
+        BuildResult result = runner.build();
+    }
+
+    @Test
+    void canFetchData() throws IOException {
+        writeString(getSettingsFile(), "");
+        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
+
+        // Run the build
+        GradleRunner runner = GradleRunner.create();
+        runner.forwardOutput();
+        runner.withPluginClasspath();
+        runner.withArguments("--stacktrace", "--", "downloadVanillaJars", "downloadVanillaAssets");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
     }

@@ -19,9 +19,14 @@ class RetroFuturaGradlePluginTest {
         Project project = ProjectBuilder.builder().build();
         project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle");
 
-        // Verify the result
+        // Verify important targets
         assertNotNull(project.getTasks().findByName("downloadLauncherAllVersionsManifest"));
         assertNotNull(project.getTasks().findByName("downloadLauncherVersionManifest"));
         assertNotNull(project.getTasks().findByName("downloadAssetManifest"));
+        assertNotNull(project.getTasks().findByName("cleanVanillaAssets"));
+        assertNotNull(project.getTasks().findByName("downloadVanillaAssets"));
+        assertNotNull(project.getTasks().findByName("downloadVanillaJars"));
+        assertNotNull(project.getTasks().findByName("runVanillaClient"));
+        assertNotNull(project.getTasks().findByName("runVanillaServer"));
     }
 }
