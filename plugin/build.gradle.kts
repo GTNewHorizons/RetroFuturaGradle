@@ -13,6 +13,34 @@ plugins {
 }
 
 repositories {
+  maven {
+    name = "forge"
+    url = uri("https://maven.minecraftforge.net")
+    mavenContent {
+      includeGroup("net.minecraftforge")
+      includeGroup("net.minecraftforge.srg2source")
+      includeGroup("de.oceanlabs.mcp")
+      includeGroup("cpw.mods")
+    }
+  }
+  maven {
+    // because Srg2Source needs an eclipse dependency.
+    name = "eclipse"
+    url = uri("https://repo.eclipse.org/content/groups/eclipse/")
+    mavenContent { includeGroup("org.eclipse.jdt") }
+  }
+  maven {
+    name = "mojang"
+    url = uri("https://libraries.minecraft.net/")
+    mavenContent {
+      includeGroup("com.ibm.icu")
+      includeGroup("com.mojang")
+      includeGroup("com.paulscode")
+      includeGroup("org.lwjgl.lwjgl")
+      includeGroup("tv.twitch")
+      includeGroup("net.minecraft")
+    }
+  }
   mavenCentral()
   gradlePluginPortal()
 }
@@ -24,6 +52,22 @@ dependencies {
   implementation("commons-codec:commons-codec:1.15")
   // Guava utilities
   implementation("com.google.guava:guava:31.1-jre")
+  // CSV reader, also used by SpecialSource
+  implementation("com.opencsv:opencsv:5.7.1")
+  // Diffing&Patching
+  implementation("com.cloudbees:diff4j:1.3")
+  implementation("com.github.abrarsyed.jastyle:jAstyle:1.2")
+  implementation("com.github.jponge:lzma-java:1.3")
+  implementation("com.nothome:javaxdelta:2.0.1")
+  implementation("net.md-5:SpecialSource:1.11.0") // TODO: verify this update
+  // "MCP stuff"
+  implementation("de.oceanlabs.mcp:RetroGuard:3.6.6")
+  implementation("de.oceanlabs.mcp:mcinjector:3.2-SNAPSHOT")
+  implementation("net.minecraftforge.srg2source:Srg2Source:3.2-SNAPSHOT")
+  implementation("org.eclipse.jdt:org.eclipse.jdt.core") { version { strictly("3.10.0+") } }
+  // Startup classes
+  implementation("com.mojang:authlib:1.5.16")
+  implementation("net.minecraft:launchwrapper:1.11")
   // Provides a file-downloading task implementation for Gradle
   implementation(
       group = "de.undercouch.download",
@@ -31,6 +75,8 @@ dependencies {
       version = "5.3.0")
   // JSON handling for Minecraft manifests etc.
   implementation("com.google.code.gson:gson:2.10")
+  // Forge utilities (to be merged into the source tree in the future)
+
   // Use JUnit Jupiter for testing.
   testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
 }

@@ -304,6 +304,7 @@ public final class MinecraftTasks {
                 content.includeGroup("com.paulscode");
                 content.includeGroup("org.lwjgl.lwjgl");
                 content.includeGroup("tv.twitch");
+                content.includeGroup("net.minecraft");
             });
         });
         repos.maven(mvn -> {
