@@ -300,43 +300,50 @@ public final class MinecraftTasks {
         } else {
             lwjglNatives = "natives-linux";
         }
+        project.getExtensions().add("lwjglNatives", lwjglNatives);
 
-        deps.add("vanilla_minecraft", "com.mojang:netty:1.8.8");
-        deps.add("vanilla_minecraft", "com.mojang:realms:1.3.5");
-        deps.add("vanilla_minecraft", "org.apache.commons:commons-compress:1.8.1");
-        deps.add("vanilla_minecraft", "org.apache.httpcomponents:httpclient:4.3.3");
-        deps.add("vanilla_minecraft", "commons-logging:commons-logging:1.1.3");
-        deps.add("vanilla_minecraft", "org.apache.httpcomponents:httpcore:4.3.2");
-        deps.add("vanilla_minecraft", "java3d:vecmath:1.3.1");
-        deps.add("vanilla_minecraft", "net.sf.trove4j:trove4j:3.0.3");
-        deps.add("vanilla_minecraft", "com.ibm.icu:icu4j-core-mojang:51.2");
-        deps.add("vanilla_minecraft", "net.sf.jopt-simple:jopt-simple:4.5");
-        deps.add("vanilla_minecraft", "com.paulscode:codecjorbis:20101023");
-        deps.add("vanilla_minecraft", "com.paulscode:codecwav:20101023");
-        deps.add("vanilla_minecraft", "com.paulscode:libraryjavasound:20101123");
-        deps.add("vanilla_minecraft", "com.paulscode:librarylwjglopenal:20100824");
-        deps.add("vanilla_minecraft", "com.paulscode:soundsystem:20120107");
-        deps.add("vanilla_minecraft", "io.netty:netty-all:4.0.10.Final");
-        deps.add("vanilla_minecraft", "com.google.guava:guava:15.0");
-        deps.add("vanilla_minecraft", "org.apache.commons:commons-lang3:3.1");
-        deps.add("vanilla_minecraft", "commons-io:commons-io:2.4");
-        deps.add("vanilla_minecraft", "commons-codec:commons-codec:1.9");
-        deps.add("vanilla_minecraft", "net.java.jinput:jinput:2.0.5");
-        deps.add("vanilla_minecraft", "net.java.jutils:jutils:1.0.0");
-        deps.add("vanilla_minecraft", "com.google.code.gson:gson:2.2.4");
-        deps.add("vanilla_minecraft", "com.mojang:authlib:1.5.21");
-        deps.add("vanilla_minecraft", "org.apache.logging.log4j:log4j-api:2.0-beta9");
-        deps.add("vanilla_minecraft", "org.apache.logging.log4j:log4j-core:2.0-beta9");
-        final String lwjglVersion = mcExt.getLwjglVersion().get();
-        deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl:" + lwjglVersion);
-        deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl_util:" + lwjglVersion);
-        deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl-platform:" + lwjglVersion + ":" + lwjglNatives);
-        deps.add("vanilla_minecraft", "net.java.jinput:jinput-platform:2.0.5:" + lwjglNatives);
-        deps.add("vanilla_minecraft", "tv.twitch:twitch:5.16");
-        if (os.isWindows()) {
-            deps.add("vanilla_minecraft", "tv.twitch:twitch-platform:5.16:natives-windows-64");
-            deps.add("vanilla_minecraft", "tv.twitch:twitch-external-platform:4.5:natives-windows-64");
-        }
+        project.afterEvaluate(_p -> {
+            System.err.println(mcExt.getApplyMcDependencies().toString());
+            System.err.println(mcExt.getApplyMcDependencies().get().toString());
+            if (mcExt.getApplyMcDependencies().get()) {
+                deps.add("vanilla_minecraft", "com.mojang:netty:1.8.8");
+                deps.add("vanilla_minecraft", "com.mojang:realms:1.3.5");
+                deps.add("vanilla_minecraft", "org.apache.commons:commons-compress:1.8.1");
+                deps.add("vanilla_minecraft", "org.apache.httpcomponents:httpclient:4.3.3");
+                deps.add("vanilla_minecraft", "commons-logging:commons-logging:1.1.3");
+                deps.add("vanilla_minecraft", "org.apache.httpcomponents:httpcore:4.3.2");
+                deps.add("vanilla_minecraft", "java3d:vecmath:1.3.1");
+                deps.add("vanilla_minecraft", "net.sf.trove4j:trove4j:3.0.3");
+                deps.add("vanilla_minecraft", "com.ibm.icu:icu4j-core-mojang:51.2");
+                deps.add("vanilla_minecraft", "net.sf.jopt-simple:jopt-simple:4.5");
+                deps.add("vanilla_minecraft", "com.paulscode:codecjorbis:20101023");
+                deps.add("vanilla_minecraft", "com.paulscode:codecwav:20101023");
+                deps.add("vanilla_minecraft", "com.paulscode:libraryjavasound:20101123");
+                deps.add("vanilla_minecraft", "com.paulscode:librarylwjglopenal:20100824");
+                deps.add("vanilla_minecraft", "com.paulscode:soundsystem:20120107");
+                deps.add("vanilla_minecraft", "io.netty:netty-all:4.0.10.Final");
+                deps.add("vanilla_minecraft", "com.google.guava:guava:15.0");
+                deps.add("vanilla_minecraft", "org.apache.commons:commons-lang3:3.1");
+                deps.add("vanilla_minecraft", "commons-io:commons-io:2.4");
+                deps.add("vanilla_minecraft", "commons-codec:commons-codec:1.9");
+                deps.add("vanilla_minecraft", "net.java.jinput:jinput:2.0.5");
+                deps.add("vanilla_minecraft", "net.java.jutils:jutils:1.0.0");
+                deps.add("vanilla_minecraft", "com.google.code.gson:gson:2.2.4");
+                deps.add("vanilla_minecraft", "com.mojang:authlib:1.5.21");
+                deps.add("vanilla_minecraft", "org.apache.logging.log4j:log4j-api:2.0-beta9");
+                deps.add("vanilla_minecraft", "org.apache.logging.log4j:log4j-core:2.0-beta9");
+                final String lwjglVersion = mcExt.getLwjglVersion().get();
+                deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl:" + lwjglVersion);
+                deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl_util:" + lwjglVersion);
+                deps.add("vanilla_minecraft", "org.lwjgl.lwjgl:lwjgl-platform:" + lwjglVersion + ":" + lwjglNatives);
+                deps.add("vanilla_minecraft", "net.java.jinput:jinput-platform:2.0.5:" + lwjglNatives);
+                deps.add("vanilla_minecraft", "tv.twitch:twitch:5.16");
+                if (os.isWindows()) {
+                    deps.add("vanilla_minecraft", "tv.twitch:twitch-platform:5.16:natives-windows-64");
+                    deps.add("vanilla_minecraft", "tv.twitch:twitch-external-platform:4.5:natives-windows-64");
+                }
+            }
+        });
         this.vanillaMcConfiguration = mcCfg;
     }
 
