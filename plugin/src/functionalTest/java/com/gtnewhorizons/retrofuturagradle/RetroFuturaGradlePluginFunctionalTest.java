@@ -90,6 +90,20 @@ class RetroFuturaGradlePluginFunctionalTest {
         BuildResult result = runner.build();
     }
 
+    @Test
+    void canDeobfMergedJarToSrg() throws IOException {
+        writeString(getSettingsFile(), "");
+        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
+
+        // Run the build
+        GradleRunner runner = GradleRunner.create();
+        runner.forwardOutput();
+        runner.withPluginClasspath();
+        runner.withArguments("--stacktrace", "--", "deobfuscateMergedJarToSrg");
+        runner.withProjectDir(projectDir);
+        BuildResult result = runner.build();
+    }
+
     private void writeString(File file, String string) throws IOException {
         try (Writer writer = new FileWriter(file)) {
             writer.write(string);

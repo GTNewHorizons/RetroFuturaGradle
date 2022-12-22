@@ -14,6 +14,8 @@ public abstract class MinecraftExtension {
 
         getMcpMappingChannel().convention("stable");
         getMcpMappingVersion().convention("12");
+        getUsesFml().convention(true);
+        getUsesForge().convention(true);
     }
 
     // Vanilla configs
@@ -49,4 +51,16 @@ public abstract class MinecraftExtension {
      * From <a href="https://maven.minecraftforge.net/de/oceanlabs/mcp/versions.json">the MCP versions.json file</a>
      */
     public abstract Property<String> getMcpMappingVersion();
+
+    // Forge configs
+
+    /**
+     * Whether FML is included in the decompiled environment, default is true.
+     */
+    public abstract Property<Boolean> getUsesFml();
+
+    /**
+     * Whether Forge is included in the decompiled environment, default is true.
+     */
+    public abstract Property<Boolean> getUsesForge();
 }

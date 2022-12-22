@@ -1,5 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle.util;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
@@ -19,6 +21,15 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
 public final class Utilities {
+    public static final Gson GSON;
+
+    static {
+        GsonBuilder builder = new GsonBuilder();
+        builder.enableComplexMapKeySerialization();
+        builder.setPrettyPrinting();
+        GSON = builder.create();
+    }
+
     public static File getCacheRoot(Project project) {
         return FileUtils.getFile(project.getGradle().getGradleUserHomeDir(), "caches", "retro_futura_gradle");
     }
@@ -65,8 +76,8 @@ public final class Utilities {
         }
     }
 
-    public static byte[] emitClassBytes(ClassNode node) {
-        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    public static byte[] emitClassBytes(ClassNode node, int writerFlags) {
+        ClassWriter writer = new ClassWriter(writerFlags);
         node.accept(writer);
         return writer.toByteArray();
     }

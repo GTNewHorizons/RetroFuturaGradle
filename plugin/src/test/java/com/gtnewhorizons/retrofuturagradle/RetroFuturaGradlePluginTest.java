@@ -34,5 +34,6 @@ class RetroFuturaGradlePluginTest {
         assertNotNull(project.getTasks().findByName("extractMcpData"));
         assertNotNull(project.getTasks().findByName("generateForgeSrgMappings"));
         assertNotNull(project.getTasks().findByName("mergeVanillaSidedJars"));
+        assertNotNull(project.getTasks().findByName("deobfuscateMergedJarToSrg"));
     }
 }

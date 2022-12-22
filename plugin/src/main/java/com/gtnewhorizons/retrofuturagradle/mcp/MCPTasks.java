@@ -11,6 +11,7 @@ import java.io.File;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.tasks.TaskProvider;
 
 /**
@@ -39,6 +40,13 @@ public class MCPTasks {
     private final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
     private final File mergedVanillaJarLocation;
     private final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars;
+    /**
+     * Merged C+S jar remapped to SRG names
+     */
+    private final File srgMergedJarLocation;
+
+    private final TaskProvider<DeobfuscateTask> taskDeobfuscateMergedJarToSrg;
+    private final ConfigurableFileCollection deobfuscationATs;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -49,6 +57,7 @@ public class MCPTasks {
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
         forgeUserdevConfiguration = project.getConfigurations().create("fmlUserdev");
+        deobfuscationATs = project.getObjects().fileCollection();
 
         fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.jar");
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
@@ -106,6 +115,22 @@ public class MCPTasks {
                     task.getMergeConfigFile().set(FileUtils.getFile(forgeUserdevLocation, "conf", "mcp_merge.cfg"));
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
+
+        srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "vanilla_merged_minecraft.jar");
+        taskDeobfuscateMergedJarToSrg = project.getTasks()
+                .register("deobfuscateMergedJarToSrg", DeobfuscateTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskMergeVanillaSidedJars, taskGenerateForgeSrgMappings);
+                    task.getSrgFile().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg));
+                    task.getExceptorJson().set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
+                            .file("conf/exceptor.json")));
+                    task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
+                    task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
+                    task.getOutputJar().set(srgMergedJarLocation);
+                    task.getIsApplyingMarkers().set(true);
+                    // Configured in afterEvaluate()
+                    task.getAccessTransformerFiles().setFrom(deobfuscationATs);
+                });
     }
 
     private void afterEvaluate() {
@@ -127,6 +152,17 @@ public class MCPTasks {
                 .add(
                         forgeUserdevConfiguration.getName(),
                         "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
+        if (mcExt.getUsesFml().get()) {
+            deobfuscationATs.builtBy(taskExtractForgeUserdev);
+            deobfuscationATs.from(
+                            taskExtractForgeUserdev.flatMap(
+                                    t -> t.getOutputDir().file(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER)));
+            if (mcExt.getUsesForge().get()) {
+                deobfuscationATs.from(
+                                taskExtractForgeUserdev.flatMap(
+                                        t -> t.getOutputDir().file(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER)));
+            }
+        }
     }
 
     public Configuration getMcpMappingDataConfiguration() {

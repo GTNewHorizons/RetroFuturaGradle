@@ -8,4 +8,8 @@ public final class Constants {
             "https://launchermeta.mojang.com/mc/game/version_manifest.json";
     public static final String URL_ASSETS_ROOT = "https://resources.download.minecraft.net/";
     public static final String URL_FERNFLOWER = "https://files.minecraftforge.net/fernflower-fix-1.0.zip";
+
+    // Well-known paths
+    public static final String PATH_USERDEV_FML_ACCESS_TRANFORMER = "src/main/resources/fml_at.cfg";
+    public static final String PATH_USERDEV_FORGE_ACCESS_TRANFORMER = "src/main/resources/forge_at.cfg";
 }

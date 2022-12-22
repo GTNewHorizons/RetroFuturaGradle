@@ -36,6 +36,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -188,7 +189,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             classNode.visibleAnnotations.add(makeSideAnnotation(isClientOnly));
         }
 
-        byte[] annotatedClass = Utilities.emitClassBytes(classNode);
+        byte[] annotatedClass = Utilities.emitClassBytes(classNode, ClassWriter.COMPUTE_MAXS);
         if (outputJar != null) {
             ZipEntry newEntry = new ZipEntry(entry.getName());
             outputJar.putNextEntry(newEntry);
@@ -223,7 +224,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                 value.processSidedness(clientClass);
             }
         }
-        return Utilities.emitClassBytes(clientClass);
+        return Utilities.emitClassBytes(clientClass, ClassWriter.COMPUTE_MAXS);
     }
 
     private static AnnotationNode makeSideAnnotation(boolean isClientOnly) {
