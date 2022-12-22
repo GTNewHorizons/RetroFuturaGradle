@@ -242,8 +242,8 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
 
                 for (String line : lines) {
                     // these are in MCP names
-                    mcpOut.write(line);
-                    mcpOut.newLine();
+                    srgOut.write(line);
+                    srgOut.newLine();
 
                     // remap SRG
 
@@ -254,8 +254,8 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
 
                     // not a method? wut?
                     if (sigIndex == -1 || dotIndex == -1) {
-                        srgOut.write(line);
-                        srgOut.newLine();
+                        mcpOut.write(line);
+                        mcpOut.newLine();
                         continue;
                     }
 
@@ -264,9 +264,9 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
                     if (excRemap.containsKey(name)) name = excRemap.get(name);
 
                     // write remapped line
-                    srgOut.write(
+                    mcpOut.write(
                             split[0].substring(0, dotIndex) + name + split[0].substring(sigIndex) + "=" + split[1]);
-                    srgOut.newLine();
+                    mcpOut.newLine();
                 }
             }
         }

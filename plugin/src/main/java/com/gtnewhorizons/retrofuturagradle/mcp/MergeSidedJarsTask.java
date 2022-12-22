@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -201,21 +202,27 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         ClassNode clientClass = Utilities.parseClassBytes(clientData, debugName);
         ClassNode serverClass = Utilities.parseClassBytes(serverData, debugName);
         // clientClass is also the output class
+        // maintain insertion order via a LinkedHashSet for reliable method ordering
+        LinkedHashSet<String> entryKeys = new LinkedHashSet<>(clientClass.methods.size() + clientClass.fields.size());
         MultiValuedMap<String, FieldOrMethod> sidedEntries =
                 new ArrayListValuedHashMap<>(clientClass.methods.size() + clientClass.fields.size(), 2);
-        clientClass.methods.stream()
-                .map(e -> new FieldOrMethod(Side.CLIENT, e))
-                .forEach(e -> sidedEntries.put(e.getKey(), e));
-        clientClass.fields.stream()
-                .map(e -> new FieldOrMethod(Side.CLIENT, e))
-                .forEach(e -> sidedEntries.put(e.getKey(), e));
-        serverClass.methods.stream()
-                .map(e -> new FieldOrMethod(Side.SERVER, e))
-                .forEach(e -> sidedEntries.put(e.getKey(), e));
-        serverClass.fields.stream()
-                .map(e -> new FieldOrMethod(Side.SERVER, e))
-                .forEach(e -> sidedEntries.put(e.getKey(), e));
-        for (String key : sidedEntries.keySet()) {
+        clientClass.methods.stream().map(e -> new FieldOrMethod(Side.CLIENT, e)).forEach(e -> {
+            entryKeys.add(e.getKey());
+            sidedEntries.put(e.getKey(), e);
+        });
+        clientClass.fields.stream().map(e -> new FieldOrMethod(Side.CLIENT, e)).forEach(e -> {
+            entryKeys.add(e.getKey());
+            sidedEntries.put(e.getKey(), e);
+        });
+        serverClass.methods.stream().map(e -> new FieldOrMethod(Side.SERVER, e)).forEach(e -> {
+            entryKeys.add(e.getKey());
+            sidedEntries.put(e.getKey(), e);
+        });
+        serverClass.fields.stream().map(e -> new FieldOrMethod(Side.SERVER, e)).forEach(e -> {
+            entryKeys.add(e.getKey());
+            sidedEntries.put(e.getKey(), e);
+        });
+        for (String key : entryKeys) {
             Collection<FieldOrMethod> foms = sidedEntries.get(key);
             assert !foms.isEmpty();
             // If sided

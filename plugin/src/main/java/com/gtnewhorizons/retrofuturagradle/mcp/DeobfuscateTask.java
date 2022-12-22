@@ -152,12 +152,11 @@ public abstract class DeobfuscateTask extends DefaultTask {
         RemapperProcessor atProcessor = new RemapperProcessor(null, null, accessMap);
         JarRemapper remapper = new JarRemapper(srgProcessor, mapping, atProcessor);
 
-        try (Jar input = Jar.init(inputFile)) {
-            JointProvider inheritanceProviders = new JointProvider();
-            inheritanceProviders.add(new JarProvider(input));
-            mapping.setFallbackInheritanceProvider(inheritanceProviders);
-            remapper.remapJar(input, tempDeobfJar);
-        }
+        final Jar input = Jar.init(inputFile);
+        JointProvider inheritanceProviders = new JointProvider();
+        inheritanceProviders.add(new JarProvider(input));
+        mapping.setFallbackInheritanceProvider(inheritanceProviders);
+        remapper.remapJar(input, tempDeobfJar);
     }
 
     private void applyExceptor(File deobfJar, File tempExceptorJar, File logFile, Set<File> atFiles)
