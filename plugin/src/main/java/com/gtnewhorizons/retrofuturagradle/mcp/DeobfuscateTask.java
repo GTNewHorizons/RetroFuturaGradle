@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+import javax.inject.Inject;
 import net.md_5.specialsource.AccessMap;
 import net.md_5.specialsource.Jar;
 import net.md_5.specialsource.JarMapping;
@@ -50,8 +51,6 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
-
-import javax.inject.Inject;
 
 public abstract class DeobfuscateTask extends DefaultTask {
     @InputFile
@@ -120,7 +119,10 @@ public abstract class DeobfuscateTask extends DefaultTask {
     }
 
     private void applySpecialSource(File tempDeobfJar, Set<File> atFiles) throws IOException {
-        final File inputFile = getInputJar().get().getAsFile();
+        final File originalInputFile = getInputJar().get().getAsFile();
+        // Work on a copy to make sure the original jar doesn't get modified
+        final File inputFile = new File(taskTempDir, "input.jar");
+        FileUtils.copyFile(originalInputFile, inputFile);
         final JarMapping mapping = new JarMapping();
         mapping.loadMappings(getSrgFile().get().getAsFile());
         final Map<String, String> renames = new HashMap<>();

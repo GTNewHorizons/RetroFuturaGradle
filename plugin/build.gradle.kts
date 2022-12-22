@@ -63,7 +63,7 @@ dependencies {
   implementation("com.github.abrarsyed.jastyle:jAstyle:1.2")
   implementation("com.github.jponge:lzma-java:1.3")
   implementation("com.nothome:javaxdelta:2.0.1")
-  implementation("net.md-5:SpecialSource:1.11.0") // TODO: verify this update
+  implementation("net.md-5:SpecialSource:1.8.1")
   // "MCP stuff"
   implementation("de.oceanlabs.mcp:RetroGuard:3.6.6")
   implementation("de.oceanlabs.mcp:mcinjector:3.2-SNAPSHOT")

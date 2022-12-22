@@ -116,7 +116,7 @@ public class MCPTasks {
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
 
-        srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "vanilla_merged_minecraft.jar");
+        srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_merged_minecraft.jar");
         taskDeobfuscateMergedJarToSrg = project.getTasks()
                 .register("deobfuscateMergedJarToSrg", DeobfuscateTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -154,13 +154,11 @@ public class MCPTasks {
                         "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
-            deobfuscationATs.from(
-                            taskExtractForgeUserdev.flatMap(
-                                    t -> t.getOutputDir().file(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER)));
+            deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
+                    t -> t.getOutputDir().file(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER)));
             if (mcExt.getUsesForge().get()) {
-                deobfuscationATs.from(
-                                taskExtractForgeUserdev.flatMap(
-                                        t -> t.getOutputDir().file(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER)));
+                deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
+                        t -> t.getOutputDir().file(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER)));
             }
         }
     }
