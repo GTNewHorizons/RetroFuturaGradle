@@ -45,6 +45,10 @@ repositories {
   gradlePluginPortal()
 }
 
+// Always show stacktraces for exceptions
+gradle.startParameter.showStacktrace =
+    org.gradle.api.logging.configuration.ShowStacktrace.ALWAYS_FULL
+
 dependencies {
   // Apache Commons utilities
   implementation("org.apache.commons:commons-lang3:3.12.0")

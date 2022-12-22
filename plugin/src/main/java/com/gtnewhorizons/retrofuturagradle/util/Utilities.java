@@ -6,10 +6,17 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.tree.ClassNode;
 
 public final class Utilities {
     public static File getCacheRoot(Project project) {
@@ -29,5 +36,38 @@ public final class Utilities {
                 .withSkipLines(1)
                 .withCSVParser(csvParser)
                 .build();
+    }
+
+    public static byte[] readZipEntry(ZipFile jar, ZipEntry entry) throws IOException {
+        try (InputStream zis = jar.getInputStream(entry)) {
+            return IOUtils.toByteArray(zis);
+        }
+    }
+
+    public static byte[] getClassBytes(Class<?> klass) {
+        final String resourcePath = String.format("/%s.class", klass.getName().replace('.', '/'));
+        try (InputStream cis = klass.getResourceAsStream(resourcePath)) {
+            return IOUtils.toByteArray(cis);
+        } catch (IOException exc) {
+            throw new RuntimeException(
+                    "IO Exception caught when trying to get the class bytes for " + klass.getName(), exc);
+        }
+    }
+
+    public static ClassNode parseClassBytes(byte[] bytes, String debugName) {
+        try {
+            ClassReader reader = new ClassReader(bytes);
+            ClassNode classNode = new ClassNode();
+            reader.accept(classNode, 0);
+            return classNode;
+        } catch (Exception e) {
+            throw new RuntimeException("Couldn't parse bytes of class " + debugName, e);
+        }
+    }
+
+    public static byte[] emitClassBytes(ClassNode node) {
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        node.accept(writer);
+        return writer.toByteArray();
     }
 }

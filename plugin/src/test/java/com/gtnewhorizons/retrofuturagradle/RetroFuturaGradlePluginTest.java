@@ -28,5 +28,11 @@ class RetroFuturaGradlePluginTest {
         assertNotNull(project.getTasks().findByName("downloadVanillaJars"));
         assertNotNull(project.getTasks().findByName("runVanillaClient"));
         assertNotNull(project.getTasks().findByName("runVanillaServer"));
+
+        assertNotNull(project.getTasks().findByName("downloadFernflower"));
+        assertNotNull(project.getTasks().findByName("extractForgeUserdev"));
+        assertNotNull(project.getTasks().findByName("extractMcpData"));
+        assertNotNull(project.getTasks().findByName("generateForgeSrgMappings"));
+        assertNotNull(project.getTasks().findByName("mergeVanillaSidedJars"));
     }
 }
