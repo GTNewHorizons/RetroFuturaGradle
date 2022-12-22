@@ -8,7 +8,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import org.gradle.testkit.runner.BuildResult;
+import org.gradle.testkit.runner.BuildTask;
 import org.gradle.testkit.runner.GradleRunner;
+import org.gradle.testkit.runner.TaskOutcome;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,6 +49,9 @@ class RetroFuturaGradlePluginFunctionalTest {
         runner.withArguments("--stacktrace", "--", "downloadLauncherVersionManifest", "downloadAssetManifest");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
     }
 
     @Test
@@ -60,6 +66,9 @@ class RetroFuturaGradlePluginFunctionalTest {
         runner.withArguments("--stacktrace", "--", "downloadVanillaJars", "downloadVanillaAssets");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
     }
 
     @Test
@@ -74,6 +83,9 @@ class RetroFuturaGradlePluginFunctionalTest {
         runner.withArguments("--stacktrace", "--", "downloadFernflower", "extractForgeUserdev", "extractMcpData");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
     }
 
     @Test
@@ -88,6 +100,9 @@ class RetroFuturaGradlePluginFunctionalTest {
         runner.withArguments("--stacktrace", "--", "mergeVanillaSidedJars");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
     }
 
     @Test
@@ -102,6 +117,26 @@ class RetroFuturaGradlePluginFunctionalTest {
         runner.withArguments("--stacktrace", "--", "deobfuscateMergedJarToSrg");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+    }
+
+    @Test
+    void canDecompileSrgJar() throws IOException {
+        writeString(getSettingsFile(), "");
+        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
+
+        // Run the build
+        GradleRunner runner = GradleRunner.create();
+        runner.forwardOutput();
+        runner.withPluginClasspath();
+        runner.withArguments("--stacktrace", "--", "decompileSrgJar");
+        runner.withProjectDir(projectDir);
+        BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
     }
 
     private void writeString(File file, String string) throws IOException {

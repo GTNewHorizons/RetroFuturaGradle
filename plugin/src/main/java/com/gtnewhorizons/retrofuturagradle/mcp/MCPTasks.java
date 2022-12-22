@@ -8,7 +8,14 @@ import com.gtnewhorizons.retrofuturagradle.util.ExtractZipsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -20,7 +27,7 @@ import org.gradle.api.tasks.TaskProvider;
 public class MCPTasks {
     private static final String TASK_GROUP_INTERNAL = "Internal MCP";
     private static final String TASK_GROUP_USER = "MCP";
-    private static final String MCP_DIR = "mcp";
+    public static final String MCP_DIR = "mcp";
 
     private final Project project;
     private final MinecraftExtension mcExt;
@@ -48,6 +55,9 @@ public class MCPTasks {
     private final TaskProvider<DeobfuscateTask> taskDeobfuscateMergedJarToSrg;
     private final ConfigurableFileCollection deobfuscationATs;
 
+    private final TaskProvider<DecompileTask> taskDecompileSrgJar;
+    private final File decompiledSrgLocation;
+
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
         this.mcExt = mcExt;
@@ -59,7 +69,8 @@ public class MCPTasks {
         forgeUserdevConfiguration = project.getConfigurations().create("fmlUserdev");
         deobfuscationATs = project.getObjects().fileCollection();
 
-        fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.jar");
+        final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
+        fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.src(Constants.URL_FERNFLOWER);
@@ -67,7 +78,23 @@ public class MCPTasks {
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
-            task.dest(fernflowerLocation);
+            task.dest(fernflowerDownloadLocation);
+            task.doLast(_t -> {
+                try (final FileInputStream fis = new FileInputStream(fernflowerDownloadLocation);
+                        final ZipInputStream zis = new ZipInputStream(fis);
+                        final FileOutputStream fos = new FileOutputStream(fernflowerLocation)) {
+                    ZipEntry entry;
+                    while ((entry = zis.getNextEntry()) != null) {
+                        if (entry.getName().toLowerCase(Locale.ROOT).endsWith("fernflower.jar")) {
+                            IOUtils.copy(zis, fos);
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            task.getOutputs().file(fernflowerLocation);
         });
 
         mcpDataLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "data");
@@ -131,6 +158,19 @@ public class MCPTasks {
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
                 });
+
+        decompiledSrgLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_merged_minecraft-sources.jar");
+        taskDecompileSrgJar = project.getTasks().register("decompileSrgJar", DecompileTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
+            task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(DeobfuscateTask::getOutputJar));
+            task.getOutputJar().set(decompiledSrgLocation);
+            task.getFernflower().set(fernflowerLocation);
+            task.getPatches()
+                    .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().dir("conf/minecraft_ff")));
+            task.getAstyleConfig()
+                    .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().file("conf/astyle.cfg")));
+        });
     }
 
     private void afterEvaluate() {

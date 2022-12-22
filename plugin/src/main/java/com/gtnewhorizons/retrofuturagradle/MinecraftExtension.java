@@ -1,6 +1,13 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import com.google.common.collect.Lists;
+import org.gradle.api.Project;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaLauncher;
+import org.gradle.jvm.toolchain.JavaToolchainService;
 
 /**
  * Parameter block for the `minecraft {...}` Gradle script extension
@@ -14,6 +21,8 @@ public abstract class MinecraftExtension {
 
         getMcpMappingChannel().convention("stable");
         getMcpMappingVersion().convention("12");
+        getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
+
         getUsesFml().convention(true);
         getUsesForge().convention(true);
     }
@@ -52,6 +61,11 @@ public abstract class MinecraftExtension {
      */
     public abstract Property<String> getMcpMappingVersion();
 
+    /**
+     * Fernflower args, default is "-din=1","-rbr=0","-dgs=1","-asc=1","-log=ERROR"
+     */
+    public abstract ListProperty<String> getFernflowerArguments();
+
     // Forge configs
 
     /**
@@ -63,4 +77,11 @@ public abstract class MinecraftExtension {
      * Whether Forge is included in the decompiled environment, default is true.
      */
     public abstract Property<Boolean> getUsesForge();
+
+    public Provider<JavaLauncher> getToolchainLauncher(Project project) {
+        JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
+        return jts.launcherFor(toolchain -> {
+            toolchain.getLanguageVersion().set(this.getJavaVersion().map(JavaLanguageVersion::of));
+        });
+    }
 }

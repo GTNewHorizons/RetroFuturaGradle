@@ -20,8 +20,6 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
-import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.jvm.toolchain.JavaToolchainService;
 
 /**
  * Registers vanilla Minecraft-related gradle tasks
@@ -252,16 +250,7 @@ public final class MinecraftTasks {
                     "{}",
                     "--accessToken",
                     "0");
-            task.getJavaLauncher().set(project.getProviders().provider(() -> {
-                JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
-                return jts.launcherFor(toolchain -> {
-                            toolchain
-                                    .getLanguageVersion()
-                                    .set(JavaLanguageVersion.of(
-                                            mcExt.getJavaVersion().get()));
-                        })
-                        .get();
-            }));
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher(project));
         });
         taskRunVanillaServer = project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
@@ -280,16 +269,7 @@ public final class MinecraftTasks {
             task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
             task.args("nogui");
-            task.getJavaLauncher().set(project.getProviders().provider(() -> {
-                JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
-                return jts.launcherFor(toolchain -> {
-                            toolchain
-                                    .getLanguageVersion()
-                                    .set(JavaLanguageVersion.of(
-                                            mcExt.getJavaVersion().get()));
-                        })
-                        .get();
-            }));
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher(project));
         });
     }
 

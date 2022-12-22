@@ -153,13 +153,13 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                             dontAnnotate.add(instruction);
                             break;
                         case '<':
-                            copyToClient.add(line);
+                            copyToClient.add(instruction);
                             break;
                         case '>':
-                            copyToServer.add(line);
+                            copyToServer.add(instruction);
                             break;
                         case '^':
-                            dontProcess.add(line);
+                            dontProcess.add(instruction);
                             break;
                     }
                 }
