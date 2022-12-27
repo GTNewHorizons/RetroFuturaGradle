@@ -38,7 +38,7 @@ public class GLConstantFixer {
 
     public GLConstantFixer() throws IOException {
         String text =
-                Resources.toString(Resources.getResource(GLConstantFixer.class, "gl.json"), Charset.defaultCharset());
+                Resources.toString(Resources.getResource(GLConstantFixer.class, "gl_constants.json"), Charset.defaultCharset());
         json = Utilities.GSON.fromJson(text, new TypeToken<List<GLConstantGroup>>() {}.getType());
     }
 
