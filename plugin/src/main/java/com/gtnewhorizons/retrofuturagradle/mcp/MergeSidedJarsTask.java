@@ -147,7 +147,9 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                     final LineIterator lines = IOUtils.lineIterator(bis, StandardCharsets.UTF_8)) {
                 while (lines.hasNext()) {
                     final String line = lines.nextLine().split("#", 2)[0].trim();
-                    if (line.isEmpty()) {continue;}
+                    if (line.isEmpty()) {
+                        continue;
+                    }
                     final char cmd = line.charAt(0);
                     final String instruction = line.substring(1);
                     switch (cmd) {
@@ -164,7 +166,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                             dontProcess.add(instruction);
                             break;
                         default:
-                            throw new RuntimeException("Invalid mergeconfig instruction: "+instruction);
+                            throw new RuntimeException("Invalid mergeconfig instruction: " + instruction);
                     }
                 }
             }
@@ -221,9 +223,12 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                     entryKeys.add(sFom.getKey());
                     sidedEntries.put(sFom.getKey(), sFom);
                     if (!cNode.name.equals(sNode.name)) {
-                        final boolean foundServerField = serverClass.fields.stream().skip(sPos + 1).anyMatch(sf -> sf.name.equals(cNode.name));
+                        final boolean foundServerField =
+                                serverClass.fields.stream().skip(sPos + 1).anyMatch(sf -> sf.name.equals(cNode.name));
                         if (foundServerField) {
-                            final boolean foundClientField = clientClass.fields.stream().skip(cPos + 1).anyMatch(cf -> cf.name.equals(sNode.name));
+                            final boolean foundClientField = clientClass.fields.stream()
+                                    .skip(cPos + 1)
+                                    .anyMatch(cf -> cf.name.equals(sNode.name));
                             if (!foundClientField) {
                                 clientClass.fields.add(cPos, sNode);
                             }
@@ -245,7 +250,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             final int cLen = clientClass.methods.size(), sLen = serverClass.methods.size();
             String serverName = "", clientName = "", lastName = "";
             while (cPos < cLen || sPos < sLen) {
-                for (;sPos < sLen; sPos++) {
+                for (; sPos < sLen; sPos++) {
                     final MethodNode sNode = serverClass.methods.get(sPos);
                     serverName = sNode.name;
                     if (serverName.equals(lastName) || cPos == cLen) {
@@ -256,7 +261,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                         break;
                     }
                 }
-                for (;cPos < cLen; cPos++) {
+                for (; cPos < cLen; cPos++) {
                     final MethodNode cNode = clientClass.methods.get(cPos);
                     lastName = clientName;
                     clientName = cNode.name;
