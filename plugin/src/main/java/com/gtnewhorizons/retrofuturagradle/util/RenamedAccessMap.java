@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 
 public class RenamedAccessMap extends AccessMap {
     private final Map<String, String> symbolRenameMap;
+    private int renameCount = 0;
 
     public RenamedAccessMap(Map<String, String> symbolRenameMap) {
         this.symbolRenameMap = symbolRenameMap;
@@ -13,7 +14,7 @@ public class RenamedAccessMap extends AccessMap {
 
     @Override
     public void addAccessChange(String symbolString, String accessString) {
-        // eg. "foo/bar ()desc"
+        // eg. "public net.minecraft.entity.passive.EntityVillager func_146091_a(Lnet/minecraft/village/MerchantRecipeList;Lnet/minecraft/item/Item;Ljava/util/Random;F)V"
         String[] parts = symbolString.split(" ");
         if (parts.length >= 2) {
             int parenIndex = parts[1].indexOf('(');
@@ -25,8 +26,16 @@ public class RenamedAccessMap extends AccessMap {
                 end = parts[1].substring(parenIndex);
             }
 
-            parts[1] = symbolRenameMap.getOrDefault(start, start) + end;
+            String renamed = symbolRenameMap.get(start);
+            if (renamed != null) {
+                parts[1] = renamed + end;
+                renameCount ++;
+            }
         }
-        super.addAccessChange(StringUtils.joinWith(".", (Object) parts), accessString);
+        super.addAccessChange(StringUtils.join(parts, "."), accessString);
+    }
+
+    public int getRenameCount() {
+        return renameCount;
     }
 }

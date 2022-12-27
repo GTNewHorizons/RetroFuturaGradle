@@ -147,6 +147,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                     final LineIterator lines = IOUtils.lineIterator(bis, StandardCharsets.UTF_8)) {
                 while (lines.hasNext()) {
                     final String line = lines.nextLine().split("#", 2)[0].trim();
+                    if (line.isEmpty()) {continue;}
                     final char cmd = line.charAt(0);
                     final String instruction = line.substring(1);
                     switch (cmd) {
@@ -162,6 +163,8 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                         case '^':
                             dontProcess.add(instruction);
                             break;
+                        default:
+                            throw new RuntimeException("Invalid mergeconfig instruction: "+instruction);
                     }
                 }
             }
@@ -207,6 +210,35 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         MultiValuedMap<String, FieldOrMethod> sidedEntries =
                 new ArrayListValuedHashMap<>(clientClass.methods.size() + clientClass.fields.size(), 2);
 
+        // Process and add fields in the same order as ForgeGradle
+        {
+            for (int cPos = 0, sPos = 0; cPos < clientClass.fields.size(); cPos++, sPos++) {
+                final FieldNode cNode = clientClass.fields.get(cPos);
+                final FieldOrMethod cFom = new FieldOrMethod(Side.CLIENT, cNode);
+                if (sPos < serverClass.fields.size()) {
+                    final FieldNode sNode = serverClass.fields.get(sPos);
+                    final FieldOrMethod sFom = new FieldOrMethod(Side.SERVER, sNode);
+                    entryKeys.add(sFom.getKey());
+                    sidedEntries.put(sFom.getKey(), sFom);
+                    if (!cNode.name.equals(sNode.name)) {
+                        final boolean foundServerField = serverClass.fields.stream().skip(sPos + 1).anyMatch(sf -> sf.name.equals(cNode.name));
+                        if (foundServerField) {
+                            final boolean foundClientField = clientClass.fields.stream().skip(cPos + 1).anyMatch(cf -> cf.name.equals(sNode.name));
+                            if (!foundClientField) {
+                                clientClass.fields.add(cPos, sNode);
+                            }
+                        } else {
+                            serverClass.fields.add(sPos, cNode);
+                        }
+                    }
+                } else {
+                    serverClass.fields.add(sPos, cNode);
+                }
+                entryKeys.add(cFom.getKey());
+                sidedEntries.put(cFom.getKey(), cFom);
+            }
+        }
+
         // Process methods in the same order as ForgeGradle
         {
             int cPos = 0, sPos = 0;
@@ -239,26 +271,18 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             }
         }
 
-        clientClass.fields.stream().map(e -> new FieldOrMethod(Side.CLIENT, e)).forEach(e -> {
-            entryKeys.add(e.getKey());
-            sidedEntries.put(e.getKey(), e);
-        });
-        serverClass.fields.stream().map(e -> new FieldOrMethod(Side.SERVER, e)).forEach(e -> {
-            entryKeys.add(e.getKey());
-            sidedEntries.put(e.getKey(), e);
-        });
-
         clientClass.methods.clear();
-        clientClass.fields.clear();
 
         for (String key : entryKeys) {
             Collection<FieldOrMethod> foms = sidedEntries.get(key);
             assert !foms.isEmpty();
-            foms.iterator().next().addToClass(clientClass);
+            FieldOrMethod fom = foms.iterator().next();
+            if (fom.isMethod()) {
+                fom.addToClass(clientClass);
+            }
             // If sided
             if (foms.size() == 1) {
-                FieldOrMethod value = foms.iterator().next();
-                value.processSidedness(clientClass);
+                fom.addSideOnlyAnnotation();
             }
         }
         return Utilities.emitClassBytes(clientClass, ClassWriter.COMPUTE_MAXS);
@@ -290,6 +314,10 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             this.method = method;
         }
 
+        public boolean isMethod() {
+            return this.method != null;
+        }
+
         public String getKey() {
             if (this.field != null) {
                 return "field " + this.field.name;
@@ -308,7 +336,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             }
         }
 
-        public void processSidedness(ClassNode targetNode) {
+        public void addSideOnlyAnnotation() {
             final List<AnnotationNode> annotations;
             if (this.field != null) {
                 if (this.field.visibleAnnotations == null) {

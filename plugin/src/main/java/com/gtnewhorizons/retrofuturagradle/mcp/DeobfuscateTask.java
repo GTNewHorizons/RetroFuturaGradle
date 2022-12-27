@@ -142,11 +142,12 @@ public abstract class DeobfuscateTask extends DefaultTask {
 
         // Load access transformers
         getLogger().lifecycle("Loading {} AccessTransformers", atFiles.size());
-        AccessMap accessMap = new RenamedAccessMap(renames);
+        RenamedAccessMap accessMap = new RenamedAccessMap(renames);
         for (File atFile : atFiles) {
             getLogger().info("{}", atFile.getPath());
             accessMap.loadAccessTransformer(atFile);
         }
+        getLogger().lifecycle("Renamed {} AT entries", accessMap.getRenameCount());
 
         RemapperProcessor srgProcessor = new RemapperProcessor(null, mapping, null);
         RemapperProcessor atProcessor = new RemapperProcessor(null, null, accessMap);
