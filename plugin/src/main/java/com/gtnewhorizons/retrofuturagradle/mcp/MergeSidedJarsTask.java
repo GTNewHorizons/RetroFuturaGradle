@@ -206,15 +206,40 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         LinkedHashSet<String> entryKeys = new LinkedHashSet<>(clientClass.methods.size() + clientClass.fields.size());
         MultiValuedMap<String, FieldOrMethod> sidedEntries =
                 new ArrayListValuedHashMap<>(clientClass.methods.size() + clientClass.fields.size(), 2);
-        clientClass.methods.stream().map(e -> new FieldOrMethod(Side.CLIENT, e)).forEach(e -> {
-            entryKeys.add(e.getKey());
-            sidedEntries.put(e.getKey(), e);
-        });
+
+        // Process methods in the same order as ForgeGradle
+        {
+            int cPos = 0, sPos = 0;
+            final int cLen = clientClass.methods.size(), sLen = serverClass.methods.size();
+            String serverName = "", clientName = "", lastName = "";
+            while (cPos < cLen || sPos < sLen) {
+                for (;sPos < sLen; sPos++) {
+                    final MethodNode sNode = serverClass.methods.get(sPos);
+                    serverName = sNode.name;
+                    if (serverName.equals(lastName) || cPos == cLen) {
+                        final FieldOrMethod fom = new FieldOrMethod(Side.SERVER, sNode);
+                        entryKeys.add(fom.getKey());
+                        sidedEntries.put(fom.getKey(), fom);
+                    } else {
+                        break;
+                    }
+                }
+                for (;cPos < cLen; cPos++) {
+                    final MethodNode cNode = clientClass.methods.get(cPos);
+                    lastName = clientName;
+                    clientName = cNode.name;
+                    if (clientName.equals(lastName) || sPos == sLen) {
+                        final FieldOrMethod fom = new FieldOrMethod(Side.CLIENT, cNode);
+                        entryKeys.add(fom.getKey());
+                        sidedEntries.put(fom.getKey(), fom);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
         clientClass.fields.stream().map(e -> new FieldOrMethod(Side.CLIENT, e)).forEach(e -> {
-            entryKeys.add(e.getKey());
-            sidedEntries.put(e.getKey(), e);
-        });
-        serverClass.methods.stream().map(e -> new FieldOrMethod(Side.SERVER, e)).forEach(e -> {
             entryKeys.add(e.getKey());
             sidedEntries.put(e.getKey(), e);
         });
@@ -222,9 +247,14 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             entryKeys.add(e.getKey());
             sidedEntries.put(e.getKey(), e);
         });
+
+        clientClass.methods.clear();
+        clientClass.fields.clear();
+
         for (String key : entryKeys) {
             Collection<FieldOrMethod> foms = sidedEntries.get(key);
             assert !foms.isEmpty();
+            foms.iterator().next().addToClass(clientClass);
             // If sided
             if (foms.size() == 1) {
                 FieldOrMethod value = foms.iterator().next();
@@ -269,6 +299,15 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             }
         }
 
+        public void addToClass(ClassNode targetNode) {
+            if (this.field != null) {
+                targetNode.fields.add(this.field);
+            } else {
+                assert this.method != null;
+                targetNode.methods.add(this.method);
+            }
+        }
+
         public void processSidedness(ClassNode targetNode) {
             final List<AnnotationNode> annotations;
             if (this.field != null) {
@@ -284,13 +323,6 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                 annotations = this.method.visibleAnnotations;
             }
             annotations.add(makeSideAnnotation(side == Side.CLIENT));
-            if (side == Side.SERVER) {
-                if (this.field != null) {
-                    targetNode.fields.add(this.field);
-                } else {
-                    targetNode.methods.add(this.method);
-                }
-            }
         }
     }
 }
