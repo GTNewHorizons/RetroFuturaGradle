@@ -6,13 +6,20 @@ import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
@@ -80,5 +87,51 @@ public final class Utilities {
         ClassWriter writer = new ClassWriter(writerFlags);
         node.accept(writer);
         return writer.toByteArray();
+    }
+
+    /**
+     * Load a JAR file into in-memory hashmaps
+     * @param jar The JAR to load
+     * @param loadedResources The map to populate with non-java file contents
+     * @param loadedSources The map to populate with java file contents
+     * @throws IOException Forwarded IO errors from the JAR reading process
+     */
+    public static void loadMemoryJar(File jar, Map<String, byte[]> loadedResources, Map<String, String> loadedSources)
+            throws IOException {
+        try (final FileInputStream fis = new FileInputStream(jar);
+                final BufferedInputStream bis = new BufferedInputStream(fis);
+                final ZipInputStream zis = new ZipInputStream(bis)) {
+            ZipEntry entry = null;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (entry.getName().contains("META-INF")) {
+                    continue;
+                }
+                if (entry.isDirectory() || !entry.getName().endsWith(".java")) {
+                    loadedResources.put(entry.getName(), IOUtils.toByteArray(zis));
+                } else {
+                    final String src = IOUtils.toString(zis, StandardCharsets.UTF_8);
+                    loadedSources.put(entry.getName(), src);
+                }
+            }
+        }
+    }
+
+    public static File saveMemoryJar(
+            Map<String, byte[]> loadedResources, Map<String, String> loadedSources, File target) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(target);
+                BufferedOutputStream bos = new BufferedOutputStream(fos);
+                ZipOutputStream zos = new ZipOutputStream(bos)) {
+            for (Map.Entry<String, byte[]> resource : loadedResources.entrySet()) {
+                zos.putNextEntry(new ZipEntry(resource.getKey()));
+                zos.write(resource.getValue());
+                zos.closeEntry();
+            }
+            for (Map.Entry<String, String> srcFile : loadedSources.entrySet()) {
+                zos.putNextEntry(new ZipEntry(srcFile.getKey()));
+                zos.write(srcFile.getValue().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+            }
+        }
+        return target;
     }
 }

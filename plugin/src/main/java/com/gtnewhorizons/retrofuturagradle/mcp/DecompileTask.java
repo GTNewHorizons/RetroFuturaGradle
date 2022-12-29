@@ -11,12 +11,9 @@ import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -31,11 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -130,24 +123,12 @@ public abstract class DecompileTask extends DefaultTask {
     }
 
     private File loadAndApplyFfPatches(File decompiled) throws IOException {
-        try (final FileInputStream fis = new FileInputStream(decompiled);
-                final BufferedInputStream bis = new BufferedInputStream(fis);
-                final ZipInputStream zis = new ZipInputStream(bis)) {
-            ZipEntry entry = null;
-            while ((entry = zis.getNextEntry()) != null) {
-                if (entry.getName().contains("META-INF")) {
-                    continue;
-                }
-                if (entry.isDirectory() || !entry.getName().endsWith(".java")) {
-                    loadedResources.put(entry.getName(), IOUtils.toByteArray(zis));
-                } else {
-                    final String src = IOUtils.toString(zis, StandardCharsets.UTF_8);
-                    final String patchedSrc = FFPatcher.processFile(entry.getName(), src, true);
-                    loadedSources.put(entry.getName(), patchedSrc);
-                }
-            }
+        Utilities.loadMemoryJar(decompiled, loadedResources, loadedSources);
+        for (Map.Entry<String, String> entry : loadedSources.entrySet()) {
+            final String patchedSrc = FFPatcher.processFile(entry.getKey(), entry.getValue(), true);
+            entry.setValue(patchedSrc);
         }
-        return saveLoadedToJar(new File(taskTempDir, "ffpatcher.jar"));
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "ffpatcher.jar"));
     }
 
     private File applyMcpPatches() throws IOException {
@@ -192,7 +173,7 @@ public abstract class DecompileTask extends DefaultTask {
             printPatchErrors(errors);
         }
 
-        return saveLoadedToJar(new File(taskTempDir, "mcppatched.jar"));
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcppatched.jar"));
     }
 
     private static final Pattern BEFORE_RULE =
@@ -240,25 +221,7 @@ public abstract class DecompileTask extends DefaultTask {
 
             loadedSources.put(filePath, text);
         }
-        return saveLoadedToJar(new File(taskTempDir, "mcpcleanup.jar"));
-    }
-
-    private File saveLoadedToJar(File target) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(target);
-                BufferedOutputStream bos = new BufferedOutputStream(fos);
-                ZipOutputStream zos = new ZipOutputStream(bos)) {
-            for (Map.Entry<String, byte[]> resource : loadedResources.entrySet()) {
-                zos.putNextEntry(new ZipEntry(resource.getKey()));
-                zos.write(resource.getValue());
-                zos.closeEntry();
-            }
-            for (Map.Entry<String, String> srcFile : loadedSources.entrySet()) {
-                zos.putNextEntry(new ZipEntry(srcFile.getKey()));
-                zos.write(srcFile.getValue().getBytes(StandardCharsets.UTF_8));
-                zos.closeEntry();
-            }
-        }
-        return target;
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcpcleanup.jar"));
     }
 
     private void printPatchErrors(List<ContextualPatch.PatchReport> errors) throws IOException {
