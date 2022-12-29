@@ -10,6 +10,9 @@ Almost the entire interface with Gradle's task system is rewritten, but a lot of
   - [x] Download MC version json 
   - [x] Process MC version JSON
   - [x] Download MC jars&assets
-  - [ ] Decompile
-  - [ ] Deobfuscate
+  - [x] Decompile
+  - [x] Deobfuscate
+  - [ ] Recompile
+  - [ ] Run
+  - [ ] Reobfuscate
 - [ ] Set up a MC dev environment for recompiling a forge-style mod using the patch workflow

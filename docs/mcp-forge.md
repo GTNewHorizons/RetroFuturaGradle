@@ -13,6 +13,11 @@ In order of operations (some of them can execute in parallel):
  - `generateForgeSrgMappings` - generates remapping configuration files at `build/mcp/forge_srg`
  - `mergeVanillaSidedJars` - merges the client&server, adding appropriate `@SideOnly` annotations into `build/mcp/vanilla_merged_minecraft.jar`
  - `deobfuscateMergedJarToSrg` - deobfuscates the merged jar with the SRG naming scheme (`func_12345_a`) into `build/mcp/srg_merged_minecraft.jar`, it also applies forge&fml access transformers if forge/fml are enabled
+ - `decompileSrgJar`:
+   - runs FernFlower on the SRG jar to generate a source jar at `build/tmp/decompileSrgJar/ff-out/mc.jar`
+   - applies post-FF cleanup regexes (in the `FFPatcher` class) from the MCP tree at `build/tmp/decompileSrgJar/ffpatcher.jar`
+   - applies `.patch` files from MCP at `build/tmp/decompileSrgJar/mcppatched.jar`
+   - runs final cleanup tasks (AStyle autoformat, GL constant fixer, comment cleanup) at `build/tmp/decompileSrgJar/mcpcleanup.jar`
 
 All of these tasks are registered in the `plugin/src/main/java/com/gtnewhorizons/retrofuturagradle/mcp/MCPTasks.java` constructor.
 This class also provides getters for all of the tasks and the mentioned files/directories for ease of use.
