@@ -58,6 +58,9 @@ public class MCPTasks {
     private final TaskProvider<DecompileTask> taskDecompileSrgJar;
     private final File decompiledSrgLocation;
 
+    private final TaskProvider<PatchSourcesTask> taskPatchDecompiledJar;
+    private final File patchedSourcesLocation;
+
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
         this.mcExt = mcExt;
@@ -155,8 +158,8 @@ public class MCPTasks {
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
                     task.getOutputJar().set(srgMergedJarLocation);
                     // TODO: figure out why deobfBinJar uses these but deobfuscateJar doesn't
-                    //                    task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
-                    //                    task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+                    // task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
+                    // task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
@@ -168,11 +171,20 @@ public class MCPTasks {
             task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
             task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(DeobfuscateTask::getOutputJar));
             task.getOutputJar().set(decompiledSrgLocation);
+            task.onlyIf(t -> !decompiledSrgLocation.exists());
             task.getFernflower().set(fernflowerLocation);
             task.getPatches()
                     .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().dir("conf/minecraft_ff")));
             task.getAstyleConfig()
                     .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().file("conf/astyle.cfg")));
+        });
+
+        patchedSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_patched_minecraft-sources.jar");
+        taskPatchDecompiledJar = project.getTasks().register("patchDecompiledJar", PatchSourcesTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskDecompileSrgJar);
+            task.getInputJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getOutputJar));
+            task.getOutputJar().set(decompiledSrgLocation);
         });
     }
 
@@ -199,9 +211,26 @@ public class MCPTasks {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
             deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
                     t -> t.getOutputDir().file(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER)));
+
+            taskPatchDecompiledJar.configure(task -> {
+                task.getPatches().builtBy(taskExtractForgeUserdev);
+                task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
+                task.getPatches().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
+                        .file("fmlpatches.zip")));
+                task.getInjectionDirectories().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
+                        .dir("src/main/java")));
+                task.getInjectionDirectories().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
+                        .dir("src/main/resources")));
+            });
+
             if (mcExt.getUsesForge().get()) {
                 deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
                         t -> t.getOutputDir().file(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER)));
+
+                taskPatchDecompiledJar.configure(task -> {
+                    task.getPatches().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
+                            .file("forgepatches.zip")));
+                });
             }
         }
     }
@@ -236,5 +265,49 @@ public class MCPTasks {
 
     public TaskProvider<ExtractZipsTask> getTaskExtractForgeUserdev() {
         return taskExtractForgeUserdev;
+    }
+
+    public File getForgeSrgLocation() {
+        return forgeSrgLocation;
+    }
+
+    public TaskProvider<GenSrgMappingsTask> getTaskGenerateForgeSrgMappings() {
+        return taskGenerateForgeSrgMappings;
+    }
+
+    public File getMergedVanillaJarLocation() {
+        return mergedVanillaJarLocation;
+    }
+
+    public TaskProvider<MergeSidedJarsTask> getTaskMergeVanillaSidedJars() {
+        return taskMergeVanillaSidedJars;
+    }
+
+    public File getSrgMergedJarLocation() {
+        return srgMergedJarLocation;
+    }
+
+    public TaskProvider<DeobfuscateTask> getTaskDeobfuscateMergedJarToSrg() {
+        return taskDeobfuscateMergedJarToSrg;
+    }
+
+    public ConfigurableFileCollection getDeobfuscationATs() {
+        return deobfuscationATs;
+    }
+
+    public TaskProvider<DecompileTask> getTaskDecompileSrgJar() {
+        return taskDecompileSrgJar;
+    }
+
+    public File getDecompiledSrgLocation() {
+        return decompiledSrgLocation;
+    }
+
+    public TaskProvider<PatchSourcesTask> getTaskPatchDecompiledJar() {
+        return taskPatchDecompiledJar;
+    }
+
+    public File getPatchedSourcesLocation() {
+        return patchedSourcesLocation;
     }
 }

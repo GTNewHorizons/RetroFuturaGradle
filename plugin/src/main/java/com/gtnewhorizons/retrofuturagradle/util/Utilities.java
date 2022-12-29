@@ -1,7 +1,9 @@
 package com.gtnewhorizons.retrofuturagradle.util;
 
+import com.google.common.base.Joiner;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
@@ -15,6 +17,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -133,5 +138,45 @@ public final class Utilities {
             }
         }
         return target;
+    }
+
+    /**
+     * Provides patching context from an in-memory jar
+     */
+    public static class InMemoryJarContextProvider implements ContextualPatch.IContextProvider {
+        private Map<String, String> fileMap;
+
+        private final int stripFrontComponents;
+
+        public InMemoryJarContextProvider(Map<String, String> fileMap, int stripFrontComponents) {
+            this.fileMap = fileMap;
+            this.stripFrontComponents = stripFrontComponents;
+        }
+
+        public String strip(String target) {
+            target = target.replace('\\', '/');
+            int index = 0;
+            for (int x = 0; x < stripFrontComponents; x++) {
+                index = target.indexOf('/', index) + 1;
+            }
+            return target.substring(index);
+        }
+
+        @Override
+        public List<String> getData(String target) {
+            target = strip(target);
+
+            if (fileMap.containsKey(target)) {
+                String[] lines = fileMap.get(target).split("\r\n|\r|\n");
+                return new ArrayList<>(Arrays.asList(lines));
+            }
+
+            return null;
+        }
+
+        @Override
+        public void setData(String target, List<String> data) {
+            fileMap.put(strip(target), Joiner.on(System.lineSeparator()).join(data));
+        }
     }
 }

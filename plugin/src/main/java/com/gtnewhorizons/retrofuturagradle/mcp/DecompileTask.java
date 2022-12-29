@@ -3,7 +3,6 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 import com.cloudbees.diff.PatchException;
 import com.github.abrarsyed.jastyle.ASFormatter;
 import com.github.abrarsyed.jastyle.OptParser;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
@@ -64,6 +63,8 @@ public abstract class DecompileTask extends DefaultTask {
     @TaskAction
     public void decompileAndCleanup() throws IOException {
         taskTempDir = getTemporaryDir();
+        loadedResources.clear();
+        loadedSources.clear();
 
         getLogger().lifecycle("Decompiling the srg jar with fernflower");
         final File decompiled = decompile();
@@ -152,7 +153,7 @@ public abstract class DecompileTask extends DefaultTask {
             for (File patchFile : patchFiles) {
                 patch = ContextualPatch.create(
                         FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8),
-                        new ContextProvider(loadedSources));
+                        new Utilities.InMemoryJarContextProvider(loadedSources, 1));
                 final List<ContextualPatch.PatchReport> errors;
                 try {
                     errors = patch.patch(true);
@@ -253,49 +254,6 @@ public abstract class DecompileTask extends DefaultTask {
         }
         if (fuzzed) {
             getLogger().lifecycle("Patches Fuzzed!");
-        }
-    }
-
-    /**
-     * A private inner class to be used with the MCPPatches only.
-     */
-    private class ContextProvider implements ContextualPatch.IContextProvider {
-        private Map<String, String> fileMap;
-
-        private final int STRIP = 1;
-
-        public ContextProvider(Map<String, String> fileMap) {
-            this.fileMap = fileMap;
-        }
-
-        private String strip(String target) {
-            target = target.replace('\\', '/');
-            int index = 0;
-            for (int x = 0; x < STRIP; x++) {
-                index = target.indexOf('/', index) + 1;
-            }
-            return target.substring(index);
-        }
-
-        @Override
-        public List<String> getData(String target) {
-            target = strip(target);
-
-            if (fileMap.containsKey(target)) {
-                String[] lines = fileMap.get(target).split("\r\n|\r|\n");
-                List<String> ret = new ArrayList<String>();
-                for (String line : lines) {
-                    ret.add(line);
-                }
-                return ret;
-            }
-
-            return null;
-        }
-
-        @Override
-        public void setData(String target, List<String> data) {
-            fileMap.put(strip(target), Joiner.on(System.lineSeparator()).join(data));
         }
     }
 }

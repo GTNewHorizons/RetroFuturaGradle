@@ -18,6 +18,8 @@ In order of operations (some of them can execute in parallel):
    - applies post-FF cleanup regexes (in the `FFPatcher` class) from the MCP tree at `build/tmp/decompileSrgJar/ffpatcher.jar`
    - applies `.patch` files from MCP at `build/tmp/decompileSrgJar/mcppatched.jar`
    - runs final cleanup tasks (AStyle autoformat, GL constant fixer, comment cleanup) at `build/tmp/decompileSrgJar/mcpcleanup.jar`
+   - saves the output at `build/mcp/srg_merged_minecraft-sources.jar`
+ - `patchDecompiledJar` - patches the decompiled jar with Forge/FML patches (when enabled) at `build/mcp/srg_patched_minecraft-sources.jar`
 
 All of these tasks are registered in the `plugin/src/main/java/com/gtnewhorizons/retrofuturagradle/mcp/MCPTasks.java` constructor.
 This class also provides getters for all of the tasks and the mentioned files/directories for ease of use.
