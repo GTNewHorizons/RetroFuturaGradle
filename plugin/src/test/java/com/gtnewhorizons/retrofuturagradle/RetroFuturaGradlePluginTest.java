@@ -38,5 +38,7 @@ class RetroFuturaGradlePluginTest {
         assertNotNull(project.getTasks().findByName("decompileSrgJar"));
         assertNotNull(project.getTasks().findByName("patchDecompiledJar"));
         assertNotNull(project.getTasks().findByName("remapDecompiledJar"));
+        assertNotNull(project.getTasks().findByName("decompressDecompiledSources"));
+        assertNotNull(project.getTasks().findByName("buildPatchedMc"));
     }
 }

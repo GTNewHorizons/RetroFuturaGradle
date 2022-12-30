@@ -250,7 +250,7 @@ public final class MinecraftTasks {
                     "{}",
                     "--accessToken",
                     "0");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher(project));
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
         taskRunVanillaServer = project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
@@ -269,7 +269,7 @@ public final class MinecraftTasks {
             task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
             task.args("nogui");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher(project));
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
     }
 
@@ -294,6 +294,16 @@ public final class MinecraftTasks {
                 content.includeGroup("net.minecraftforge");
                 content.includeGroup("de.oceanlabs.mcp");
                 content.includeGroup("cpw.mods");
+                content.includeGroup("org.scala-lang");
+            });
+            // Allow pom-less artifacts (e.g. MCP data zips)
+            mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
+        });
+        repos.maven(mvn -> {
+            mvn.setName("sponge");
+            mvn.setUrl(Constants.URL_SPONGEPOWERED_MAVEN);
+            mvn.mavenContent(content -> {
+                content.includeGroup("lzma");
             });
             // Allow pom-less artifacts (e.g. MCP data zips)
             mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
@@ -336,7 +346,7 @@ public final class MinecraftTasks {
                 deps.add(VANILLA_MC_CFG, "com.paulscode:librarylwjglopenal:20100824");
                 deps.add(VANILLA_MC_CFG, "com.paulscode:soundsystem:20120107");
                 deps.add(VANILLA_MC_CFG, "io.netty:netty-all:4.0.10.Final");
-                deps.add(VANILLA_MC_CFG, "com.google.guava:guava:15.0");
+                deps.add(VANILLA_MC_CFG, "com.google.guava:guava:17.0");
                 deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-lang3:3.1");
                 deps.add(VANILLA_MC_CFG, "commons-io:commons-io:2.4");
                 deps.add(VANILLA_MC_CFG, "commons-codec:commons-codec:1.9");

@@ -1,23 +1,37 @@
 package com.gtnewhorizons.retrofuturagradle;
 
 import com.google.common.collect.Lists;
+import java.util.Objects;
 import org.gradle.api.Project;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.jvm.toolchain.JavaCompiler;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.jvm.toolchain.JavaToolchainSpec;
+import org.gradle.jvm.toolchain.JvmVendorSpec;
+import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec;
 
 /**
  * Parameter block for the `minecraft {...}` Gradle script extension
  */
 public abstract class MinecraftExtension {
-    public MinecraftExtension() {
+    private final Project project;
+
+    public MinecraftExtension(Project project) {
+        this.project = project;
         getMcVersion().convention("1.7.10");
         getApplyMcDependencies().convention(Boolean.TRUE);
         getLwjglVersion().convention("2.9.3");
-        getJavaVersion().convention(8);
+        getJavaCompatibilityVersion().convention(8);
+        {
+            final JavaToolchainSpec defaultToolchain = new DefaultToolchainSpec(project.getObjects());
+            defaultToolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
+            defaultToolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
+            getJavaToolchain().convention(defaultToolchain);
+        }
 
         getMcpMappingChannel().convention("stable");
         getMcpMappingVersion().convention("12");
@@ -45,9 +59,14 @@ public abstract class MinecraftExtension {
     public abstract Property<String> getLwjglVersion();
 
     /**
-     * Java version to use. Default is 8.
+     * Java version to provide source/target compatibility for. Default is 8.
      */
-    public abstract Property<Integer> getJavaVersion();
+    public abstract Property<Integer> getJavaCompatibilityVersion();
+
+    /**
+     * The JDK to use for compiling and running the mod
+     */
+    public abstract Property<JavaToolchainSpec> getJavaToolchain();
 
     // MCP configs
 
@@ -78,10 +97,15 @@ public abstract class MinecraftExtension {
      */
     public abstract Property<Boolean> getUsesForge();
 
-    public Provider<JavaLauncher> getToolchainLauncher(Project project) {
-        JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
-        return jts.launcherFor(toolchain -> {
-            toolchain.getLanguageVersion().set(this.getJavaVersion().map(JavaLanguageVersion::of));
-        });
+    public Provider<JavaLauncher> getToolchainLauncher() {
+        JavaToolchainService jts =
+                Objects.requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        return getJavaToolchain().flatMap(jts::launcherFor);
+    }
+
+    public Provider<JavaCompiler> getToolchainCompiler() {
+        JavaToolchainService jts =
+                Objects.requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        return getJavaToolchain().flatMap(jts::compilerFor);
     }
 }

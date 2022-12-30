@@ -16,10 +16,16 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.compile.JavaCompile;
 
 /**
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
@@ -28,6 +34,7 @@ public class MCPTasks {
     private static final String TASK_GROUP_INTERNAL = "Internal MCP";
     private static final String TASK_GROUP_USER = "MCP";
     public static final String MCP_DIR = "mcp";
+    public static final String SOURCE_SET_PATCHED_MC = "patchedMc";
 
     private final Project project;
     private final MinecraftExtension mcExt;
@@ -63,6 +70,13 @@ public class MCPTasks {
 
     private final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar;
     private final File remappedSourcesLocation;
+
+    private final TaskProvider<Copy> taskDecompressDecompiledSources;
+    private final File decompressedSourcesLocation;
+    private final Configuration patchedConfiguration;
+    private final SourceSet patchedMcSources;
+    private final File compiledMcLocation;
+    private final TaskProvider<JavaCompile> taskBuildPatchedMc;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -206,27 +220,80 @@ public class MCPTasks {
             task.getParamCsv().set(FileUtils.getFile(mcpDataLocation, "params.csv"));
             task.getAddJavadocs().set(true);
         });
+
+        decompressedSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "minecraft-src");
+        taskDecompressDecompiledSources = project.getTasks()
+                .register("decompressDecompiledSources", Copy.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskRemapDecompiledJar);
+                    task.from(
+                            project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)),
+                            subset -> {
+                                subset.include("**/*.java");
+                                subset.rename(path -> "java" + File.separator + path);
+                            });
+                    task.from(
+                            project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)),
+                            subset -> {
+                                subset.exclude("**/*.java");
+                                subset.rename(path -> "resources" + File.separator + path);
+                            });
+                    task.eachFile(fcd -> {
+                        fcd.setRelativePath(
+                                fcd.getRelativePath().prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
+                    });
+                    task.into(decompressedSourcesLocation);
+                });
+
+        this.patchedConfiguration = project.getConfigurations().create("patchedMinecraft");
+        this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
+
+        final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+        patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
+            sourceSet.setCompileClasspath(patchedConfiguration);
+            sourceSet.setRuntimeClasspath(patchedConfiguration);
+            sourceSet.java(java -> {
+                java.srcDir(new File(decompressedSourcesLocation, "java"));
+            });
+            sourceSet.resources(java -> {
+                java.srcDir(new File(decompressedSourcesLocation, "resources"));
+            });
+        });
+
+        compiledMcLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "minecraft-classes");
+        taskBuildPatchedMc = project.getTasks().register("buildPatchedMc", JavaCompile.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskDecompressDecompiledSources);
+            task.getModularity().getInferModulePath().set(false);
+            task.getOptions().setEncoding("UTF-8");
+            task.getOptions().setFork(true);
+            task.getOptions().setWarnings(false);
+            task.setSourceCompatibility(JavaVersion.VERSION_1_8.toString());
+            task.setTargetCompatibility(JavaVersion.VERSION_1_8.toString());
+            task.getJavaCompiler().set(mcExt.getToolchainCompiler());
+            task.setSource(patchedMcSources.getAllJava());
+            task.setClasspath(patchedMcSources.getCompileClasspath());
+            task.getDestinationDirectory().set(compiledMcLocation);
+        });
     }
 
     private void afterEvaluate() {
-        project.getDependencies()
-                .add(
-                        mcpMappingDataConfiguration.getName(),
-                        ImmutableMap.of(
-                                "group",
-                                "de.oceanlabs.mcp",
-                                "name",
-                                "mcp_" + mcExt.getMcpMappingChannel().get(),
-                                "version",
-                                mcExt.getMcpMappingVersion().get() + "-"
-                                        + mcExt.getMcVersion().get(),
-                                "ext",
-                                "zip"));
+        final DependencyHandler deps = project.getDependencies();
 
-        project.getDependencies()
-                .add(
-                        forgeUserdevConfiguration.getName(),
-                        "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
+        deps.add(
+                mcpMappingDataConfiguration.getName(),
+                ImmutableMap.of(
+                        "group",
+                        "de.oceanlabs.mcp",
+                        "name",
+                        "mcp_" + mcExt.getMcpMappingChannel().get(),
+                        "version",
+                        mcExt.getMcpMappingVersion().get() + "-"
+                                + mcExt.getMcVersion().get(),
+                        "ext",
+                        "zip"));
+
+        deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
             deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
@@ -242,6 +309,23 @@ public class MCPTasks {
                 task.getInjectionDirectories().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
                         .dir("src/main/resources")));
             });
+
+            final String PATCHED_MC_CFG = patchedConfiguration.getName();
+            deps.add(PATCHED_MC_CFG, "net.minecraft:launchwrapper:1.12");
+            deps.add(PATCHED_MC_CFG, "com.google.code.findbugs:jsr305:1.3.9");
+            deps.add(PATCHED_MC_CFG, "org.ow2.asm:asm-debug-all:5.0.3");
+            deps.add(PATCHED_MC_CFG, "com.typesafe.akka:akka-actor_2.11:2.3.3");
+            deps.add(PATCHED_MC_CFG, "com.typesafe:config:1.2.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-actors-migration_2.11:1.1.0");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-compiler:2.11.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-library_2.11:1.0.2");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-plugin_2.11.1:1.0.2");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-library:2.11.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-parser-combinators_2.11:1.0.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-reflect:2.11.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-swing_2.11:1.0.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-xml_2.11:1.0.2");
+            deps.add(PATCHED_MC_CFG, "lzma:lzma:0.0.1");
 
             if (mcExt.getUsesForge().get()) {
                 deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
@@ -329,5 +413,37 @@ public class MCPTasks {
 
     public File getPatchedSourcesLocation() {
         return patchedSourcesLocation;
+    }
+
+    public TaskProvider<RemapSourceJarTask> getTaskRemapDecompiledJar() {
+        return taskRemapDecompiledJar;
+    }
+
+    public File getRemappedSourcesLocation() {
+        return remappedSourcesLocation;
+    }
+
+    public TaskProvider<Copy> getTaskDecompressDecompiledSources() {
+        return taskDecompressDecompiledSources;
+    }
+
+    public File getDecompressedSourcesLocation() {
+        return decompressedSourcesLocation;
+    }
+
+    public Configuration getPatchedConfiguration() {
+        return patchedConfiguration;
+    }
+
+    public SourceSet getPatchedMcSources() {
+        return patchedMcSources;
+    }
+
+    public File getCompiledMcLocation() {
+        return compiledMcLocation;
+    }
+
+    public TaskProvider<JavaCompile> getTaskBuildPatchedMc() {
+        return taskBuildPatchedMc;
     }
 }

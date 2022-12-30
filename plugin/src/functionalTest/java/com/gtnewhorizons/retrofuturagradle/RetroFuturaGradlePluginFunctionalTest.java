@@ -131,7 +131,24 @@ class RetroFuturaGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "remapDecompiledJar");
+        runner.withArguments("--stacktrace", "--", "decompressDecompiledSources");
+        runner.withProjectDir(projectDir);
+        BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+    }
+
+    @Test
+    void canRecompile() throws IOException {
+        writeString(getSettingsFile(), "");
+        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
+
+        // Run the build
+        GradleRunner runner = GradleRunner.create();
+        runner.forwardOutput();
+        runner.withPluginClasspath();
+        runner.withArguments("--stacktrace", "--", "buildPatchedMc");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();

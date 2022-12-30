@@ -5,6 +5,7 @@ The tasks defined in the package `com.gtnewhorizons.retrofuturagradle.mcp` can b
 Defined Gradle configurations (dependency sets):
  - `mcpMappingData` - MCP mapping data (SRG and MCP name CSVs)
  - `fmlUserdev` - Forge/FML SDK distribution zip
+ - `patchedMinecraft` - The generated patched decompiled sources of the game+Forge if enabled
 
 In order of operations (some of them can execute in parallel):
  - `downloadFernflower` - downloads the Fernflower decompiler
@@ -21,6 +22,8 @@ In order of operations (some of them can execute in parallel):
    - saves the output at `build/mcp/srg_merged_minecraft-sources.jar`
  - `patchDecompiledJar` - patches the decompiled jar with Forge/FML patches (when enabled) at `build/mcp/srg_patched_minecraft-sources.jar`
  - `remapDecompiledJar` - finds all SRG names in the decompiled patched jar and replaces them with MCP names, also adds javadocs, output at `build/mcp/mcp_patched_minecraft-sources.jar`
+ - `decompressDecompiledSources` - decompresses the patched sources into `build/mcp/minecraft-src`
+ - `buildPatchedMc` - compiles the decompressed sources to `build/mcp/minecraft-classes`
 
 All of these tasks are registered in the `plugin/src/main/java/com/gtnewhorizons/retrofuturagradle/mcp/MCPTasks.java` constructor.
 This class also provides getters for all of the tasks and the mentioned files/directories for ease of use.
