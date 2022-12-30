@@ -12,6 +12,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
@@ -22,10 +23,13 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -168,6 +172,7 @@ public class MCPTasks {
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskExtractForgeUserdev, mcTasks.getTaskDownloadVanillaJars());
+                    task.onlyIf(t -> !mergedVanillaJarLocation.exists());
                     task.getClientJar().set(mcTasks.getVanillaClientLocation());
                     task.getServerJar().set(mcTasks.getVanillaServerLocation());
                     task.getMergedJar().set(mergedVanillaJarLocation);
@@ -203,7 +208,6 @@ public class MCPTasks {
             task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
             task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(DeobfuscateTask::getOutputJar));
             task.getOutputJar().set(decompiledSrgLocation);
-            task.onlyIf(t -> !decompiledSrgLocation.exists());
             task.getFernflower().set(fernflowerLocation);
             task.getPatches()
                     .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().dir("conf/minecraft_ff")));
@@ -259,34 +263,40 @@ public class MCPTasks {
         this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
 
         final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+        final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
+
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
             sourceSet.setCompileClasspath(patchedConfiguration);
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet.java(java -> java.srcDir(project.files(new File(decompressedSourcesLocation, "java"))
+            sourceSet.java(java -> java.setSrcDirs(project.files(new File(decompressedSourcesLocation, "java"))
                     .builtBy(taskDecompressDecompiledSources)));
-            sourceSet.resources(java -> java.srcDir(project.files(new File(decompressedSourcesLocation, "resources"))
-                    .builtBy(taskDecompressDecompiledSources)));
+            sourceSet.resources(
+                    java -> java.setSrcDirs(project.files(new File(decompressedSourcesLocation, "resources"))
+                            .builtBy(taskDecompressDecompiledSources)));
         });
+        javaExt.getSourceSets().add(patchedMcSources);
 
-        compiledMcLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "minecraft-classes");
-        taskBuildPatchedMc = project.getTasks().named("compilePatchedMcJava", JavaCompile.class, task -> {
-            task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskDecompressDecompiledSources);
-            task.getDestinationDirectory().set(compiledMcLocation);
-            configureMcJavaCompilation(task);
-        });
+        compiledMcLocation = patchedMcSources.getOutput().getClassesDirs().getSingleFile();
+        taskBuildPatchedMc = project.getTasks()
+                .named(patchedMcSources.getCompileJavaTaskName(), JavaCompile.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskDecompressDecompiledSources);
+                    configureMcJavaCompilation(task);
+                });
+        project.getTasks()
+                .named(patchedMcSources.getProcessResourcesTaskName())
+                .configure(task -> task.dependsOn(taskDecompressDecompiledSources));
 
         packagedMcLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "recompiled_minecraft.jar");
         taskPackagePatchedMc = project.getTasks().register("packagePatchedMc", Jar.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources);
+            task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources, patchedMcSources.getClassesTaskName());
             task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLocation.getParentFile());
             task.from(patchedMcSources.getOutput());
         });
 
         launcherSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "launcher-src");
-        launcherCompiledLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "launcher-classes");
         taskCreateLauncherFiles = project.getTasks()
                 .register("createMcLauncherFiles", CreateLauncherFiles.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -352,14 +362,89 @@ public class MCPTasks {
         launcherSources = sourceSets.create(SOURCE_SET_LAUNCHER, sourceSet -> {
             sourceSet.setCompileClasspath(patchedConfiguration);
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet.java(
-                    java -> java.srcDir(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles)));
+            sourceSet.java(java ->
+                    java.setSrcDirs(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles)));
         });
+        launcherCompiledLocation = launcherSources.getOutput().getClassesDirs().getSingleFile();
+        javaExt.getSourceSets().add(launcherSources);
         project.getTasks().named("compileMcLauncherJava", JavaCompile.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskCreateLauncherFiles);
-            task.getDestinationDirectory().set(launcherCompiledLocation);
             configureMcJavaCompilation(task);
+        });
+
+        final File packagedMcLauncherLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "mclauncher.jar");
+        final TaskProvider<Jar> taskPackageMcLauncher = project.getTasks()
+                .register("packageMcLauncher", Jar.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());
+                    task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
+                    task.getDestinationDirectory().set(packagedMcLauncherLocation.getParentFile());
+
+                    task.from(launcherSources.getOutput());
+                    task.from(project.getTasks().named(launcherSources.getClassesTaskName()));
+                });
+
+        final TaskProvider<JavaExec> taskRunClient = project.getTasks().register("runClient", JavaExec.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription("Runs the deobfuscated client with your mod");
+            task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
+
+            task.doFirst(p -> {
+                final FileCollection classpath = task.getClasspath();
+                final StringBuilder classpathStr = new StringBuilder();
+                for (File f : classpath) {
+                    classpathStr.append(f.getPath());
+                    classpathStr.append(' ');
+                }
+                p.getLogger()
+                        .lifecycle(
+                                "Starting the client with args: {}\nClasspath: {}",
+                                StringUtils.join(task.getAllJvmArgs(), " "),
+                                classpathStr);
+                try {
+                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            task.classpath(project.getTasks().named("jar"));
+            task.classpath(taskPackageMcLauncher);
+            task.classpath(taskPackagePatchedMc);
+            task.classpath(patchedConfiguration);
+            task.workingDir(mcTasks.getRunDirectory());
+            task.setEnableAssertions(true);
+            task.setStandardInput(System.in);
+            task.setStandardOutput(System.out);
+            task.setErrorOutput(System.err);
+            task.getMainClass().set("GradleStart");
+            String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath()
+                    + File.pathSeparator
+                    + System.getProperty("java.library.path");
+            task.jvmArgs(
+                    "-Djava.library.path=" + libraryPath,
+                    "-Xmx6G",
+                    "-Xms1G",
+                    "-Dfml.ignoreInvalidMinecraftCertificates=true");
+            task.args(
+                    "--username",
+                    "Developer",
+                    "--version",
+                    mcExt.getMcVersion().get(),
+                    "--gameDir",
+                    mcTasks.getRunDirectory(),
+                    "--assetsDir",
+                    mcTasks.getVanillaAssetsLocation(),
+                    "--assetIndex",
+                    mcExt.getMcVersion().get(),
+                    "--uuid",
+                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}),
+                    "--userProperties",
+                    "{}",
+                    "--accessToken",
+                    "0");
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
     }
 
@@ -431,6 +516,14 @@ public class MCPTasks {
                     task.getPatches().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
                             .file("forgepatches.zip")));
                 });
+
+                final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+                final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+                final ConfigurableFileCollection mcCp = project.getObjects().fileCollection();
+                mcCp.from(launcherSources.getOutput());
+                mcCp.from(taskPackagePatchedMc.flatMap(Jar::getArchiveFile));
+                mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(mcCp));
+                mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(mcCp));
             }
         }
     }
