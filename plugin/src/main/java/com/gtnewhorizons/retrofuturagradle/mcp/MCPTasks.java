@@ -525,7 +525,7 @@ public class MCPTasks {
                 final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
                 final ConfigurableFileCollection mcCp = project.getObjects().fileCollection();
                 mcCp.from(launcherSources.getOutput());
-                mcCp.from(taskPackagePatchedMc.flatMap(Jar::getArchiveFile));
+                mcCp.from(patchedMcSources.getOutput());
                 mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(mcCp));
                 mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(mcCp));
             }
