@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.file.DirectoryProperty;
@@ -38,6 +37,9 @@ import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.jvm.toolchain.JvmVendorSpec;
 
 public abstract class DecompileTask extends DefaultTask {
     @InputFile
@@ -110,13 +112,16 @@ public abstract class DecompileTask extends DefaultTask {
                         throw new RuntimeException(e);
                     }
                     exec.setMaxHeapSize("512M");
-                    final String javaExe = mcExt.getToolchainLauncher(project)
+                    JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
+                    final String javaExe = jts.launcherFor(toolchain -> {
+                                toolchain.getLanguageVersion().set(JavaLanguageVersion.of(17));
+                                toolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
+                            })
                             .get()
                             .getExecutablePath()
                             .getAsFile()
                             .getAbsolutePath();
                     exec.executable(javaExe);
-                    System.err.printf("`%s` `%s`\n", javaExe, StringUtils.join(args, ";"));
                 })
                 .assertNormalExitValue();
         FileUtils.delete(ffinpcopy);
