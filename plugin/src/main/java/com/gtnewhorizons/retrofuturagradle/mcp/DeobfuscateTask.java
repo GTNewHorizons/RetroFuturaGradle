@@ -98,9 +98,7 @@ public abstract class DeobfuscateTask extends DefaultTask {
         final File taskTempDir = getTemporaryDir();
         this.taskTempDir = taskTempDir;
         final File deobfedJar = new File(taskTempDir, "deobf.jar");
-        final File exceptedJar = getIsStrippingSynthetics().get()
-                ? new File(taskTempDir, "excepted.jar")
-                : getOutputJar().get().getAsFile();
+        final File exceptedJar = new File(taskTempDir, "excepted.jar");
 
         getLogger().lifecycle("Applying SpecialSource");
         final Set<File> atFiles = new ImmutableSet.Builder<File>()
@@ -111,10 +109,10 @@ public abstract class DeobfuscateTask extends DefaultTask {
         getLogger().lifecycle("Applying Exceptor");
         applyExceptor(deobfedJar, exceptedJar, new File(taskTempDir, "deobf.log"), atFiles);
 
-        if (getIsStrippingSynthetics().get()) {
-            getLogger().lifecycle("Stripping synthetics");
-            stripSynthetics(exceptedJar, getOutputJar().get().getAsFile());
-        }
+        final boolean isStrippingSynths = getIsStrippingSynthetics().get();
+        getLogger()
+                .lifecycle("Cleaning up generated debuginfo{}", isStrippingSynths ? " and stripping synthetics" : "");
+        cleanupJar(exceptedJar, getOutputJar().get().getAsFile(), isStrippingSynths);
     }
 
     private void applySpecialSource(File tempDeobfJar, Set<File> atFiles) throws IOException {
@@ -214,7 +212,7 @@ public abstract class DeobfuscateTask extends DefaultTask {
                 true);
     }
 
-    private void stripSynthetics(File inputJar, File outputJar) throws IOException {
+    private void cleanupJar(File inputJar, File outputJar, boolean stripSynthetics) throws IOException {
         try (final ZipFile inZip = new ZipFile(inputJar);
                 final FileOutputStream fos = new FileOutputStream(outputJar);
                 final BufferedOutputStream bos = new BufferedOutputStream(fos);
@@ -232,8 +230,14 @@ public abstract class DeobfuscateTask extends DefaultTask {
                     byte[] entryContents = Utilities.readZipEntry(inZip, entry);
 
                     // correct source name
-                    if (entry.getName().endsWith(".class"))
-                        entryContents = stripClassSynthetics(entry.getName(), entryContents);
+                    if (entry.getName().endsWith(".class")) {
+                        final ClassNode node = Utilities.parseClassBytes(entryContents, entry.getName());
+                        // Other asm-based class cleanup can be done here
+                        if (stripSynthetics) {
+                            stripClassSynthetics(node);
+                        }
+                        entryContents = Utilities.emitClassBytes(node, 0);
+                    }
 
                     out.write(entryContents);
                 }
@@ -241,9 +245,7 @@ public abstract class DeobfuscateTask extends DefaultTask {
         }
     }
 
-    private byte[] stripClassSynthetics(String name, byte[] classBytes) {
-        ClassNode node = Utilities.parseClassBytes(classBytes, name);
-
+    private void stripClassSynthetics(ClassNode node) {
         if ((node.access & Opcodes.ACC_ENUM) == 0
                 && !node.superName.equals("java/lang/Enum")
                 && (node.access & Opcodes.ACC_SYNTHETIC) == 0) {
@@ -257,8 +259,6 @@ public abstract class DeobfuscateTask extends DefaultTask {
                 m.access = m.access & (0xffffffff - Opcodes.ACC_SYNTHETIC);
             }
         }
-
-        return Utilities.emitClassBytes(node, 0);
     }
 
     private int fixAccess(int access, String target) {
