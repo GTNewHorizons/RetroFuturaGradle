@@ -21,6 +21,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
@@ -486,7 +487,7 @@ public class MCPTasks {
                             .warn(
                                     "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
                     final String userInput;
-                    try (InputStreamReader isr = new InputStreamReader(System.in);
+                    try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
                             BufferedReader reader = new BufferedReader(isr)) {
                         userInput = Strings.nullToEmpty(reader.readLine()).trim();
                     } catch (IOException e) {
