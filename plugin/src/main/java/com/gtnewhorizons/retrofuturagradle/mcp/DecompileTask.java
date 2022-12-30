@@ -43,19 +43,19 @@ import org.gradle.jvm.toolchain.JvmVendorSpec;
 
 public abstract class DecompileTask extends DefaultTask {
     @InputFile
-    abstract RegularFileProperty getInputJar();
+    public abstract RegularFileProperty getInputJar();
 
     @OutputFile
-    abstract RegularFileProperty getOutputJar();
+    public abstract RegularFileProperty getOutputJar();
 
     @InputFile
-    abstract RegularFileProperty getFernflower();
+    public abstract RegularFileProperty getFernflower();
 
     @InputDirectory
-    abstract DirectoryProperty getPatches();
+    public abstract DirectoryProperty getPatches();
 
     @InputFile
-    abstract RegularFileProperty getAstyleConfig();
+    public abstract RegularFileProperty getAstyleConfig();
 
     private File taskTempDir;
 

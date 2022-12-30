@@ -123,7 +123,7 @@ class RetroFuturaGradlePluginFunctionalTest {
     }
 
     @Test
-    void canDecompileSrgJar() throws IOException {
+    void canDecompile() throws IOException {
         writeString(getSettingsFile(), "");
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
@@ -131,7 +131,7 @@ class RetroFuturaGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "decompileSrgJar");
+        runner.withArguments("--stacktrace", "--", "remapDecompiledJar");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();

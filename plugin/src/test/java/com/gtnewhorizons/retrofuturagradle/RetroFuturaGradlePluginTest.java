@@ -36,5 +36,7 @@ class RetroFuturaGradlePluginTest {
         assertNotNull(project.getTasks().findByName("mergeVanillaSidedJars"));
         assertNotNull(project.getTasks().findByName("deobfuscateMergedJarToSrg"));
         assertNotNull(project.getTasks().findByName("decompileSrgJar"));
+        assertNotNull(project.getTasks().findByName("patchDecompiledJar"));
+        assertNotNull(project.getTasks().findByName("remapDecompiledJar"));
     }
 }

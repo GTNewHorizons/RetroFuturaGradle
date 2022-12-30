@@ -61,6 +61,9 @@ public class MCPTasks {
     private final TaskProvider<PatchSourcesTask> taskPatchDecompiledJar;
     private final File patchedSourcesLocation;
 
+    private final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar;
+    private final File remappedSourcesLocation;
+
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
         this.mcExt = mcExt;
@@ -187,8 +190,21 @@ public class MCPTasks {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDecompileSrgJar);
             task.getInputJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getOutputJar));
-            task.getOutputJar().set(decompiledSrgLocation);
+            task.getOutputJar().set(patchedSourcesLocation);
             task.getMaxFuzziness().set(1);
+        });
+
+        remappedSourcesLocation =
+                FileUtils.getFile(project.getBuildDir(), MCP_DIR, "mcp_patched_minecraft-sources.jar");
+        taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskPatchDecompiledJar);
+            task.getInputJar().set(taskPatchDecompiledJar.flatMap(PatchSourcesTask::getOutputJar));
+            task.getOutputJar().set(remappedSourcesLocation);
+            task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
+            task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+            task.getParamCsv().set(FileUtils.getFile(mcpDataLocation, "params.csv"));
+            task.getAddJavadocs().set(true);
         });
     }
 
