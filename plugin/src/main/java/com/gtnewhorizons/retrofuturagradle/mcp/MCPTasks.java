@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
@@ -7,10 +8,13 @@ import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.util.ExtractZipsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import de.undercouch.gradle.tasks.download.Download;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
@@ -94,6 +98,10 @@ public class MCPTasks {
     private final File launcherCompiledLocation;
     private final TaskProvider<CreateLauncherFiles> taskCreateLauncherFiles;
     private final SourceSet launcherSources;
+    private final File packagedMcLauncherLocation;
+    private final TaskProvider<Jar> taskPackageMcLauncher;
+    private final TaskProvider<JavaExec> taskRunClient;
+    private final TaskProvider<JavaExec> taskRunServer;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -377,19 +385,18 @@ public class MCPTasks {
             configureMcJavaCompilation(task);
         });
 
-        final File packagedMcLauncherLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "mclauncher.jar");
-        final TaskProvider<Jar> taskPackageMcLauncher = project.getTasks()
-                .register("packageMcLauncher", Jar.class, task -> {
-                    task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());
-                    task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
-                    task.getDestinationDirectory().set(packagedMcLauncherLocation.getParentFile());
+        packagedMcLauncherLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "mclauncher.jar");
+        taskPackageMcLauncher = project.getTasks().register("packageMcLauncher", Jar.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());
+            task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
+            task.getDestinationDirectory().set(packagedMcLauncherLocation.getParentFile());
 
-                    task.from(launcherSources.getOutput());
-                    task.from(project.getTasks().named(launcherSources.getClassesTaskName()));
-                });
+            task.from(launcherSources.getOutput());
+            task.from(project.getTasks().named(launcherSources.getClassesTaskName()));
+        });
 
-        final TaskProvider<JavaExec> taskRunClient = project.getTasks().register("runClient", JavaExec.class, task -> {
+        taskRunClient = project.getTasks().register("runClient", JavaExec.class, task -> {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the deobfuscated client with your mod");
             task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
@@ -450,6 +457,73 @@ public class MCPTasks {
                     "0");
             task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
+
+        taskRunServer = project.getTasks().register("runServer", JavaExec.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription("Runs the deobfuscated server with your mod");
+            task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
+
+            task.doFirst(p -> {
+                final FileCollection classpath = task.getClasspath();
+                final StringBuilder classpathStr = new StringBuilder();
+                for (File f : classpath) {
+                    classpathStr.append(f.getPath());
+                    classpathStr.append(' ');
+                }
+                p.getLogger()
+                        .lifecycle(
+                                "Starting the server with args: {}\nClasspath: {}",
+                                StringUtils.join(task.getAllJvmArgs(), " "),
+                                classpathStr);
+                try {
+                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                final File eula = new File(mcTasks.getRunDirectory(), "eula.txt");
+                if (!eula.exists()) {
+                    p.getLogger()
+                            .warn(
+                                    "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
+                    final String userInput;
+                    try (InputStreamReader isr = new InputStreamReader(System.in);
+                            BufferedReader reader = new BufferedReader(isr)) {
+                        userInput = Strings.nullToEmpty(reader.readLine()).trim();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (userInput.startsWith("y") || userInput.startsWith("Y")) {
+                        try {
+                            FileUtils.write(eula, "eula=true", StandardCharsets.UTF_8);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        p.getLogger().error("EULA not accepted!");
+                        throw new RuntimeException("Minecraft EULA not accepted.");
+                    }
+                }
+            });
+
+            task.classpath(project.getTasks().named("jar"));
+            task.classpath(taskPackageMcLauncher);
+            task.classpath(taskPackagePatchedMc);
+            task.classpath(patchedConfiguration);
+            task.workingDir(mcTasks.getRunDirectory());
+            task.setEnableAssertions(true);
+            task.setStandardInput(System.in);
+            task.setStandardOutput(System.out);
+            task.setErrorOutput(System.err);
+            task.getMainClass().set("GradleStartServer");
+            task.jvmArgs("-Xmx4G", "-Xms1G", "-Dfml.ignoreInvalidMinecraftCertificates=true");
+            task.args("nogui");
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
+        });
+
+        // The default jar is deobfuscated, specify the correct classifier for it
+        project.getTasks().named("jar", Jar.class).configure(task -> {
+            task.getArchiveClassifier().set("dev");
+        });
     }
 
     public void configureMcJavaCompilation(JavaCompile task) {
@@ -477,6 +551,18 @@ public class MCPTasks {
                                 + mcExt.getMcVersion().get(),
                         "ext",
                         "zip"));
+
+        if (mcExt.getSkipSlowTasks().get()) {
+            taskDeobfuscateMergedJarToSrg.configure(t -> t.onlyIf(
+                    "skipping slow task",
+                    p -> !t.getOutputJar().get().getAsFile().exists()));
+            taskDecompileSrgJar.configure(t -> t.onlyIf(
+                    "skipping slow task",
+                    p -> !t.getOutputJar().get().getAsFile().exists()));
+            taskPatchDecompiledJar.configure(t -> t.onlyIf(
+                    "skipping slow task",
+                    p -> !t.getOutputJar().get().getAsFile().exists()));
+        }
 
         deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
         if (mcExt.getUsesFml().get()) {

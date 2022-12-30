@@ -48,4 +48,5 @@ java {
 minecraft {
     mcVersion.set("1.7.10")
     applyMcDependencies.set(true)
+    skipSlowTasks.set(true)
 }

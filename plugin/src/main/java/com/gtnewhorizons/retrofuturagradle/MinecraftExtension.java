@@ -22,6 +22,7 @@ public abstract class MinecraftExtension {
 
     public MinecraftExtension(Project project) {
         this.project = project;
+        getSkipSlowTasks().convention(false);
         getMcVersion().convention("1.7.10");
         getApplyMcDependencies().convention(Boolean.TRUE);
         getLwjglVersion().convention("2.9.3");
@@ -40,6 +41,13 @@ public abstract class MinecraftExtension {
         getUsesFml().convention(true);
         getUsesForge().convention(true);
     }
+
+    // Internal configs
+
+    /**
+     * Skips slow-running tasks (decompilation, jar merging, etc.) if the artifacts already exist, useful for development of the plugin.
+     */
+    public abstract Property<Boolean> getSkipSlowTasks();
 
     // Vanilla configs
 
