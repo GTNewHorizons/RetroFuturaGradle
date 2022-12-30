@@ -158,8 +158,11 @@ public class MCPTasks {
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
                     task.getOutputJar().set(srgMergedJarLocation);
                     // TODO: figure out why deobfBinJar uses these but deobfuscateJar doesn't
-                    // task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
-                    // task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+                    // Passing them in causes ATs to not successfully apply
+                    /*
+                    task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
+                    task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+                    */
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
@@ -185,6 +188,7 @@ public class MCPTasks {
             task.dependsOn(taskDecompileSrgJar);
             task.getInputJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getOutputJar));
             task.getOutputJar().set(decompiledSrgLocation);
+            task.getMaxFuzziness().set(1);
         });
     }
 
