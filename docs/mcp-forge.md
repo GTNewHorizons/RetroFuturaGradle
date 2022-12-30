@@ -23,7 +23,8 @@ In order of operations (some of them can execute in parallel):
  - `patchDecompiledJar` - patches the decompiled jar with Forge/FML patches (when enabled) at `build/mcp/srg_patched_minecraft-sources.jar`
  - `remapDecompiledJar` - finds all SRG names in the decompiled patched jar and replaces them with MCP names, also adds javadocs, output at `build/mcp/mcp_patched_minecraft-sources.jar`
  - `decompressDecompiledSources` - decompresses the patched sources into `build/mcp/minecraft-src`
- - `buildPatchedMc` - compiles the decompressed sources to `build/mcp/minecraft-classes`
+ - `compilePatchedMcJava` - compiles the decompressed sources to `build/mcp/minecraft-classes`
+ - `packagePatchedMc` - packages the recompiled minecraft to `build/mcp/recompiled_minecraft.jar`
 
 All of these tasks are registered in the `plugin/src/main/java/com/gtnewhorizons/retrofuturagradle/mcp/MCPTasks.java` constructor.
 This class also provides getters for all of the tasks and the mentioned files/directories for ease of use.

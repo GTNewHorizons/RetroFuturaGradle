@@ -12,6 +12,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -92,6 +93,19 @@ public final class Utilities {
         ClassWriter writer = new ClassWriter(writerFlags);
         node.accept(writer);
         return writer.toByteArray();
+    }
+
+    public static String readEmbeddedResourceText(String path) {
+        ClassLoader loader = Utilities.class.getClassLoader();
+        assert loader != null;
+        try (InputStream stream = loader.getResourceAsStream(path)) {
+            if (stream == null) {
+                throw new FileNotFoundException("Resource not found: " + path);
+            }
+            return IOUtils.toString(stream, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Couldn't read resource " + path, e);
+        }
     }
 
     /**

@@ -16,16 +16,21 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.RegularFile;
+import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.jvm.tasks.Jar;
 
 /**
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
@@ -35,6 +40,7 @@ public class MCPTasks {
     private static final String TASK_GROUP_USER = "MCP";
     public static final String MCP_DIR = "mcp";
     public static final String SOURCE_SET_PATCHED_MC = "patchedMc";
+    public static final String SOURCE_SET_LAUNCHER = "mcLauncher";
 
     private final Project project;
     private final MinecraftExtension mcExt;
@@ -77,6 +83,12 @@ public class MCPTasks {
     private final SourceSet patchedMcSources;
     private final File compiledMcLocation;
     private final TaskProvider<JavaCompile> taskBuildPatchedMc;
+    private final File packagedMcLocation;
+    private final TaskProvider<Jar> taskPackagePatchedMc;
+    private final File launcherSourcesLocation;
+    private final File launcherCompiledLocation;
+    private final TaskProvider<CreateLauncherFiles> taskCreateLauncherFiles;
+    private final SourceSet launcherSources;
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
@@ -230,13 +242,11 @@ public class MCPTasks {
                             project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)),
                             subset -> {
                                 subset.include("**/*.java");
-                                subset.rename(path -> "java" + File.separator + path);
                             });
                     task.from(
                             project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)),
                             subset -> {
                                 subset.exclude("**/*.java");
-                                subset.rename(path -> "resources" + File.separator + path);
                             });
                     task.eachFile(fcd -> {
                         fcd.setRelativePath(
@@ -252,29 +262,115 @@ public class MCPTasks {
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
             sourceSet.setCompileClasspath(patchedConfiguration);
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet.java(java -> {
-                java.srcDir(new File(decompressedSourcesLocation, "java"));
-            });
-            sourceSet.resources(java -> {
-                java.srcDir(new File(decompressedSourcesLocation, "resources"));
-            });
+            sourceSet.java(java -> java.srcDir(project.files(new File(decompressedSourcesLocation, "java"))
+                    .builtBy(taskDecompressDecompiledSources)));
+            sourceSet.resources(java -> java.srcDir(project.files(new File(decompressedSourcesLocation, "resources"))
+                    .builtBy(taskDecompressDecompiledSources)));
         });
 
         compiledMcLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "minecraft-classes");
-        taskBuildPatchedMc = project.getTasks().register("buildPatchedMc", JavaCompile.class, task -> {
+        taskBuildPatchedMc = project.getTasks().named("compilePatchedMcJava", JavaCompile.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDecompressDecompiledSources);
-            task.getModularity().getInferModulePath().set(false);
-            task.getOptions().setEncoding("UTF-8");
-            task.getOptions().setFork(true);
-            task.getOptions().setWarnings(false);
-            task.setSourceCompatibility(JavaVersion.VERSION_1_8.toString());
-            task.setTargetCompatibility(JavaVersion.VERSION_1_8.toString());
-            task.getJavaCompiler().set(mcExt.getToolchainCompiler());
-            task.setSource(patchedMcSources.getAllJava());
-            task.setClasspath(patchedMcSources.getCompileClasspath());
             task.getDestinationDirectory().set(compiledMcLocation);
+            configureMcJavaCompilation(task);
         });
+
+        packagedMcLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "recompiled_minecraft.jar");
+        taskPackagePatchedMc = project.getTasks().register("packagePatchedMc", Jar.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources);
+            task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLocation.getName(), ".jar"));
+            task.getDestinationDirectory().set(packagedMcLocation.getParentFile());
+            task.from(patchedMcSources.getOutput());
+        });
+
+        launcherSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "launcher-src");
+        launcherCompiledLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "launcher-classes");
+        taskCreateLauncherFiles = project.getTasks()
+                .register("createMcLauncherFiles", CreateLauncherFiles.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(
+                            taskExtractMcpData,
+                            taskExtractForgeUserdev,
+                            mcTasks.getTaskDownloadVanillaAssets(),
+                            mcTasks.getTaskExtractNatives());
+                    task.getOutputDir().set(launcherSourcesLocation);
+                    final ProviderFactory providers = project.getProviders();
+                    task.addResource(providers, "GradleStart.java");
+                    task.addResource(providers, "GradleStartServer.java");
+                    task.addResource(providers, "net/minecraftforge/gradle/GradleStartCommon.java");
+                    task.addResource(providers, "net/minecraftforge/gradle/OldPropertyMapSerializer.java");
+                    task.addResource(providers, "net/minecraftforge/gradle/tweakers/CoremodTweaker.java");
+                    task.addResource(providers, "net/minecraftforge/gradle/tweakers/AccessTransformerTweaker.java");
+
+                    MapProperty<String, String> replacements = task.getReplacementTokens();
+                    replacements.put("@@MCVERSION@@", mcExt.getMcVersion());
+                    replacements.put("@@ASSETINDEX@@", mcExt.getMcVersion());
+                    replacements.put(
+                            "@@ASSETSDIR@@", mcTasks.getVanillaAssetsLocation().getPath());
+                    replacements.put(
+                            "@@NATIVESDIR@@", mcTasks.getNativesDirectory().getPath());
+                    replacements.put("@@SRGDIR@@", forgeSrgLocation.getPath());
+                    replacements.put(
+                            "@@SRG_NOTCH_SRG@@",
+                            taskGenerateForgeSrgMappings
+                                    .flatMap(GenSrgMappingsTask::getNotchToSrg)
+                                    .map(RegularFile::getAsFile)
+                                    .map(File::getPath));
+                    replacements.put(
+                            "@@SRG_NOTCH_MCP@@",
+                            taskGenerateForgeSrgMappings
+                                    .flatMap(GenSrgMappingsTask::getNotchToMcp)
+                                    .map(RegularFile::getAsFile)
+                                    .map(File::getPath));
+                    replacements.put(
+                            "@@SRG_SRG_MCP@@",
+                            taskGenerateForgeSrgMappings
+                                    .flatMap(GenSrgMappingsTask::getSrgToMcp)
+                                    .map(RegularFile::getAsFile)
+                                    .map(File::getPath));
+                    replacements.put(
+                            "@@SRG_MCP_SRG@@",
+                            taskGenerateForgeSrgMappings
+                                    .flatMap(GenSrgMappingsTask::getMcpToSrg)
+                                    .map(RegularFile::getAsFile)
+                                    .map(File::getPath));
+                    replacements.put(
+                            "@@SRG_MCP_NOTCH@@",
+                            taskGenerateForgeSrgMappings
+                                    .flatMap(GenSrgMappingsTask::getMcpToNotch)
+                                    .map(RegularFile::getAsFile)
+                                    .map(File::getPath));
+                    replacements.put("@@CSVDIR@@", mcpDataLocation.getPath());
+                    replacements.put("@@CLIENTTWEAKER@@", "cpw.mods.fml.common.launcher.FMLTweaker");
+                    replacements.put("@@SERVERTWEAKER@@", "cpw.mods.fml.common.launcher.FMLServerTweaker");
+                    replacements.put("@@BOUNCERCLIENT@@", "net.minecraft.launchwrapper.Launch");
+                    replacements.put("@@BOUNCERSERVER@@", "net.minecraft.launchwrapper.Launch");
+                });
+
+        launcherSources = sourceSets.create(SOURCE_SET_LAUNCHER, sourceSet -> {
+            sourceSet.setCompileClasspath(patchedConfiguration);
+            sourceSet.setRuntimeClasspath(patchedConfiguration);
+            sourceSet.java(
+                    java -> java.srcDir(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles)));
+        });
+        project.getTasks().named("compileMcLauncherJava", JavaCompile.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.dependsOn(taskCreateLauncherFiles);
+            task.getDestinationDirectory().set(launcherCompiledLocation);
+            configureMcJavaCompilation(task);
+        });
+    }
+
+    public void configureMcJavaCompilation(JavaCompile task) {
+        task.getModularity().getInferModulePath().set(false);
+        task.getOptions().setEncoding("UTF-8");
+        task.getOptions().setFork(true);
+        task.getOptions().setWarnings(false);
+        task.setSourceCompatibility(JavaVersion.VERSION_1_8.toString());
+        task.setTargetCompatibility(JavaVersion.VERSION_1_8.toString());
+        task.getJavaCompiler().set(mcExt.getToolchainCompiler());
     }
 
     private void afterEvaluate() {
@@ -445,5 +541,13 @@ public class MCPTasks {
 
     public TaskProvider<JavaCompile> getTaskBuildPatchedMc() {
         return taskBuildPatchedMc;
+    }
+
+    public File getPackagedMcLocation() {
+        return packagedMcLocation;
+    }
+
+    public TaskProvider<Jar> getTaskPackagePatchedMc() {
+        return taskPackagePatchedMc;
     }
 }

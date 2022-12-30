@@ -148,7 +148,7 @@ class RetroFuturaGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "buildPatchedMc");
+        runner.withArguments("--stacktrace", "--", "packagePatchedMc");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
