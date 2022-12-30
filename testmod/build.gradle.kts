@@ -38,9 +38,6 @@ plugins {
     id("com.gtnewhorizons.retrofuturagradle")
 }
 
-// Always show stacktraces for exceptions
-gradle.startParameter.showStacktrace = org.gradle.api.logging.configuration.ShowStacktrace.ALWAYS_FULL
-
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))
