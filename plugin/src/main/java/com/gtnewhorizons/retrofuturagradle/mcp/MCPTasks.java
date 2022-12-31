@@ -108,6 +108,9 @@ public class MCPTasks {
     private final TaskProvider<JavaExec> taskRunClient;
     private final TaskProvider<JavaExec> taskRunServer;
 
+    private final File binaryPatchedMcLocation;
+    private final TaskProvider<BinaryPatchJarTask> taskInstallBinaryPatchedVersion;
+
     public Provider<RegularFile> mcpFile(String path) {
         return project.getLayout()
                 .file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
@@ -588,6 +591,18 @@ public class MCPTasks {
 
         // Initialize a reobf task for the default jar
         project.getTasks().named("reobfJar", ReobfuscatedJar.class);
+
+        binaryPatchedMcLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "binpatchedmc.jar");
+        taskInstallBinaryPatchedVersion = project.getTasks()
+                .register("installBinaryPatchedVersion", BinaryPatchJarTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskExtractForgeUserdev, taskMergeVanillaSidedJars);
+                    task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
+                    task.getOutputJar().set(binaryPatchedMcLocation);
+                    task.getPatchesLzma().set(userdevFile("devbinpatches.pack.lzma"));
+                    task.getExtraClassesJar().set(userdevFile("binaries.jar"));
+                    task.getExtraResourcesTree().from(userdevDir("src/main/resources"));
+                });
     }
 
     public void configureMcJavaCompilation(JavaCompile task) {

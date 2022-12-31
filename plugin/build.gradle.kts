@@ -50,6 +50,7 @@ dependencies {
   implementation("org.apache.commons:commons-lang3:3.12.0")
   implementation("commons-io:commons-io:2.11.0")
   implementation("commons-codec:commons-codec:1.15")
+  implementation("org.apache.commons:commons-compress:1.22")
   // Guava utilities
   implementation("com.google.guava:guava:31.1-jre")
   // CSV reader, also used by SpecialSource
