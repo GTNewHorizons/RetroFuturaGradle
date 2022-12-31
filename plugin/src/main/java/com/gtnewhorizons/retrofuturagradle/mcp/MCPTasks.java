@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
-import com.gtnewhorizons.retrofuturagradle.util.ExtractZipsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import de.undercouch.gradle.tasks.download.Download;
 import java.io.BufferedReader;
@@ -28,12 +27,15 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
@@ -63,9 +65,9 @@ public class MCPTasks {
     private final TaskProvider<Download> taskDownloadFernflower;
 
     private final File mcpDataLocation;
-    private final TaskProvider<ExtractZipsTask> taskExtractMcpData;
+    private final TaskProvider<Copy> taskExtractMcpData;
     private final File forgeUserdevLocation;
-    private final TaskProvider<ExtractZipsTask> taskExtractForgeUserdev;
+    private final TaskProvider<Copy> taskExtractForgeUserdev;
     private final File forgeSrgLocation;
     private final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
     private final File mergedVanillaJarLocation;
@@ -104,6 +106,21 @@ public class MCPTasks {
     private final TaskProvider<JavaExec> taskRunClient;
     private final TaskProvider<JavaExec> taskRunServer;
 
+    public Provider<RegularFile> mcpFile(String path) {
+        return project.getLayout()
+                .file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
+    public Provider<RegularFile> userdevFile(String path) {
+        return project.getLayout()
+                .file(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
+    public Provider<Directory> userdevDir(String path) {
+        return project.getLayout()
+                .dir(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         this.project = project;
         this.mcExt = mcExt;
@@ -112,7 +129,7 @@ public class MCPTasks {
         project.afterEvaluate(p -> this.afterEvaluate());
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
-        forgeUserdevConfiguration = project.getConfigurations().create("fmlUserdev");
+        forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
         deobfuscationATs = project.getObjects().fileCollection();
 
         final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
@@ -144,17 +161,21 @@ public class MCPTasks {
         });
 
         mcpDataLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "data");
-        taskExtractMcpData = project.getTasks().register("extractMcpData", ExtractZipsTask.class, task -> {
+        taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.getJars().setFrom(getMcpMappingDataConfiguration());
-            task.getOutputDir().set(mcpDataLocation);
+            task.from(project.provider(() -> project.zipTree(getMcpMappingDataConfiguration()
+                    .fileCollection(Specs.SATISFIES_ALL)
+                    .getSingleFile())));
+            task.into(mcpDataLocation);
         });
 
         forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "userdev");
-        taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", ExtractZipsTask.class, task -> {
+        taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.getJars().setFrom(getForgeUserdevConfiguration());
-            task.getOutputDir().set(forgeUserdevLocation);
+            task.from(project.provider(() -> project.zipTree(getForgeUserdevConfiguration()
+                    .fileCollection(Specs.SATISFIES_ALL)
+                    .getSingleFile())));
+            task.into(forgeUserdevLocation);
         });
 
         forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "forge_srg");
@@ -196,8 +217,7 @@ public class MCPTasks {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskMergeVanillaSidedJars, taskGenerateForgeSrgMappings);
                     task.getSrgFile().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg));
-                    task.getExceptorJson().set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
-                            .file("conf/exceptor.json")));
+                    task.getExceptorJson().set(userdevFile("conf/exceptor.json"));
                     task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
                     task.getOutputJar().set(srgMergedJarLocation);
@@ -219,10 +239,8 @@ public class MCPTasks {
             task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(DeobfuscateTask::getOutputJar));
             task.getOutputJar().set(decompiledSrgLocation);
             task.getFernflower().set(fernflowerLocation);
-            task.getPatches()
-                    .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().dir("conf/minecraft_ff")));
-            task.getAstyleConfig()
-                    .set(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir().file("conf/astyle.cfg")));
+            task.getPatches().set(userdevDir("conf/minecraft_ff"));
+            task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
         });
 
         patchedSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_patched_minecraft-sources.jar");
@@ -422,6 +440,7 @@ public class MCPTasks {
             });
 
             task.classpath(project.getTasks().named("jar"));
+            task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
@@ -507,6 +526,7 @@ public class MCPTasks {
             });
 
             task.classpath(project.getTasks().named("jar"));
+            task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
@@ -568,18 +588,14 @@ public class MCPTasks {
         deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
-            deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
-                    t -> t.getOutputDir().file(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER)));
+            deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
 
             taskPatchDecompiledJar.configure(task -> {
                 task.getPatches().builtBy(taskExtractForgeUserdev);
                 task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
-                task.getPatches().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
-                        .file("fmlpatches.zip")));
-                task.getInjectionDirectories().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
-                        .dir("src/main/java")));
-                task.getInjectionDirectories().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
-                        .dir("src/main/resources")));
+                task.getPatches().from(userdevFile("fmlpatches.zip"));
+                task.getInjectionDirectories().from(userdevDir("src/main/java"));
+                task.getInjectionDirectories().from(userdevDir("src/main/resources"));
             });
 
             final String PATCHED_MC_CFG = patchedConfiguration.getName();
@@ -600,12 +616,10 @@ public class MCPTasks {
             deps.add(PATCHED_MC_CFG, "lzma:lzma:0.0.1");
 
             if (mcExt.getUsesForge().get()) {
-                deobfuscationATs.from(taskExtractForgeUserdev.flatMap(
-                        t -> t.getOutputDir().file(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER)));
+                deobfuscationATs.from(userdevDir(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER));
 
                 taskPatchDecompiledJar.configure(task -> {
-                    task.getPatches().from(taskExtractForgeUserdev.flatMap(t -> t.getOutputDir()
-                            .file("forgepatches.zip")));
+                    task.getPatches().from(userdevDir("forgepatches.zip"));
                 });
 
                 final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
@@ -639,7 +653,7 @@ public class MCPTasks {
         return mcpDataLocation;
     }
 
-    public TaskProvider<ExtractZipsTask> getTaskExtractMcpData() {
+    public TaskProvider<Copy> getTaskExtractMcpData() {
         return taskExtractMcpData;
     }
 
@@ -647,7 +661,7 @@ public class MCPTasks {
         return forgeUserdevLocation;
     }
 
-    public TaskProvider<ExtractZipsTask> getTaskExtractForgeUserdev() {
+    public TaskProvider<Copy> getTaskExtractForgeUserdev() {
         return taskExtractForgeUserdev;
     }
 

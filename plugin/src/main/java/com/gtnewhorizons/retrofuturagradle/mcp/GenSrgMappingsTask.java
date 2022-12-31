@@ -18,31 +18,41 @@ import net.minecraftforge.srg2source.rangeapplier.SrgContainer;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 /**
  * Generates Deobf(Mcp)-Searge(Srg)-Obf(Notch) name mappings
  */
+@CacheableTask
 public abstract class GenSrgMappingsTask extends DefaultTask {
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputSrg();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputExc();
 
     @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
     public abstract ConfigurableFileCollection getExtraExcs();
 
     @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
     public abstract ConfigurableFileCollection getExtraSrgs();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getMethodsCsv();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getFieldsCsv();
 
     @OutputFile

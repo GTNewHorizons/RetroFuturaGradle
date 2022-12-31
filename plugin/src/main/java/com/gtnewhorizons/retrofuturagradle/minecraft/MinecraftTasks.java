@@ -2,12 +2,12 @@ package com.gtnewhorizons.retrofuturagradle.minecraft;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
-import com.gtnewhorizons.retrofuturagradle.util.ExtractZipsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -17,6 +17,9 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.FileTree;
+import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
@@ -52,7 +55,7 @@ public final class MinecraftTasks {
 
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
-    private final TaskProvider<ExtractZipsTask> taskExtractNatives;
+    private final TaskProvider<Copy> taskExtractNatives;
     private final TaskProvider<JavaExec> taskRunVanillaClient;
     private final TaskProvider<JavaExec> taskRunVanillaServer;
 
@@ -206,11 +209,36 @@ public final class MinecraftTasks {
         this.vanillaMcConfiguration = project.getConfigurations().create("vanilla_minecraft");
         applyMcDependencies();
 
-        taskExtractNatives = project.getTasks().register("extractNatives", ExtractZipsTask.class, task -> {
+        taskExtractNatives = project.getTasks().register("extractNatives", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.getJars()
-                    .setFrom(getVanillaMcConfiguration().filter(f -> f.getName().contains("natives")));
-            task.getOutputDir().set(nativesDirectory);
+            task.from(project.provider(() -> {
+                final OperatingSystem os = OperatingSystem.current();
+                final String lwjglNatives, twitchNatives;
+                if (os.isWindows()) {
+                    lwjglNatives = "natives-windows";
+                    twitchNatives = "natives-windows-64";
+                } else if (os.isMacOsX()) {
+                    lwjglNatives = "natives-osx";
+                    twitchNatives = "natives-osx";
+                } else {
+                    lwjglNatives = "natives-linux";
+                    twitchNatives = "natives-linux"; // don't actually exist
+                }
+                final FileCollection lwjglZips = getVanillaMcConfiguration()
+                        .filter(f ->
+                                f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives));
+                final FileCollection twitchZips = getVanillaMcConfiguration()
+                        .filter(f ->
+                                f.getName().contains("twitch") && f.getName().contains(twitchNatives));
+                final FileCollection zips = lwjglZips.plus(twitchZips);
+                final ArrayList<FileTree> trees = new ArrayList<>();
+                for (File zip : zips) {
+                    trees.add(project.zipTree(zip));
+                }
+                return trees;
+            }));
+            task.exclude("META-INF/**", "META-INF");
+            task.into(nativesDirectory);
         });
 
         taskRunVanillaClient = project.getTasks().register("runVanillaClient", JavaExec.class, task -> {
@@ -430,7 +458,7 @@ public final class MinecraftTasks {
         return vanillaMcConfiguration;
     }
 
-    public TaskProvider<ExtractZipsTask> getTaskExtractNatives() {
+    public TaskProvider<Copy> getTaskExtractNatives() {
         return taskExtractNatives;
     }
 

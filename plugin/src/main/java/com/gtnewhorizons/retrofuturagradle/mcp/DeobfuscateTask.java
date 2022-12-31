@@ -40,39 +40,50 @@ import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
+@CacheableTask
 public abstract class DeobfuscateTask extends DefaultTask {
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputJar();
 
     @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
     public abstract ConfigurableFileCollection getAccessTransformerFiles();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getSrgFile();
 
     @InputFile
     @Optional
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getFieldCsv();
 
     @InputFile
     @Optional
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getMethodCsv();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getExceptorCfg();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getExceptorJson();
 
     @Input

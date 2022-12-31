@@ -4,7 +4,7 @@ The tasks defined in the package `com.gtnewhorizons.retrofuturagradle.mcp` can b
 
 Defined Gradle configurations (dependency sets):
  - `mcpMappingData` - MCP mapping data (SRG and MCP name CSVs)
- - `fmlUserdev` - Forge/FML SDK distribution zip
+ - `forgeUserdev` - Forge/FML SDK distribution zip
  - `patchedMinecraft` - The generated patched decompiled sources of the game+Forge if enabled
 
 In order of operations (some of them can execute in parallel):
