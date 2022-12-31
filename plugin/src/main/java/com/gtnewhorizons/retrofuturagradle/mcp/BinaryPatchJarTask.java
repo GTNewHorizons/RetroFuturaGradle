@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -18,8 +19,8 @@ import java.util.regex.Pattern;
 import java.util.zip.Adler32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import javax.inject.Inject;
 import lzma.sdk.lzma.Decoder;
 import lzma.streams.LzmaInputStream;
 import org.apache.commons.collections4.iterators.EnumerationIterator;
@@ -28,8 +29,11 @@ import org.apache.commons.compress.java.util.jar.Pack200;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileTree;
+import org.gradle.api.file.FileTree;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
@@ -59,6 +63,9 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileTree getExtraResourcesTree();
 
+    @Inject
+    protected abstract FileOperations getFileOperations();
+
     @TaskAction
     public void patchJar() throws IOException {
         final Map<String, ClassPatch> patches =
@@ -74,9 +81,9 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
 
         final Adler32 hasher = new Adler32();
         try (final ZipFile inZip = new ZipFile(inputJar);
-                final ZipInputStream inClasses = new ZipInputStream(FileUtils.openInputStream(inputJar));
-                final ZipOutputStream out =
-                        new ZipOutputStream(new BufferedOutputStream(FileUtils.openOutputStream(outputJar)))) {
+                final FileOutputStream fos = FileUtils.openOutputStream(outputJar);
+                final BufferedOutputStream bos = new BufferedOutputStream(fos);
+                final ZipOutputStream out = new ZipOutputStream(bos)) {
             // Apply patches
             for (ZipEntry e : new IteratorIterable<>(new EnumerationIterator<>(inZip.entries()))) {
                 if (e.getName().contains("META-INF")) {
@@ -104,18 +111,33 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
                         patcher.patch(data, patch.patch);
                     }
                     out.write(data);
+                    out.closeEntry();
                 }
                 processed.add(e.getName());
             }
             // Copy extra classes
-            ZipEntry entry;
-            while ((entry = inClasses.getNextEntry()) != null) {
-                if (processed.contains(entry.getName())) {
-                    continue;
-                }
-                out.putNextEntry(entry);
-                out.write(IOUtils.toByteArray(inClasses));
-                processed.add(entry.getName());
+            {
+                final FileTree tree = getFileOperations()
+                        .zipTree(getExtraClassesJar().getAsFile().get());
+                tree.visit(fvd -> {
+                    if (fvd.isDirectory()) {
+                        return;
+                    }
+                    final String name = fvd.getRelativePath().toString().replace('\\', '/');
+                    if (processed.contains(name)) {
+                        return;
+                    }
+                    ZipEntry newEntry = new ZipEntry(name);
+                    newEntry.setTime(fvd.getLastModified());
+                    try {
+                        out.putNextEntry(newEntry);
+                        out.write(IOUtils.toByteArray(fvd.open()));
+                        out.closeEntry();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    processed.add(name);
+                });
             }
             // Copy resources
             getExtraResourcesTree().visit(fvd -> {
@@ -130,11 +152,14 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
                         out.putNextEntry(newEntry);
                         IOUtils.copy(fvd.open(), out);
                         processed.add(name);
+                        out.closeEntry();
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             });
+            out.flush();
+            bos.flush();
         }
     }
 
