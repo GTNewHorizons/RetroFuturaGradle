@@ -1,26 +1,22 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
@@ -30,7 +26,6 @@ import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
-import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -39,7 +34,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
-import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -106,15 +100,15 @@ public class MCPTasks {
     private final SourceSet launcherSources;
     private final File packagedMcLauncherLocation;
     private final TaskProvider<Jar> taskPackageMcLauncher;
-    private final TaskProvider<JavaExec> taskRunClient;
-    private final TaskProvider<JavaExec> taskRunServer;
+    private final TaskProvider<RunMinecraftTask> taskRunClient;
+    private final TaskProvider<RunMinecraftTask> taskRunServer;
 
     private final File binaryPatchedMcLocation;
     private final TaskProvider<BinaryPatchJarTask> taskInstallBinaryPatchedVersion;
     private final File srgBinaryPatchedMcLocation;
     private final TaskProvider<DeobfuscateTask> taskSrgifyBinaryPatchedVersion;
-    private final TaskProvider<JavaExec> taskRunObfClient;
-    private final TaskProvider<JavaExec> taskRunObfServer;
+    private final TaskProvider<RunMinecraftTask> taskRunObfClient;
+    private final TaskProvider<RunMinecraftTask> taskRunObfServer;
     private final Configuration obfRuntimeClasses;
 
     public Provider<RegularFile> mcpFile(String path) {
@@ -422,130 +416,34 @@ public class MCPTasks {
             task.from(project.getTasks().named(launcherSources.getClassesTaskName()));
         });
 
-        taskRunClient = project.getTasks().register("runClient", JavaExec.class, task -> {
+        taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunClient.configure(task -> {
+            task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the deobfuscated client with your mod");
-            task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
-
-            task.doFirst(p -> {
-                final FileCollection classpath = task.getClasspath();
-                final StringBuilder classpathStr = new StringBuilder();
-                for (File f : classpath) {
-                    classpathStr.append(f.getPath());
-                    classpathStr.append(' ');
-                }
-                p.getLogger()
-                        .lifecycle(
-                                "Starting the client with args: {}\nClasspath: {}",
-                                StringUtils.join(task.getAllJvmArgs(), " "),
-                                classpathStr);
-                try {
-                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "jar");
 
             task.classpath(project.getTasks().named("jar"));
             task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
-            task.workingDir(mcTasks.getRunDirectory());
-            task.setEnableAssertions(true);
-            task.setStandardInput(System.in);
-            task.setStandardOutput(System.out);
-            task.setErrorOutput(System.err);
             task.getMainClass().set("GradleStart");
-            String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath()
-                    + File.pathSeparator
-                    + System.getProperty("java.library.path");
-            task.jvmArgs(
-                    "-Djava.library.path=" + libraryPath,
-                    "-Xmx6G",
-                    "-Xms1G",
-                    "-Dfml.ignoreInvalidMinecraftCertificates=true");
-            task.args(
-                    "--username",
-                    "Developer",
-                    "--version",
-                    mcExt.getMcVersion().get(),
-                    "--gameDir",
-                    mcTasks.getRunDirectory(),
-                    "--assetsDir",
-                    mcTasks.getVanillaAssetsLocation(),
-                    "--assetIndex",
-                    mcExt.getMcVersion().get(),
-                    "--uuid",
-                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}),
-                    "--userProperties",
-                    "{}",
-                    "--accessToken",
-                    "0");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
 
-        taskRunServer = project.getTasks().register("runServer", JavaExec.class, task -> {
+        taskRunServer = project.getTasks().register("runServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunServer.configure(task -> {
+            task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the deobfuscated server with your mod");
             task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
 
-            task.doFirst(p -> {
-                final FileCollection classpath = task.getClasspath();
-                final StringBuilder classpathStr = new StringBuilder();
-                for (File f : classpath) {
-                    classpathStr.append(f.getPath());
-                    classpathStr.append(' ');
-                }
-                p.getLogger()
-                        .lifecycle(
-                                "Starting the server with args: {}\nClasspath: {}",
-                                StringUtils.join(task.getAllJvmArgs(), " "),
-                                classpathStr);
-                try {
-                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                final File eula = new File(mcTasks.getRunDirectory(), "eula.txt");
-                if (!eula.exists()) {
-                    p.getLogger()
-                            .warn(
-                                    "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
-                    final String userInput;
-                    try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
-                            BufferedReader reader = new BufferedReader(isr)) {
-                        userInput = Strings.nullToEmpty(reader.readLine()).trim();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    if (userInput.startsWith("y") || userInput.startsWith("Y")) {
-                        try {
-                            FileUtils.write(eula, "eula=true", StandardCharsets.UTF_8);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    } else {
-                        p.getLogger().error("EULA not accepted!");
-                        throw new RuntimeException("Minecraft EULA not accepted.");
-                    }
-                }
-            });
-
             task.classpath(project.getTasks().named("jar"));
             task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
-            task.workingDir(mcTasks.getRunDirectory());
-            task.setEnableAssertions(true);
-            task.setStandardInput(System.in);
-            task.setStandardOutput(System.out);
-            task.setErrorOutput(System.err);
             task.getMainClass().set("GradleStartServer");
-            task.jvmArgs("-Xmx4G", "-Xms1G", "-Dfml.ignoreInvalidMinecraftCertificates=true");
-            task.args("nogui");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
 
         // The default jar is deobfuscated, specify the correct classifier for it
@@ -627,132 +525,35 @@ public class MCPTasks {
 
         obfRuntimeClasses = project.getConfigurations().create("obfuscatedRuntimeClasspath");
 
-        taskRunObfClient = project.getTasks().register("runObfClient", JavaExec.class, task -> {
+        taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunObfClient.configure(task -> {
+            task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the Forge obfuscated client with your mod");
             task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), mcTasks.getTaskDownloadVanillaAssets(), taskReobfJar);
-
-            task.doFirst(p -> {
-                final FileCollection classpath = task.getClasspath();
-                final StringBuilder classpathStr = new StringBuilder();
-                for (File f : classpath) {
-                    classpathStr.append(f.getPath());
-                    classpathStr.append(' ');
-                }
-                p.getLogger()
-                        .lifecycle(
-                                "Starting the client with args: {}\nClasspath: {}",
-                                StringUtils.join(task.getAllJvmArgs(), " "),
-                                classpathStr);
-                try {
-                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
 
             task.classpath(project.getTasks().named("reobfJar"));
             task.classpath(obfRuntimeClasses);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaClientLocation());
             task.classpath(patchedConfiguration);
-            task.workingDir(mcTasks.getRunDirectory());
-            task.setEnableAssertions(true);
-            task.setStandardInput(System.in);
-            task.setStandardOutput(System.out);
-            task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.launchwrapper.Launch");
-            String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath()
-                    + File.pathSeparator
-                    + System.getProperty("java.library.path");
-            task.jvmArgs(
-                    "-Djava.library.path=" + libraryPath,
-                    "-Xmx6G",
-                    "-Xms1G",
-                    "-Dfml.ignoreInvalidMinecraftCertificates=true");
-            task.args(
-                    "--username",
-                    "Developer",
-                    "--version",
-                    mcExt.getMcVersion().get(),
-                    "--gameDir",
-                    mcTasks.getRunDirectory(),
-                    "--assetsDir",
-                    mcTasks.getVanillaAssetsLocation(),
-                    "--assetIndex",
-                    mcExt.getMcVersion().get(),
-                    "--uuid",
-                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}),
-                    "--userProperties",
-                    "{}",
-                    "--accessToken",
-                    "0",
-                    "--tweakClass",
-                    "cpw.mods.fml.common.launcher.FMLTweaker");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
+            task.getTweakClasses().add("cpw.mods.fml.common.launcher.FMLTweaker");
         });
 
-        taskRunObfServer = project.getTasks().register("runObfServer", JavaExec.class, task -> {
+        taskRunObfServer = project.getTasks().register("runObfServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunObfServer.configure(task -> {
+            task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the Forge obfuscated server with your mod");
             task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar);
-
-            task.doFirst(p -> {
-                final FileCollection classpath = task.getClasspath();
-                final StringBuilder classpathStr = new StringBuilder();
-                for (File f : classpath) {
-                    classpathStr.append(f.getPath());
-                    classpathStr.append(' ');
-                }
-                p.getLogger()
-                        .lifecycle(
-                                "Starting the server with args: {}\nClasspath: {}",
-                                StringUtils.join(task.getAllJvmArgs(), " "),
-                                classpathStr);
-                try {
-                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                final File eula = new File(mcTasks.getRunDirectory(), "eula.txt");
-                if (!eula.exists()) {
-                    p.getLogger()
-                            .warn(
-                                    "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
-                    final String userInput;
-                    try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
-                            BufferedReader reader = new BufferedReader(isr)) {
-                        userInput = Strings.nullToEmpty(reader.readLine()).trim();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    if (userInput.startsWith("y") || userInput.startsWith("Y")) {
-                        try {
-                            FileUtils.write(eula, "eula=true", StandardCharsets.UTF_8);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    } else {
-                        p.getLogger().error("EULA not accepted!");
-                        throw new RuntimeException("Minecraft EULA not accepted.");
-                    }
-                }
-            });
 
             task.classpath(project.getTasks().named("reobfJar"));
             task.classpath(obfRuntimeClasses);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
-            task.workingDir(mcTasks.getRunDirectory());
-            task.setEnableAssertions(true);
-            task.setStandardInput(System.in);
-            task.setStandardOutput(System.out);
-            task.setErrorOutput(System.err);
             task.getMainClass().set("cpw.mods.fml.relauncher.ServerLaunchWrapper");
-            task.jvmArgs("-Xmx4G", "-Xms1G", "-Dfml.ignoreInvalidMinecraftCertificates=true");
-            task.args("nogui");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
     }
 

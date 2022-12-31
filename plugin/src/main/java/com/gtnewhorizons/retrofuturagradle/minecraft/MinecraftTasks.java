@@ -3,12 +3,12 @@ package com.gtnewhorizons.retrofuturagradle.minecraft;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
@@ -20,7 +20,6 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileTree;
 import org.gradle.api.tasks.Copy;
-import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
 
@@ -56,8 +55,8 @@ public final class MinecraftTasks {
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
     private final TaskProvider<Copy> taskExtractNatives;
-    private final TaskProvider<JavaExec> taskRunVanillaClient;
-    private final TaskProvider<JavaExec> taskRunVanillaServer;
+    private final TaskProvider<RunMinecraftTask> taskRunVanillaClient;
+    private final TaskProvider<RunMinecraftTask> taskRunVanillaServer;
 
     private final File runDirectory;
     private final File nativesDirectory;
@@ -241,63 +240,26 @@ public final class MinecraftTasks {
             task.into(nativesDirectory);
         });
 
-        taskRunVanillaClient = project.getTasks().register("runVanillaClient", JavaExec.class, task -> {
+        taskRunVanillaClient = project.getTasks().register("runVanillaClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunVanillaClient.configure(task -> {
+            task.setup(project);
             task.setDescription("Runs the vanilla (unmodified) game client, use --debug-jvm for debugging");
             task.setGroup(TASK_GROUP_USER);
-            task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets, taskExtractNatives);
-            task.doFirst(_t -> {
-                System.out.println("Starting the vanilla client...");
-                runDirectory.mkdirs();
-            });
+            task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
 
-            task.workingDir(runDirectory);
             task.classpath(vanillaClientLocation);
             task.classpath(this.getVanillaMcConfiguration());
-            task.setEnableAssertions(true);
-            task.setStandardInput(System.in);
-            task.setStandardOutput(System.out);
-            task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.client.main.Main");
-            String libraryPath =
-                    nativesDirectory.getAbsolutePath() + File.pathSeparator + System.getProperty("java.library.path");
-            task.jvmArgs("-Djava.library.path=" + libraryPath);
-            task.args(
-                    "--username",
-                    "Developer",
-                    "--version",
-                    mcExt.getMcVersion().get(),
-                    "--gameDir",
-                    runDirectory.getAbsolutePath(),
-                    "--assetsDir",
-                    vanillaAssetsLocation.getAbsolutePath(),
-                    "--assetIndex",
-                    mcExt.getMcVersion().get(),
-                    "--uuid",
-                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}),
-                    "--userProperties",
-                    "{}",
-                    "--accessToken",
-                    "0");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
-        taskRunVanillaServer = project.getTasks().register("runVanillaServer", JavaExec.class, task -> {
+        taskRunVanillaServer = project.getTasks().register("runVanillaServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunVanillaServer.configure(task -> {
+            task.setup(project);
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars);
-            task.doFirst(_t -> {
-                System.out.println("Starting the vanilla server...");
-                runDirectory.mkdirs();
-            });
 
-            task.workingDir(runDirectory);
             task.classpath(vanillaServerLocation);
-            task.setEnableAssertions(true);
-            task.setStandardInput(System.in);
-            task.setStandardOutput(System.out);
-            task.setErrorOutput(System.err);
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
-            task.args("nogui");
-            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
         });
     }
 
@@ -462,11 +424,11 @@ public final class MinecraftTasks {
         return taskExtractNatives;
     }
 
-    public TaskProvider<JavaExec> getTaskRunVanillaClient() {
+    public TaskProvider<RunMinecraftTask> getTaskRunVanillaClient() {
         return taskRunVanillaClient;
     }
 
-    public TaskProvider<JavaExec> getTaskRunVanillaServer() {
+    public TaskProvider<RunMinecraftTask> getTaskRunVanillaServer() {
         return taskRunVanillaServer;
     }
 }
