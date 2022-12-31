@@ -115,7 +115,7 @@ public abstract class DecompileTask extends DefaultTask {
                     exec.setWorkingDir(getFernflower().get().getAsFile().getParentFile());
                     try {
                         exec.setStandardOutput(FileUtils.openOutputStream(
-                                FileUtils.getFile(project.getBuildDir(), MCPTasks.MCP_DIR, "fernflower_log.log")));
+                                FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "fernflower_log.log")));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }

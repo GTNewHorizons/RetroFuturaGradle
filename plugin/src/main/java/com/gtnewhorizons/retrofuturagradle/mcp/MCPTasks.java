@@ -50,7 +50,7 @@ import org.gradle.jvm.tasks.Jar;
 public class MCPTasks {
     private static final String TASK_GROUP_INTERNAL = "Internal MCP";
     private static final String TASK_GROUP_USER = "MCP";
-    public static final String MCP_DIR = "mcp";
+    public static final String RFG_DIR = "rfg";
     public static final String SOURCE_SET_PATCHED_MC = "patchedMc";
     public static final String SOURCE_SET_LAUNCHER = "mcLauncher";
 
@@ -160,7 +160,7 @@ public class MCPTasks {
             task.getOutputs().file(fernflowerLocation);
         });
 
-        mcpDataLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "data");
+        mcpDataLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "data");
         taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(project.provider(() -> project.zipTree(getMcpMappingDataConfiguration()
@@ -169,7 +169,7 @@ public class MCPTasks {
             task.into(mcpDataLocation);
         });
 
-        forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "userdev");
+        forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "userdev");
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(project.provider(() -> project.zipTree(getForgeUserdevConfiguration()
@@ -178,16 +178,16 @@ public class MCPTasks {
             task.into(forgeUserdevLocation);
         });
 
-        forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "forge_srg");
+        forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "forge_srg");
         taskGenerateForgeSrgMappings = project.getTasks()
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
                     // inputs
-                    task.getInputSrg().set(FileUtils.getFile(forgeUserdevLocation, "conf", "packaged.srg"));
-                    task.getInputExc().set(FileUtils.getFile(forgeUserdevLocation, "conf", "packaged.exc"));
-                    task.getMethodsCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
-                    task.getFieldsCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
+                    task.getInputSrg().set(userdevFile("conf/packaged.srg"));
+                    task.getInputExc().set(userdevFile("conf/packaged.exc"));
+                    task.getMethodsCsv().set(mcpFile("methods.csv"));
+                    task.getFieldsCsv().set(mcpFile("fields.csv"));
                     // outputs
                     task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
                     task.getNotchToMcp().set(FileUtils.getFile(forgeSrgLocation, "notch-mcp.srg"));
@@ -198,7 +198,7 @@ public class MCPTasks {
                     task.getMcpExc().set(FileUtils.getFile(forgeSrgLocation, "mcp.exc"));
                 });
 
-        mergedVanillaJarLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "vanilla_merged_minecraft.jar");
+        mergedVanillaJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
         taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -211,7 +211,7 @@ public class MCPTasks {
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
 
-        srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_merged_minecraft.jar");
+        srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft.jar");
         taskDeobfuscateMergedJarToSrg = project.getTasks()
                 .register("deobfuscateMergedJarToSrg", DeobfuscateTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -232,7 +232,7 @@ public class MCPTasks {
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
                 });
 
-        decompiledSrgLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_merged_minecraft-sources.jar");
+        decompiledSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
         taskDecompileSrgJar = project.getTasks().register("decompileSrgJar", DecompileTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
@@ -243,7 +243,7 @@ public class MCPTasks {
             task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
         });
 
-        patchedSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "srg_patched_minecraft-sources.jar");
+        patchedSourcesLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_patched_minecraft-sources.jar");
         taskPatchDecompiledJar = project.getTasks().register("patchDecompiledJar", PatchSourcesTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDecompileSrgJar);
@@ -253,7 +253,7 @@ public class MCPTasks {
         });
 
         remappedSourcesLocation =
-                FileUtils.getFile(project.getBuildDir(), MCP_DIR, "mcp_patched_minecraft-sources.jar");
+                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskPatchDecompiledJar);
@@ -265,7 +265,7 @@ public class MCPTasks {
             task.getAddJavadocs().set(true);
         });
 
-        decompressedSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "minecraft-src");
+        decompressedSourcesLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "minecraft-src");
         taskDecompressDecompiledSources = project.getTasks()
                 .register("decompressDecompiledSources", Copy.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -318,7 +318,7 @@ public class MCPTasks {
                 .named(patchedMcSources.getProcessResourcesTaskName())
                 .configure(task -> task.dependsOn(taskDecompressDecompiledSources));
 
-        packagedMcLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "recompiled_minecraft.jar");
+        packagedMcLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "recompiled_minecraft.jar");
         taskPackagePatchedMc = project.getTasks().register("packagePatchedMc", Jar.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources, patchedMcSources.getClassesTaskName());
@@ -327,7 +327,7 @@ public class MCPTasks {
             task.from(patchedMcSources.getOutput());
         });
 
-        launcherSourcesLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "launcher-src");
+        launcherSourcesLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "launcher-src");
         taskCreateLauncherFiles = project.getTasks()
                 .register("createMcLauncherFiles", CreateLauncherFiles.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -404,7 +404,7 @@ public class MCPTasks {
             configureMcJavaCompilation(task);
         });
 
-        packagedMcLauncherLocation = FileUtils.getFile(project.getBuildDir(), MCP_DIR, "mclauncher.jar");
+        packagedMcLauncherLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "mclauncher.jar");
         taskPackageMcLauncher = project.getTasks().register("packageMcLauncher", Jar.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());

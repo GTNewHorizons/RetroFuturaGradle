@@ -6,6 +6,7 @@ package com.gtnewhorizons.retrofuturagradle;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 
@@ -41,5 +42,16 @@ class RetroFuturaGradlePluginTest {
         assertNotNull(project.getTasks().findByName("decompressDecompiledSources"));
         assertNotNull(project.getTasks().findByName("compilePatchedMcJava"));
         assertNotNull(project.getTasks().findByName("packagePatchedMc"));
+    }
+
+    @Test
+    void allTasksInitSuccessfully() {
+        Project project = ProjectBuilder.builder().build();
+        project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle");
+        for (String taskName : project.getTasks().getNames()) {
+            project.getLogger().info("Task found: " + taskName);
+            Task t = assertDoesNotThrow(
+                    () -> project.getTasks().findByName(taskName), taskName + " could not be created");
+        }
     }
 }
