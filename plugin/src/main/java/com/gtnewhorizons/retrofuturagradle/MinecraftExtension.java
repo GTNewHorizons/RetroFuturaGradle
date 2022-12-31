@@ -105,6 +105,11 @@ public abstract class MinecraftExtension {
      */
     public abstract Property<Boolean> getUsesForge();
 
+    /**
+     * Extra LaunchWrapper tweak classes to use when running Minecraft
+     */
+    public abstract ListProperty<String> getExtraTweakClasses();
+
     public Provider<JavaLauncher> getToolchainLauncher() {
         JavaToolchainService jts =
                 Objects.requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));

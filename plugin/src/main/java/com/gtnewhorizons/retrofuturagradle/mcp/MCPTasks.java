@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -24,9 +25,18 @@ import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.Bundling;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.attributes.Usage;
+import org.gradle.api.attributes.java.TargetJvmVersion;
+import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
@@ -39,6 +49,7 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.tasks.Jar;
+import org.gradle.language.base.plugins.LifecycleBasePlugin;
 
 /**
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
@@ -134,8 +145,11 @@ public class MCPTasks {
         project.afterEvaluate(p -> this.afterEvaluate());
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
+        mcpMappingDataConfiguration.setCanBeConsumed(false);
         forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
+        forgeUserdevConfiguration.setCanBeConsumed(false);
         forgeUniversalConfiguration = project.getConfigurations().create("forgeUniversal");
+        forgeUniversalConfiguration.setCanBeConsumed(false);
         deobfuscationATs = project.getObjects().fileCollection();
 
         final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
@@ -290,9 +304,17 @@ public class MCPTasks {
 
         this.patchedConfiguration = project.getConfigurations().create("patchedMinecraft");
         this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
-        project.getConfigurations()
-                .getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME)
-                .extendsFrom(this.patchedConfiguration);
+        this.patchedConfiguration.setDescription("Dependencies needed to run modded minecraft");
+        this.patchedConfiguration.setCanBeConsumed(false);
+        // Workaround https://github.com/gradle/gradle/issues/10861 to avoid publishing these dependencies
+        for (String configName : new String[] {
+            JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+            JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+            JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
+            JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME
+        }) {
+            project.getConfigurations().getByName(configName).extendsFrom(this.patchedConfiguration);
+        }
 
         final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
@@ -450,9 +472,22 @@ public class MCPTasks {
         project.getTasks().named("jar", Jar.class).configure(task -> {
             task.getArchiveClassifier().set("dev");
         });
+        for (final String name : new String[] {
+            JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME,
+            JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME,
+            JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+            JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME
+        }) {
+            project.getConfigurations()
+                    .getByName(name)
+                    .getAttributes()
+                    .attribute(
+                            ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
+                            ObfuscationAttribute.getMcp(project.getObjects()));
+        }
 
         // Add a reobfuscation task rule
-        project.getTasks().addRule("Reobfuscate a modded jar", taskName -> {
+        project.getTasks().addRule("Pattern: reobf<JarTaskName>: Reobfuscate a modded jar", taskName -> {
             if (!taskName.startsWith("reobf")) {
                 return;
             }
@@ -491,6 +526,43 @@ public class MCPTasks {
 
         // Initialize a reobf task for the default jar
         final TaskProvider<ReobfuscatedJar> taskReobfJar = project.getTasks().named("reobfJar", ReobfuscatedJar.class);
+        if (project.getTasks().getNames().contains(LifecycleBasePlugin.ASSEMBLE_TASK_NAME)) {
+            project.getTasks()
+                    .named(LifecycleBasePlugin.ASSEMBLE_TASK_NAME)
+                    .configure(task -> task.dependsOn(taskReobfJar));
+        }
+        final Configuration reobfConfiguration = project.getConfigurations().create("reobfJarConfiguration");
+        {
+            // Based on org.gradle.api.plugins.internal.JvmPluginsHelper.configureDocumentationVariantWithArtifact
+            reobfConfiguration.setVisible(true);
+            reobfConfiguration.setCanBeConsumed(true);
+            reobfConfiguration.setCanBeResolved(false);
+            reobfConfiguration.setDescription("Reobfuscated jar");
+            final AttributeContainer attributes = reobfConfiguration.getAttributes();
+            final ObjectFactory objectFactory = project.getObjects();
+            attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+            attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+            attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+            project.afterEvaluate(p -> {
+                attributes.attribute(
+                        TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                        mcExt.getJavaCompatibilityVersion().get());
+            });
+            attributes.attribute(
+                    LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                    objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+            attributes.attribute(
+                    ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(objectFactory));
+            project.getArtifacts().add(reobfConfiguration.getName(), taskReobfJar);
+            SoftwareComponent javaComponent = project.getComponents().getByName("java");
+            if (javaComponent instanceof AdhocComponentWithVariants) {
+                AdhocComponentWithVariants java = (AdhocComponentWithVariants) javaComponent;
+                java.addVariantsFromConfiguration(reobfConfiguration, cvd -> {
+                    cvd.mapToMavenScope("runtime");
+                    cvd.mapToOptional();
+                });
+            }
+        }
 
         binaryPatchedMcLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "binpatchedmc.jar");
         taskInstallBinaryPatchedVersion = project.getTasks()

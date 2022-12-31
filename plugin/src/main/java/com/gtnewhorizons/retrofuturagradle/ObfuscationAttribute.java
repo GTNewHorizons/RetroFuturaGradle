@@ -5,6 +5,7 @@ import org.gradle.api.Project;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeCompatibilityRule;
 import org.gradle.api.attributes.CompatibilityCheckDetails;
+import org.gradle.api.model.ObjectFactory;
 
 public interface ObfuscationAttribute extends Named {
     Attribute<ObfuscationAttribute> OBFUSCATION_ATTRIBUTE =
@@ -38,13 +39,23 @@ public interface ObfuscationAttribute extends Named {
         }
     }
 
+    static ObfuscationAttribute getNoMinecraft(ObjectFactory objects) {
+        return objects.named(ObfuscationAttribute.class, ObfuscationAttribute.NO_MINECRAFT);
+    }
+
+    static ObfuscationAttribute getMcp(ObjectFactory objects) {
+        return objects.named(ObfuscationAttribute.class, ObfuscationAttribute.MCP);
+    }
+
+    static ObfuscationAttribute getSrg(ObjectFactory objects) {
+        return objects.named(ObfuscationAttribute.class, ObfuscationAttribute.SRG);
+    }
+
     static void configureProject(Project project) {
         project.getDependencies().getAttributesSchema().attribute(OBFUSCATION_ATTRIBUTE, attrib -> {
             attrib.getCompatibilityRules().add(CompatRules.class);
         });
         project.getConfigurations().all(cfg -> cfg.getAttributes()
-                .attribute(
-                        ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
-                        project.getObjects().named(ObfuscationAttribute.class, ObfuscationAttribute.NO_MINECRAFT)));
+                .attribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, getNoMinecraft(project.getObjects())));
     }
 }

@@ -7,6 +7,9 @@ import net.minecraft.init.Blocks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * RFG test mod class
+ */
 @Mod(modid = "testmod", version = "1.0", name = "RFG Test Mod", acceptedMinecraftVersions = "[1.7.10]")
 public class TestMod {
     private static Logger LOG = LogManager.getLogger("testmod");
@@ -32,4 +35,3 @@ public class TestMod {
         LOG.info("Bed name is {}", bed.getUnlocalizedName());
     }
 }
-

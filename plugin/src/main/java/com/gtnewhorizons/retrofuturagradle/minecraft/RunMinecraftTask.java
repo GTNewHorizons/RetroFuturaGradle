@@ -52,7 +52,6 @@ public abstract class RunMinecraftTask extends JavaExec {
         getUsername().convention("Developer");
         getUserUUID().convention(DEFAULT_UUID);
         getAccessToken().convention("0");
-        getTweakClasses().convention(Collections.emptyList());
         getExtraArgs().convention((side == Side.SERVER) ? Collections.singletonList("nogui") : Collections.emptyList());
         getExtraJvmArgs().convention(Collections.emptyList());
 
@@ -71,6 +70,7 @@ public abstract class RunMinecraftTask extends JavaExec {
         MinecraftExtension mcExt =
                 Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
         MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
+        getTweakClasses().convention(mcExt.getExtraTweakClasses());
         setWorkingDir(mcTasks.getRunDirectory());
 
         systemProperty("fml.ignoreInvalidMinecraftCertificates", true);

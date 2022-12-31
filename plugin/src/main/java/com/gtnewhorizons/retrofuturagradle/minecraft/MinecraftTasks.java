@@ -206,6 +206,7 @@ public final class MinecraftTasks {
         nativesDirectory = new File(runDirectory, "natives");
 
         this.vanillaMcConfiguration = project.getConfigurations().create("vanilla_minecraft");
+        this.vanillaMcConfiguration.setCanBeConsumed(false);
         applyMcDependencies();
 
         taskExtractNatives = project.getTasks().register("extractNatives", Copy.class, task -> {

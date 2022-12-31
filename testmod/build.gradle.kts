@@ -36,6 +36,7 @@ buildscript {
 
 plugins {
     id("com.gtnewhorizons.retrofuturagradle")
+    id("maven-publish")
 }
 
 java {
@@ -43,10 +44,23 @@ java {
         languageVersion.set(JavaLanguageVersion.of(8))
         vendor.set(JvmVendorSpec.ADOPTIUM)
     }
+    withSourcesJar()
+    withJavadocJar()
 }
 
 minecraft {
     mcVersion.set("1.7.10")
     applyMcDependencies.set(true)
     skipSlowTasks.set(true)
+}
+
+group = "testmod"
+version = "1.0"
+
+publishing {
+    publications {
+        create<MavenPublication>("testmod") {
+            from(components["java"])
+        }
+    }
 }
