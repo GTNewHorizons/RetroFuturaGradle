@@ -24,7 +24,9 @@ import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
+import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
@@ -48,8 +50,8 @@ import org.gradle.jvm.tasks.Jar;
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
  */
 public class MCPTasks {
-    private static final String TASK_GROUP_INTERNAL = "Internal MCP";
-    private static final String TASK_GROUP_USER = "MCP";
+    private static final String TASK_GROUP_INTERNAL = "Internal Modded Minecraft";
+    private static final String TASK_GROUP_USER = "Modded Minecraft";
     public static final String RFG_DIR = "rfg";
     public static final String SOURCE_SET_PATCHED_MC = "patchedMc";
     public static final String SOURCE_SET_LAUNCHER = "mcLauncher";
@@ -545,6 +547,47 @@ public class MCPTasks {
         project.getTasks().named("jar", Jar.class).configure(task -> {
             task.getArchiveClassifier().set("dev");
         });
+
+        // Add a reobfuscation task rule
+        project.getTasks().addRule("Reobfuscate a modded jar", taskName -> {
+            if (!taskName.startsWith("reobf")) {
+                return;
+            }
+            final String subjectTaskName = StringUtils.uncapitalize(StringUtils.removeStart(taskName, "reobf"));
+            final TaskProvider<Jar> subjectTask;
+            try {
+                subjectTask = project.getTasks().named(subjectTaskName, Jar.class);
+            } catch (UnknownTaskException ute) {
+                project.getLogger()
+                        .warn("Couldn't find a Jar task named " + subjectTaskName + " for automatic reobfuscation");
+                return;
+            }
+            project.getTasks().register(taskName, ReobfuscatedJar.class, task -> {
+                task.setGroup(TASK_GROUP_USER);
+                task.setDescription("Reobfuscate the output of the `" + subjectTaskName + "` task to SRG mappings");
+                task.dependsOn(
+                        taskExtractMcpData,
+                        taskExtractForgeUserdev,
+                        taskGenerateForgeSrgMappings,
+                        taskPackagePatchedMc,
+                        subjectTask);
+
+                task.setInputJarFromTask(subjectTask);
+                task.getMcVersion().set(mcExt.getMcVersion());
+                task.getSrg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMcpToSrg));
+                task.getFieldCsv().set(mcpFile("fields.csv"));
+                task.getMethodCsv().set(mcpFile("methods.csv"));
+                task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
+                task.getRecompMcJar().set(taskPackageMcLauncher.flatMap(Jar::getArchiveFile));
+                task.getReferenceClasspath()
+                        .from(project.getConfigurations()
+                                .getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME)
+                                .fileCollection(Specs.SATISFIES_ALL));
+            });
+        });
+
+        // Initialize a reobf task for the default jar
+        project.getTasks().named("reobfJar", ReobfuscatedJar.class);
     }
 
     public void configureMcJavaCompilation(JavaCompile task) {
@@ -599,7 +642,8 @@ public class MCPTasks {
             });
 
             final String PATCHED_MC_CFG = patchedConfiguration.getName();
-            deps.add(PATCHED_MC_CFG, "net.minecraft:launchwrapper:1.12");
+            // LaunchWrapper brings in its own lwjgl version which we want to override
+            ((ModuleDependency) deps.add(PATCHED_MC_CFG, "net.minecraft:launchwrapper:1.12")).setTransitive(false);
             deps.add(PATCHED_MC_CFG, "com.google.code.findbugs:jsr305:1.3.9");
             deps.add(PATCHED_MC_CFG, "org.ow2.asm:asm-debug-all:5.0.3");
             deps.add(PATCHED_MC_CFG, "com.typesafe.akka:akka-actor_2.11:2.3.3");

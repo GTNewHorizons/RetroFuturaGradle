@@ -16,10 +16,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -152,6 +155,19 @@ public final class Utilities {
             }
         }
         return target;
+    }
+
+    public static URL[] filesToURLArray(Collection<File> cpFiles) throws MalformedURLException {
+        URL[] urls = new URL[cpFiles.size()];
+        int idx = 0;
+        for (File f : cpFiles) {
+            urls[idx] = f.toURI().toURL();
+            idx++;
+        }
+        if (idx != urls.length) {
+            throw new IllegalStateException("Mismatched collection size on iteration and size() call");
+        }
+        return urls;
     }
 
     /**

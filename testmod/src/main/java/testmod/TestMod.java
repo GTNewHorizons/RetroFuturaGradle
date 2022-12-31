@@ -2,6 +2,8 @@ package testmod;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.*;
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,6 +28,8 @@ public class TestMod {
     // postInit "Handle interaction with other mods, complete your setup based on this."
     public void postInit(FMLPostInitializationEvent event) {
         LOG.info("TestMod postInit");
+        Block bed = Blocks.bed;
+        LOG.info("Bed name is {}", bed.getUnlocalizedName());
     }
 }
 

@@ -16,6 +16,9 @@ public class RetroFuturaGradlePlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(JavaLibraryPlugin.class);
 
+        // Register the obfuscation status attribute
+        ObfuscationAttribute.configureProject(project);
+
         // Register the `minecraft {...}` block
         final MinecraftExtension mcExt = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
 
