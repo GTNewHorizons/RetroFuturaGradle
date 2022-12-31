@@ -62,6 +62,7 @@ public class MCPTasks {
 
     private final Configuration mcpMappingDataConfiguration;
     private final Configuration forgeUserdevConfiguration;
+    private final Configuration forgeUniversalConfiguration;
 
     private final File fernflowerLocation;
     private final TaskProvider<Download> taskDownloadFernflower;
@@ -110,6 +111,11 @@ public class MCPTasks {
 
     private final File binaryPatchedMcLocation;
     private final TaskProvider<BinaryPatchJarTask> taskInstallBinaryPatchedVersion;
+    private final File srgBinaryPatchedMcLocation;
+    private final TaskProvider<DeobfuscateTask> taskSrgifyBinaryPatchedVersion;
+    private final TaskProvider<JavaExec> taskRunObfClient;
+    private final TaskProvider<JavaExec> taskRunObfServer;
+    private final Configuration obfRuntimeClasses;
 
     public Provider<RegularFile> mcpFile(String path) {
         return project.getLayout()
@@ -135,6 +141,7 @@ public class MCPTasks {
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
         forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
+        forgeUniversalConfiguration = project.getConfigurations().create("forgeUniversal");
         deobfuscationATs = project.getObjects().fileCollection();
 
         final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
@@ -226,12 +233,7 @@ public class MCPTasks {
                     task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
                     task.getOutputJar().set(srgMergedJarLocation);
-                    // TODO: figure out why deobfBinJar uses these but deobfuscateJar doesn't
-                    // Passing them in causes ATs to not successfully apply
-                    /*
-                    task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
-                    task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
-                    */
+                    // No fields or methods CSV - passing them in causes ATs to not successfully apply
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
@@ -590,19 +592,168 @@ public class MCPTasks {
         });
 
         // Initialize a reobf task for the default jar
-        project.getTasks().named("reobfJar", ReobfuscatedJar.class);
+        final TaskProvider<ReobfuscatedJar> taskReobfJar = project.getTasks().named("reobfJar", ReobfuscatedJar.class);
 
         binaryPatchedMcLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "binpatchedmc.jar");
         taskInstallBinaryPatchedVersion = project.getTasks()
                 .register("installBinaryPatchedVersion", BinaryPatchJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskExtractForgeUserdev, taskMergeVanillaSidedJars);
+                    task.setDescription("currently unused");
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
                     task.getOutputJar().set(binaryPatchedMcLocation);
                     task.getPatchesLzma().set(userdevFile("devbinpatches.pack.lzma"));
                     task.getExtraClassesJar().set(userdevFile("binaries.jar"));
                     task.getExtraResourcesTree().from(userdevDir("src/main/resources"));
                 });
+
+        srgBinaryPatchedMcLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_binpatchedmc.jar");
+        taskSrgifyBinaryPatchedVersion = project.getTasks()
+                .register("srgifyBinpatchedJar", DeobfuscateTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskInstallBinaryPatchedVersion, taskGenerateForgeSrgMappings);
+                    task.setDescription("currently unused");
+                    task.getSrgFile().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg));
+                    task.getExceptorJson().set(userdevFile("conf/exceptor.json"));
+                    task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
+                    task.getInputJar().set(taskInstallBinaryPatchedVersion.flatMap(BinaryPatchJarTask::getOutputJar));
+                    task.getOutputJar().set(srgBinaryPatchedMcLocation);
+                    task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
+                    task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+                    task.getIsApplyingMarkers().set(true);
+                    // Configured in afterEvaluate()
+                    task.getAccessTransformerFiles().setFrom(deobfuscationATs);
+                });
+
+        obfRuntimeClasses = project.getConfigurations().create("obfuscatedRuntimeClasspath");
+
+        taskRunObfClient = project.getTasks().register("runObfClient", JavaExec.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription("Runs the Forge obfuscated client with your mod");
+            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), mcTasks.getTaskDownloadVanillaAssets(), taskReobfJar);
+
+            task.doFirst(p -> {
+                final FileCollection classpath = task.getClasspath();
+                final StringBuilder classpathStr = new StringBuilder();
+                for (File f : classpath) {
+                    classpathStr.append(f.getPath());
+                    classpathStr.append(' ');
+                }
+                p.getLogger()
+                        .lifecycle(
+                                "Starting the client with args: {}\nClasspath: {}",
+                                StringUtils.join(task.getAllJvmArgs(), " "),
+                                classpathStr);
+                try {
+                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            task.classpath(project.getTasks().named("reobfJar"));
+            task.classpath(obfRuntimeClasses);
+            task.classpath(forgeUniversalConfiguration);
+            task.classpath(mcTasks.getVanillaClientLocation());
+            task.classpath(patchedConfiguration);
+            task.workingDir(mcTasks.getRunDirectory());
+            task.setEnableAssertions(true);
+            task.setStandardInput(System.in);
+            task.setStandardOutput(System.out);
+            task.setErrorOutput(System.err);
+            task.getMainClass().set("net.minecraft.launchwrapper.Launch");
+            String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath()
+                    + File.pathSeparator
+                    + System.getProperty("java.library.path");
+            task.jvmArgs(
+                    "-Djava.library.path=" + libraryPath,
+                    "-Xmx6G",
+                    "-Xms1G",
+                    "-Dfml.ignoreInvalidMinecraftCertificates=true");
+            task.args(
+                    "--username",
+                    "Developer",
+                    "--version",
+                    mcExt.getMcVersion().get(),
+                    "--gameDir",
+                    mcTasks.getRunDirectory(),
+                    "--assetsDir",
+                    mcTasks.getVanillaAssetsLocation(),
+                    "--assetIndex",
+                    mcExt.getMcVersion().get(),
+                    "--uuid",
+                    UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'}),
+                    "--userProperties",
+                    "{}",
+                    "--accessToken",
+                    "0",
+                    "--tweakClass",
+                    "cpw.mods.fml.common.launcher.FMLTweaker");
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
+        });
+
+        taskRunObfServer = project.getTasks().register("runObfServer", JavaExec.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription("Runs the Forge obfuscated server with your mod");
+            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar);
+
+            task.doFirst(p -> {
+                final FileCollection classpath = task.getClasspath();
+                final StringBuilder classpathStr = new StringBuilder();
+                for (File f : classpath) {
+                    classpathStr.append(f.getPath());
+                    classpathStr.append(' ');
+                }
+                p.getLogger()
+                        .lifecycle(
+                                "Starting the server with args: {}\nClasspath: {}",
+                                StringUtils.join(task.getAllJvmArgs(), " "),
+                                classpathStr);
+                try {
+                    FileUtils.forceMkdir(mcTasks.getRunDirectory());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                final File eula = new File(mcTasks.getRunDirectory(), "eula.txt");
+                if (!eula.exists()) {
+                    p.getLogger()
+                            .warn(
+                                    "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
+                    final String userInput;
+                    try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
+                            BufferedReader reader = new BufferedReader(isr)) {
+                        userInput = Strings.nullToEmpty(reader.readLine()).trim();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (userInput.startsWith("y") || userInput.startsWith("Y")) {
+                        try {
+                            FileUtils.write(eula, "eula=true", StandardCharsets.UTF_8);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        p.getLogger().error("EULA not accepted!");
+                        throw new RuntimeException("Minecraft EULA not accepted.");
+                    }
+                }
+            });
+
+            task.classpath(project.getTasks().named("reobfJar"));
+            task.classpath(obfRuntimeClasses);
+            task.classpath(forgeUniversalConfiguration);
+            task.classpath(mcTasks.getVanillaServerLocation());
+            task.classpath(patchedConfiguration);
+            task.workingDir(mcTasks.getRunDirectory());
+            task.setEnableAssertions(true);
+            task.setStandardInput(System.in);
+            task.setStandardOutput(System.out);
+            task.setErrorOutput(System.err);
+            task.getMainClass().set("cpw.mods.fml.relauncher.ServerLaunchWrapper");
+            task.jvmArgs("-Xmx4G", "-Xms1G", "-Dfml.ignoreInvalidMinecraftCertificates=true");
+            task.args("nogui");
+            task.getJavaLauncher().set(mcExt.getToolchainLauncher());
+        });
     }
 
     public void configureMcJavaCompilation(JavaCompile task) {
@@ -644,6 +795,8 @@ public class MCPTasks {
         }
 
         deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
+        deps.add(
+                forgeUniversalConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:universal");
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
             deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
