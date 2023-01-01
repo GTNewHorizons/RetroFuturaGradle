@@ -113,6 +113,11 @@ public abstract class MinecraftExtension {
     public abstract ListProperty<String> getExtraTweakClasses();
 
     /**
+     * Extra JVM arguments to use when running Minecraft
+     */
+    public abstract ListProperty<String> getExtraRunJvmArguments();
+
+    /**
      * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or generating a small Java file with the tag values.
      */
     public abstract MapProperty<String, Object> getInjectedTags();

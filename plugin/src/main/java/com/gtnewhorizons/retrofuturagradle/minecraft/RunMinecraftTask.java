@@ -138,6 +138,7 @@ public abstract class RunMinecraftTask extends JavaExec {
                 }
             }
             jvmArgs(getExtraJvmArgs().get());
+            jvmArgs(mcExt.getExtraRunJvmArguments().get());
             for (String tweakClass : getTweakClasses().get()) {
                 args("--tweakClass", tweakClass);
             }
