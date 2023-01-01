@@ -112,7 +112,7 @@ gradlePlugin {
   val greeting by
       plugins.creating {
         id = "com.gtnewhorizons.retrofuturagradle"
-        implementationClass = "com.gtnewhorizons.retrofuturagradle.RetroFuturaGradlePlugin"
+        implementationClass = "com.gtnewhorizons.retrofuturagradle.UserDevPlugin"
       }
 }
 

@@ -6,6 +6,7 @@ import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
+import com.gtnewhorizons.retrofuturagradle.util.ReclassifiedDependencyArtifact;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
@@ -13,6 +14,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -23,6 +25,8 @@ import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.DependencyArtifact;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.AttributeContainer;
@@ -120,7 +124,8 @@ public class MCPTasks {
     private final TaskProvider<DeobfuscateTask> taskSrgifyBinaryPatchedVersion;
     private final TaskProvider<RunMinecraftTask> taskRunObfClient;
     private final TaskProvider<RunMinecraftTask> taskRunObfServer;
-    private final Configuration obfRuntimeClasses;
+    private final Configuration obfRuntimeClasspathConfiguration;
+    private final Configuration reobfJarConfiguration;
 
     public Provider<RegularFile> mcpFile(String path) {
         return project.getLayout()
@@ -531,14 +536,37 @@ public class MCPTasks {
                     .named(LifecycleBasePlugin.ASSEMBLE_TASK_NAME)
                     .configure(task -> task.dependsOn(taskReobfJar));
         }
-        final Configuration reobfConfiguration = project.getConfigurations().create("reobfJarConfiguration");
+        reobfJarConfiguration = project.getConfigurations().create("reobfJarConfiguration");
         {
             // Based on org.gradle.api.plugins.internal.JvmPluginsHelper.configureDocumentationVariantWithArtifact
-            reobfConfiguration.setVisible(true);
-            reobfConfiguration.setCanBeConsumed(true);
-            reobfConfiguration.setCanBeResolved(false);
-            reobfConfiguration.setDescription("Reobfuscated jar");
-            final AttributeContainer attributes = reobfConfiguration.getAttributes();
+            reobfJarConfiguration.setVisible(true);
+            reobfJarConfiguration.setCanBeConsumed(true);
+            reobfJarConfiguration.setCanBeResolved(false);
+            reobfJarConfiguration.setDescription("Reobfuscated jar");
+
+            reobfJarConfiguration.withDependencies(depset -> {
+                final Configuration parent =
+                        project.getConfigurations().getByName(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME);
+                for (Dependency dep : parent.getAllDependencies()) {
+                    if (dep instanceof ModuleDependency) {
+                        ModuleDependency mDep = (ModuleDependency) dep.copy();
+                        // The artifacts only exist for dependencies with a classifier (eg :dev)
+                        LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
+                        for (DependencyArtifact artifact : mDep.getArtifacts()) {
+                            final String classifier = artifact.getClassifier();
+                            if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
+                                artifact = new ReclassifiedDependencyArtifact(artifact, "");
+                            }
+                            newArtifacts.add(artifact);
+                        }
+                        mDep.getArtifacts().clear();
+                        mDep.getArtifacts().addAll(newArtifacts);
+                        depset.add(mDep);
+                    }
+                }
+            });
+            reobfJarConfiguration.extendsFrom();
+            final AttributeContainer attributes = reobfJarConfiguration.getAttributes();
             final ObjectFactory objectFactory = project.getObjects();
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
@@ -553,11 +581,11 @@ public class MCPTasks {
                     objectFactory.named(LibraryElements.class, LibraryElements.JAR));
             attributes.attribute(
                     ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(objectFactory));
-            project.getArtifacts().add(reobfConfiguration.getName(), taskReobfJar);
+            project.getArtifacts().add(reobfJarConfiguration.getName(), taskReobfJar);
             SoftwareComponent javaComponent = project.getComponents().getByName("java");
             if (javaComponent instanceof AdhocComponentWithVariants) {
                 AdhocComponentWithVariants java = (AdhocComponentWithVariants) javaComponent;
-                java.addVariantsFromConfiguration(reobfConfiguration, cvd -> {
+                java.addVariantsFromConfiguration(reobfJarConfiguration, cvd -> {
                     cvd.mapToMavenScope("runtime");
                     cvd.mapToOptional();
                 });
@@ -595,7 +623,13 @@ public class MCPTasks {
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
                 });
 
-        obfRuntimeClasses = project.getConfigurations().create("obfuscatedRuntimeClasspath");
+        obfRuntimeClasspathConfiguration = project.getConfigurations().create("obfuscatedRuntimeClasspath");
+        obfRuntimeClasspathConfiguration.setCanBeConsumed(false);
+        obfRuntimeClasspathConfiguration.extendsFrom(reobfJarConfiguration);
+        obfRuntimeClasspathConfiguration
+                .getAttributes()
+                .attribute(
+                        ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(project.getObjects()));
 
         taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Side.CLIENT);
         taskRunObfClient.configure(task -> {
@@ -605,7 +639,7 @@ public class MCPTasks {
             task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), mcTasks.getTaskDownloadVanillaAssets(), taskReobfJar);
 
             task.classpath(project.getTasks().named("reobfJar"));
-            task.classpath(obfRuntimeClasses);
+            task.classpath(obfRuntimeClasspathConfiguration);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaClientLocation());
             task.classpath(patchedConfiguration);
@@ -621,7 +655,7 @@ public class MCPTasks {
             task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar);
 
             task.classpath(project.getTasks().named("reobfJar"));
-            task.classpath(obfRuntimeClasses);
+            task.classpath(obfRuntimeClasspathConfiguration);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
@@ -832,5 +866,73 @@ public class MCPTasks {
 
     public TaskProvider<Jar> getTaskPackagePatchedMc() {
         return taskPackagePatchedMc;
+    }
+
+    public Configuration getForgeUniversalConfiguration() {
+        return forgeUniversalConfiguration;
+    }
+
+    public File getLauncherSourcesLocation() {
+        return launcherSourcesLocation;
+    }
+
+    public File getLauncherCompiledLocation() {
+        return launcherCompiledLocation;
+    }
+
+    public TaskProvider<CreateLauncherFiles> getTaskCreateLauncherFiles() {
+        return taskCreateLauncherFiles;
+    }
+
+    public SourceSet getLauncherSources() {
+        return launcherSources;
+    }
+
+    public File getPackagedMcLauncherLocation() {
+        return packagedMcLauncherLocation;
+    }
+
+    public TaskProvider<Jar> getTaskPackageMcLauncher() {
+        return taskPackageMcLauncher;
+    }
+
+    public TaskProvider<RunMinecraftTask> getTaskRunClient() {
+        return taskRunClient;
+    }
+
+    public TaskProvider<RunMinecraftTask> getTaskRunServer() {
+        return taskRunServer;
+    }
+
+    public File getBinaryPatchedMcLocation() {
+        return binaryPatchedMcLocation;
+    }
+
+    public TaskProvider<BinaryPatchJarTask> getTaskInstallBinaryPatchedVersion() {
+        return taskInstallBinaryPatchedVersion;
+    }
+
+    public File getSrgBinaryPatchedMcLocation() {
+        return srgBinaryPatchedMcLocation;
+    }
+
+    public TaskProvider<DeobfuscateTask> getTaskSrgifyBinaryPatchedVersion() {
+        return taskSrgifyBinaryPatchedVersion;
+    }
+
+    public TaskProvider<RunMinecraftTask> getTaskRunObfClient() {
+        return taskRunObfClient;
+    }
+
+    public TaskProvider<RunMinecraftTask> getTaskRunObfServer() {
+        return taskRunObfServer;
+    }
+
+    public Configuration getObfRuntimeClasspathConfiguration() {
+        return obfRuntimeClasspathConfiguration;
+    }
+
+    public Configuration getReobfJarConfiguration() {
+        return reobfJarConfiguration;
     }
 }

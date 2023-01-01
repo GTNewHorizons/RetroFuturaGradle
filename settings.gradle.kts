@@ -8,4 +8,8 @@
  */
 
 rootProject.name = "RetroFuturaGradle"
-include("plugin")
+pluginManagement {
+    includeBuild("plugin")
+}
+include("testmod")
+include("testdepmod")

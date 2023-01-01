@@ -11,9 +11,9 @@ import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 
 /**
- * A simple unit test for the 'retrofuturagradle.greeting' plugin.
+ * A simple unit test for the RetroFuturaGradle plugin.
  */
-class RetroFuturaGradlePluginTest {
+class UserDevPluginTest {
     @Test
     void pluginRegistersTasks() {
         // Create a test project and apply the plugin

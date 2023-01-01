@@ -18,7 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A simple functional test for the 'retrofuturagradle.greeting' plugin.
  */
-class RetroFuturaGradlePluginFunctionalTest {
+class UserDevPluginFunctionalTest {
     public static final String SIMPLE_BUILDSCRIPT = "plugins {\n" + "  id('com.gtnewhorizons.retrofuturagradle')\n"
             + "}\n"
             + "\n"

@@ -5,9 +5,11 @@
 /run/
 /plugin/run/
 /testmod/run/
+/testdepmod/run/
 /build/
 /plugin/build/
 /testmod/build/
+/testdepmod/build/
 /eclipse/
 .classpath
 .project

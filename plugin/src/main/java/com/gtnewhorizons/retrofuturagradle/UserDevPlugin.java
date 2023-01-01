@@ -12,7 +12,7 @@ import org.gradle.api.plugins.JavaLibraryPlugin;
 /**
  * A plugin for modding 1.7.10 Minecraft
  */
-public class RetroFuturaGradlePlugin implements Plugin<Project> {
+public class UserDevPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(JavaLibraryPlugin.class);
 
