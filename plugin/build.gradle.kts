@@ -170,7 +170,12 @@ val taskRelocateShadowJar =
       prefix = "com.gtnewhorizons.retrofuturagradle.shadow"
     }
 
-tasks.shadowJar.configure { dependsOn(taskRelocateShadowJar) }
+tasks.shadowJar.configure {
+  dependsOn(taskRelocateShadowJar)
+  archiveClassifier.set("")
+}
+
+tasks.jar.configure { enabled = false }
 
 // Add a source set for the functional test suite
 val functionalTestSourceSet = sourceSets.create("functionalTest") {}

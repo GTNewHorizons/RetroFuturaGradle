@@ -105,12 +105,10 @@ public class MCPTasks {
     private final File decompressedSourcesLocation;
     private final Configuration patchedConfiguration;
     private final SourceSet patchedMcSources;
-    private final File compiledMcLocation;
     private final TaskProvider<JavaCompile> taskBuildPatchedMc;
     private final File packagedMcLocation;
     private final TaskProvider<Jar> taskPackagePatchedMc;
     private final File launcherSourcesLocation;
-    private final File launcherCompiledLocation;
     private final TaskProvider<CreateLauncherFiles> taskCreateLauncherFiles;
     private final SourceSet launcherSources;
     private final File packagedMcLauncherLocation;
@@ -335,7 +333,6 @@ public class MCPTasks {
         });
         javaExt.getSourceSets().add(patchedMcSources);
 
-        compiledMcLocation = patchedMcSources.getOutput().getClassesDirs().getSingleFile();
         taskBuildPatchedMc = project.getTasks()
                 .named(patchedMcSources.getCompileJavaTaskName(), JavaCompile.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -424,7 +421,6 @@ public class MCPTasks {
             sourceSet.java(java ->
                     java.setSrcDirs(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles)));
         });
-        launcherCompiledLocation = launcherSources.getOutput().getClassesDirs().getSingleFile();
         javaExt.getSourceSets().add(launcherSources);
         project.getTasks().named("compileMcLauncherJava", JavaCompile.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
@@ -854,10 +850,6 @@ public class MCPTasks {
         return patchedMcSources;
     }
 
-    public File getCompiledMcLocation() {
-        return compiledMcLocation;
-    }
-
     public TaskProvider<JavaCompile> getTaskBuildPatchedMc() {
         return taskBuildPatchedMc;
     }
@@ -876,10 +868,6 @@ public class MCPTasks {
 
     public File getLauncherSourcesLocation() {
         return launcherSourcesLocation;
-    }
-
-    public File getLauncherCompiledLocation() {
-        return launcherCompiledLocation;
     }
 
     public TaskProvider<CreateLauncherFiles> getTaskCreateLauncherFiles() {
