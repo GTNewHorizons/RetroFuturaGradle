@@ -68,11 +68,3 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("org.apache", "com.gtnewhorizons.oldasmwrapper.apache")
     relocate("com.google", "com.gtnewhorizons.oldasmwrapper.google")
 }
-
-publishing {
-    publications {
-        create<MavenPublication>("testdepmod") {
-            shadow.component(this)
-        }
-    }
-}
