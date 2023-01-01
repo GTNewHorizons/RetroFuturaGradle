@@ -481,7 +481,9 @@ public class MCPTasks {
             JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME,
             JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME,
             JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME
+            JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+            JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+            JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME
         }) {
             project.getConfigurations()
                     .getByName(name)

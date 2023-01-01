@@ -18,13 +18,6 @@ plugins {
 
 repositories {
   maven {
-    // GTNH ASM Fork
-    name = "gtnh"
-    url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
-    isAllowInsecureProtocol = true
-    mavenContent { includeGroup("org.ow2.asm") }
-  }
-  maven {
     name = "forge"
     url = uri("https://maven.minecraftforge.net")
     mavenContent {
@@ -52,7 +45,7 @@ repositories {
       includeGroup("net.minecraft")
     }
   }
-  mavenCentral() { mavenContent() { excludeGroup("org.ow2.asm") } }
+  mavenCentral {}
   gradlePluginPortal()
 }
 
@@ -73,19 +66,15 @@ dependencies {
   // CSV reader, also used by SpecialSource
   implementation("com.opencsv:opencsv:5.7.1")
   // Diffing&Patching
-  implementation("org.ow2.asm:asm-debug-all") { version { strictly("5.0.3") } }
+  implementation("org.ow2.asm:asm:9.4")
   implementation("com.cloudbees:diff4j:1.1")
-  implementation("com.github.abrarsyed.jastyle:jAstyle:1.2")
   implementation("com.github.jponge:lzma-java:1.3")
-  implementation("com.nothome:javaxdelta:2.0.1")
-  implementation("net.md-5:SpecialSource:1.7.4")
+  implementation("net.md-5:SpecialSource:1.11.0")
   // "MCP stuff"
-  implementation("de.oceanlabs.mcp:mcinjector:3.2-SNAPSHOT")
-  implementation("net.minecraftforge.srg2source:Srg2Source:3.2-SNAPSHOT")
-  implementation("org.eclipse.jdt:org.eclipse.jdt.core") { version { strictly("3.10.0") } }
+  implementation(project(":oldasmwrapper", "shadow"))
   // Startup classes
-  compileOnly("com.mojang:authlib:1.5.16")
-  compileOnly("net.minecraft:launchwrapper:1.12")
+  compileOnly("com.mojang:authlib:1.5.16") { isTransitive = false }
+  compileOnly("net.minecraft:launchwrapper:1.12") { isTransitive = false }
   // Provides a file-downloading task implementation for Gradle
   implementation(
       group = "de.undercouch.download",

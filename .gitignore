@@ -6,10 +6,8 @@
 /plugin/run/
 /testmod/run/
 /testdepmod/run/
-/build/
-/plugin/build/
-/testmod/build/
-/testdepmod/build/
+run/
+build/
 /eclipse/
 .classpath
 .project

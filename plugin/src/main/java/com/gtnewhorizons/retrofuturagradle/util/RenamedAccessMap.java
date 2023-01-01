@@ -1,7 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle.util;
 
+import com.gtnewhorizons.specialsource174.AccessMap;
 import java.util.Map;
-import net.md_5.specialsource.AccessMap;
 import org.apache.commons.lang3.StringUtils;
 
 public class RenamedAccessMap extends AccessMap {
