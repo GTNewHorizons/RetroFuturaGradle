@@ -16,6 +16,13 @@ plugins {
 
 repositories {
   maven {
+    // GTNH ASM Fork
+    name = "gtnh"
+    url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
+    isAllowInsecureProtocol = true
+    mavenContent { includeGroup("org.ow2.asm") }
+  }
+  maven {
     name = "forge"
     url = uri("https://maven.minecraftforge.net")
     mavenContent {
@@ -43,7 +50,7 @@ repositories {
       includeGroup("net.minecraft")
     }
   }
-  mavenCentral()
+  mavenCentral() { mavenContent() { excludeGroup("org.ow2.asm") } }
   gradlePluginPortal()
 }
 
@@ -58,6 +65,7 @@ dependencies {
   // CSV reader, also used by SpecialSource
   implementation("com.opencsv:opencsv:5.7.1")
   // Diffing&Patching
+  implementation("org.ow2.asm:asm-debug-all") { version { strictly("5.0.3") } }
   implementation("com.cloudbees:diff4j:1.1")
   implementation("com.github.abrarsyed.jastyle:jAstyle:1.2")
   implementation("com.github.jponge:lzma-java:1.3")

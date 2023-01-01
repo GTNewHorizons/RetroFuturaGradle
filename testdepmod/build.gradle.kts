@@ -2,6 +2,13 @@ buildscript {
     repositories {
         repositories {
             maven {
+                // GTNH ASM Fork
+                name = "gtnh"
+                url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
+                isAllowInsecureProtocol = true
+                mavenContent { includeGroup("org.ow2.asm") }
+            }
+            maven {
                 name = "forge"
                 url = uri("https://maven.minecraftforge.net")
                 mavenContent {
@@ -29,7 +36,7 @@ buildscript {
                     includeGroup("net.minecraft")
                 }
             }
-            mavenCentral()
+            mavenCentral() { mavenContent() { excludeGroup("org.ow2.asm") } }
         }
     }
 }
