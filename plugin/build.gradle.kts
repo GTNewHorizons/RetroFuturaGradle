@@ -11,6 +11,8 @@ import java.util.Collections
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-gradle-plugin")
+  id("com.palantir.git-version") version "0.15.0"
+  id("maven-publish")
   id("com.diffplug.spotless") version "6.12.0"
 }
 
@@ -54,6 +56,12 @@ repositories {
   gradlePluginPortal()
 }
 
+val gitVersion: groovy.lang.Closure<String> by extra
+
+group = "com.gtnewhorizons"
+
+version = gitVersion().removeSuffix(".dirty")
+
 dependencies {
   // Apache Commons utilities
   implementation("org.apache.commons:commons-lang3:3.12.0")
@@ -74,7 +82,7 @@ dependencies {
   // "MCP stuff"
   implementation("de.oceanlabs.mcp:mcinjector:3.2-SNAPSHOT")
   implementation("net.minecraftforge.srg2source:Srg2Source:3.2-SNAPSHOT")
-  implementation("org.eclipse.jdt:org.eclipse.jdt.core") { version { strictly("3.10.0+") } }
+  implementation("org.eclipse.jdt:org.eclipse.jdt.core") { version { strictly("3.10.0") } }
   // Startup classes
   compileOnly("com.mojang:authlib:1.5.16")
   compileOnly("net.minecraft:launchwrapper:1.12")
@@ -89,6 +97,17 @@ dependencies {
 
   // Use JUnit Jupiter for testing.
   testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
+
+  constraints {
+    implementation("org.apache.logging.log4j:log4j-core") {
+      version {
+        strictly("[2.17, 3[")
+        prefer("2.19.0")
+      }
+      because(
+          "CVE-2021-44228, CVE-2021-45046, CVE-2021-45105: Log4j vulnerable to remote code execution and other critical security vulnerabilities")
+    }
+  }
 }
 
 java {
@@ -97,6 +116,8 @@ java {
     vendor.set(JvmVendorSpec.ADOPTIUM)
   }
 }
+
+tasks.named<org.gradle.jvm.tasks.Jar>("jar").configure { from("LICENSE", "docs") }
 
 spotless {
   encoding("UTF-8")
@@ -117,11 +138,18 @@ spotless {
 
 gradlePlugin {
   // Define the plugin
-  val greeting by
-      plugins.creating {
-        id = "com.gtnewhorizons.retrofuturagradle"
-        implementationClass = "com.gtnewhorizons.retrofuturagradle.UserDevPlugin"
-      }
+  plugins {
+    website.set("https://github.com/GTNewHorizons/RetroFuturaGradle")
+    vcsUrl.set("https://github.com/GTNewHorizons/RetroFuturaGradle.git")
+    isAutomatedPublishing = true
+    create("userDev") {
+      id = "com.gtnewhorizons.retrofuturagradle"
+      implementationClass = "com.gtnewhorizons.retrofuturagradle.UserDevPlugin"
+      displayName = "RetroFuturaGradle"
+      description = "Provides a Minecraft 1.7.10 and Forge modding toolchain"
+      tags.set(listOf("minecraft", "modding"))
+    }
+  }
 }
 
 java {

@@ -52,7 +52,8 @@ repositories {
 }
 
 dependencies {
-    api("testmod:testmod:1.0:dev")
+    // api("testmod:testmod:1.0:dev")
+    api(project(":testmod"))
     // For manual testing of dependency code
     // api("curse.maven:nei-358228:4275622-dev-sources")
     // api("com.cloudbees:diff4j:1.1")
