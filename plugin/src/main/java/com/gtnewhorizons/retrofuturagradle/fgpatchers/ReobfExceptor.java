@@ -58,7 +58,8 @@ public class ReobfExceptor {
         if (outSrg.isFile()) outSrg.delete();
 
         // rewrite it.
-        String fixed = Files.readLines(inSrg, Charset.defaultCharset(), new SrgLineProcessor(clsMap, access));
+        String fixed =
+                Files.asCharSource(inSrg, Charset.defaultCharset()).readLines(new SrgLineProcessor(clsMap, access));
         Files.write(fixed.getBytes(), outSrg);
     }
 

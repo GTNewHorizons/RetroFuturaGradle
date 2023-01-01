@@ -3,7 +3,6 @@ package net.minecraftforge.gradle;
 import com.google.gson.*;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
-
 import java.lang.reflect.Type;
 
 public class OldPropertyMapSerializer implements JsonSerializer<PropertyMap> {

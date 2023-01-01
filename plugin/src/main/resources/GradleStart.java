@@ -9,14 +9,10 @@ import com.mojang.authlib.Agent;
 import com.mojang.authlib.exceptions.AuthenticationException;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import com.mojang.authlib.yggdrasil.YggdrasilUserAuthentication;
-import net.minecraftforge.gradle.GradleStartCommon;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.Proxy;
 import java.security.DigestInputStream;
@@ -24,6 +20,7 @@ import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraftforge.gradle.GradleStartCommon;
 
 public class GradleStart extends GradleStartCommon {
     private static final Gson GSON;
@@ -36,9 +33,6 @@ public class GradleStart extends GradleStartCommon {
     }
 
     public static void main(String[] args) throws Throwable {
-        // hack natives.
-        hackNatives();
-
         // launch
         (new GradleStart()).launch(args);
     }
@@ -76,34 +70,9 @@ public class GradleStart extends GradleStartCommon {
         }
     }
 
-    private static void hackNatives() {
-        String paths = System.getProperty("java.library.path");
-        String nativesDir = "@@NATIVESDIR@@";
-
-        if (Strings.isNullOrEmpty(paths))
-            paths = nativesDir;
-        else
-            paths += File.pathSeparator + nativesDir;
-
-        System.setProperty("java.library.path", paths);
-
-        // hack the classloader now.
-        try {
-            final Field sysPathsField = ClassLoader.class.getDeclaredField("sys_paths");
-            final Method initializePathMethod = ClassLoader.class.getDeclaredMethod("initializePath", String.class);
-            sysPathsField.setAccessible(true);
-            initializePathMethod.setAccessible(true);
-            sysPathsField.set(null, null);
-            final Object usrPathsValue = initializePathMethod.invoke(null, "java.library.path");
-            final Field usrPathsField = ClassLoader.class.getDeclaredField("usr_paths");
-            usrPathsField.setAccessible(true);
-            usrPathsField.set(null, usrPathsValue);
-        } catch (Throwable ignored) {
-        }
-    }
-
     private void attemptLogin(Map<String, String> argMap) {
-        YggdrasilUserAuthentication auth = (YggdrasilUserAuthentication) new YggdrasilAuthenticationService(Proxy.NO_PROXY, "1").createUserAuthentication(Agent.MINECRAFT);
+        YggdrasilUserAuthentication auth = (YggdrasilUserAuthentication)
+                new YggdrasilAuthenticationService(Proxy.NO_PROXY, "1").createUserAuthentication(Agent.MINECRAFT);
         auth.setUsername(argMap.get("username"));
         auth.setPassword(argMap.get("password"));
         argMap.put("password", null);
@@ -120,22 +89,21 @@ public class GradleStart extends GradleStartCommon {
         argMap.put("accessToken", auth.getAuthenticatedToken());
         argMap.put("uuid", auth.getSelectedProfile().getId().toString().replace("-", ""));
         argMap.put("username", auth.getSelectedProfile().getName());
-        //@@USERTYPE@@
-        //@@USERPROP@@
+        // @@USERTYPE@@
+        // @@USERPROP@@
     }
-
 
     private void setupAssets(Map<String, String> argMap) {
         if (Strings.isNullOrEmpty(argMap.get("assetsDir"))) {
-            throw new IllegalArgumentException("assetsDir is null when assetIndex is not! THIS IS BAD COMMAND LINE ARGUMENTS, fix them");
+            throw new IllegalArgumentException(
+                    "assetsDir is null when assetIndex is not! THIS IS BAD COMMAND LINE ARGUMENTS, fix them");
         }
         File assets = new File(argMap.get("assetsDir"));
         File objects = new File(assets, "objects");
         File assetIndex = new File(new File(assets, "indexes"), argMap.get("assetIndex") + ".json");
         try {
             AssetIndex index = loadAssetsIndex(assetIndex);
-            if (!index.virtual)
-                return;
+            if (!index.virtual) return;
 
             File assetVirtual = new File(new File(assets, "virtual"), argMap.get("assetIndex"));
             argMap.put("assetsDir", assetVirtual.getAbsolutePath());
@@ -163,8 +131,7 @@ public class GradleStart extends GradleStartCommon {
                     } else {
                         GradleStartCommon.LOGGER.info("  " + key + ": NEW ");
                         File parent = virtual.getParentFile();
-                        if (!parent.exists())
-                            parent.mkdirs();
+                        if (!parent.exists()) parent.mkdirs();
                         Files.copy(source, virtual);
                     }
                 }
@@ -215,7 +182,8 @@ public class GradleStart extends GradleStartCommon {
                 }
             }
         }
-        return String.format("%1$040x", new BigInteger(1, input.getMessageDigest().digest()));
+        return String.format(
+                "%1$040x", new BigInteger(1, input.getMessageDigest().digest()));
     }
 
     private Map<String, String> gatherFiles(File base) {
@@ -225,8 +193,7 @@ public class GradleStart extends GradleStartCommon {
     }
 
     private void gatherDir(Map<String, String> map, File base, File target) {
-        if (!target.exists() || !target.isDirectory())
-            return;
+        if (!target.exists() || !target.isDirectory()) return;
         for (File f : target.listFiles()) {
             if (f.isDirectory()) {
                 gatherDir(map, base, f);

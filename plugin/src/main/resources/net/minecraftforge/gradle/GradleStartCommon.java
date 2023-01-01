@@ -8,16 +8,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
-import joptsimple.NonOptionArgumentSpec;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import net.minecraft.launchwrapper.IClassTransformer;
-import net.minecraft.launchwrapper.Launch;
-import net.minecraft.launchwrapper.LaunchClassLoader;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -28,6 +18,15 @@ import java.net.URLClassLoader;
 import java.util.*;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import joptsimple.NonOptionArgumentSpec;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import net.minecraft.launchwrapper.IClassTransformer;
+import net.minecraft.launchwrapper.Launch;
+import net.minecraft.launchwrapper.LaunchClassLoader;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public abstract class GradleStartCommon {
     protected static Logger LOGGER = LogManager.getLogger("GradleStart");
@@ -77,10 +76,8 @@ public abstract class GradleStartCommon {
         System.setProperty("fml.ignoreInvalidMinecraftCertificates", "true"); // cant hurt. set it now.
 
         // coremod searching.
-        if (argMap.get(NO_CORE_SEARCH) == null)
-            searchCoremods();
-        else
-            LOGGER.info("GradleStart coremod searching disabled!");
+        if (argMap.get(NO_CORE_SEARCH) == null) searchCoremods();
+        else LOGGER.info("GradleStart coremod searching disabled!");
 
         // now the actual launch args.
         args = getArgs();
@@ -92,10 +89,11 @@ public abstract class GradleStartCommon {
         // launch.
         System.gc();
         String bounce = getBounceClass(); // marginally faster. And we need the launch wrapper anyways.
-        if (bounce.endsWith("launchwrapper.Launch"))
-            Launch.main(args);
+        if (bounce.endsWith("launchwrapper.Launch")) Launch.main(args);
         else
-            Class.forName(getBounceClass()).getDeclaredMethod("main", String[].class).invoke(null, new Object[]{args});
+            Class.forName(getBounceClass())
+                    .getDeclaredMethod("main", String[].class)
+                    .invoke(null, new Object[] {args});
     }
 
     private String[] getArgs() {
@@ -155,13 +153,11 @@ public abstract class GradleStartCommon {
             if (options.hasArgument(key)) {
                 String value = (String) options.valueOf(key);
                 argMap.put(key, value);
-                if (!"password".equalsIgnoreCase(key))
-                    LOGGER.info(key + ": " + value);
+                if (!"password".equalsIgnoreCase(key)) LOGGER.info(key + ": " + value);
             }
         }
 
-        if (options.has(NO_CORE_SEARCH))
-            argMap.put(NO_CORE_SEARCH, "");
+        if (options.has(NO_CORE_SEARCH)) argMap.put(NO_CORE_SEARCH, "");
 
         extras = Lists.newArrayList(nonOption.values(options));
         LOGGER.info("Extra: " + extras);
@@ -181,12 +177,10 @@ public abstract class GradleStartCommon {
     @SuppressWarnings("rawtypes")
     public static Class getFmlClass(String classname, ClassLoader loader) throws ClassNotFoundException {
         if (!classname.startsWith("fml")) // dummy check myself
-            throw new IllegalArgumentException("invalid FML classname");
+        throw new IllegalArgumentException("invalid FML classname");
 
-        if (MC_VERSION.startsWith("1.7"))
-            classname = FML_PACK_OLD + "." + classname;
-        else
-            classname = FML_PACK_NEW + "." + classname;
+        if (MC_VERSION.startsWith("1.7")) classname = FML_PACK_OLD + "." + classname;
+        else classname = FML_PACK_NEW + "." + classname;
 
         return Class.forName(classname, true, loader);
     }
@@ -213,13 +207,12 @@ public abstract class GradleStartCommon {
 
         for (URL url : ((URLClassLoader) GradleStartCommon.class.getClassLoader()).getURLs()) {
             if (!url.getProtocol().startsWith("file")) // because file urls start with file://
-                continue; //         this isnt a file
+            continue; //         this isnt a file
 
             File coreMod = new File(url.toURI().getPath());
             Manifest manifest = null;
 
-            if (!coreMod.exists())
-                continue;
+            if (!coreMod.exists()) continue;
 
             if (coreMod.isDirectory()) {
                 File manifestMF = new File(coreMod, "META-INF/MANIFEST.MF");
@@ -232,8 +225,7 @@ public abstract class GradleStartCommon {
             {
                 JarFile jar = new JarFile(coreMod);
                 manifest = jar.getManifest();
-                if (atRegistrar != null && manifest != null)
-                    atRegistrar.invoke(null, jar);
+                if (atRegistrar != null && manifest != null) atRegistrar.invoke(null, jar);
                 jar.close();
             }
 
@@ -293,7 +285,8 @@ public abstract class GradleStartCommon {
             Collection<Object> modifiers = null;
             try {
                 // super class of ModAccessTransformer is AccessTransformer
-                Field f = clazz.getSuperclass().getDeclaredFields()[1]; // its the modifiers map. Only non-static field there.
+                Field f = clazz.getSuperclass()
+                        .getDeclaredFields()[1]; // its the modifiers map. Only non-static field there.
                 f.setAccessible(true);
 
                 modifiers = ((com.google.common.collect.Multimap) f.get(instance)).values();
@@ -358,7 +351,7 @@ public abstract class GradleStartCommon {
             Splitter split = Splitter.on(',').trimResults().limit(3);
             for (String line : Files.readLines(file, Charsets.UTF_8)) {
                 if (line.startsWith("searge")) // header line
-                    continue;
+                continue;
 
                 List<String> splits = split.splitToList(line);
                 map.put(splits.get(0), splits.get(1));

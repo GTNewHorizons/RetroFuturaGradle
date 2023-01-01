@@ -25,7 +25,7 @@ public abstract class MinecraftExtension {
         getSkipSlowTasks().convention(false);
         getMcVersion().convention("1.7.10");
         getApplyMcDependencies().convention(Boolean.TRUE);
-        getLwjglVersion().convention("2.9.3");
+        getLwjglVersion().convention("2.9.4-nightly-20150209");
         getJavaCompatibilityVersion().convention(8);
         {
             final JavaToolchainSpec defaultToolchain = new DefaultToolchainSpec(project.getObjects());
@@ -62,7 +62,7 @@ public abstract class MinecraftExtension {
     public abstract Property<Boolean> getApplyMcDependencies();
 
     /**
-     * LWJGL version to use. Default is 2.9.3
+     * LWJGL version to use. Default is 2.9.4-nightly-20150209
      */
     public abstract Property<String> getLwjglVersion();
 

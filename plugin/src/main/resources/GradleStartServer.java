@@ -1,7 +1,6 @@
-import net.minecraftforge.gradle.GradleStartCommon;
-
 import java.util.List;
 import java.util.Map;
+import net.minecraftforge.gradle.GradleStartCommon;
 
 public class GradleStartServer extends GradleStartCommon {
     public static void main(String[] args) throws Throwable {
@@ -19,11 +18,8 @@ public class GradleStartServer extends GradleStartCommon {
     }
 
     @Override
-    protected void preLaunch(Map<String, String> argMap, List<String> extras) {
-    }
+    protected void preLaunch(Map<String, String> argMap, List<String> extras) {}
 
     @Override
-    protected void setDefaultArguments(Map<String, String> argMap) {
-    }
-
+    protected void setDefaultArguments(Map<String, String> argMap) {}
 }
