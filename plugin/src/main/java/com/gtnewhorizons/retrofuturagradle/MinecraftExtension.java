@@ -3,7 +3,9 @@ package com.gtnewhorizons.retrofuturagradle;
 import com.google.common.collect.Lists;
 import java.util.Objects;
 import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.jvm.toolchain.JavaCompiler;
@@ -109,6 +111,21 @@ public abstract class MinecraftExtension {
      * Extra LaunchWrapper tweak classes to use when running Minecraft
      */
     public abstract ListProperty<String> getExtraTweakClasses();
+
+    /**
+     * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or generating a small Java file with the tag values.
+     */
+    public abstract MapProperty<String, Object> getInjectedTags();
+
+    /**
+     * Deprecated, source files to replace the tokens in
+     */
+    public abstract ConfigurableFileCollection getTokenSubstituteSources();
+
+    /**
+     * Class package and name (e.g. org.mymod.Tags) to fill with the provided tags.
+     */
+    public abstract Property<String> getInjectedTagClass();
 
     public Provider<JavaLauncher> getToolchainLauncher() {
         JavaToolchainService jts =
