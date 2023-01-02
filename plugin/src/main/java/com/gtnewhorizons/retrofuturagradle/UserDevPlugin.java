@@ -8,6 +8,7 @@ import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaLibraryPlugin;
+import org.gradle.util.GradleVersion;
 
 /**
  * A plugin for modding 1.7.10 Minecraft
@@ -15,6 +16,10 @@ import org.gradle.api.plugins.JavaLibraryPlugin;
 public class UserDevPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(JavaLibraryPlugin.class);
+
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.6")) < 0) {
+            throw new IllegalStateException("Using RetroFuturaGradle requires at least Gradle 7.6.");
+        }
 
         // Register the obfuscation status attribute
         ObfuscationAttribute.configureProject(project);

@@ -101,6 +101,8 @@ dependencies {
           "CVE-2021-44228, CVE-2021-45046, CVE-2021-45105: Log4j vulnerable to remote code execution and other critical security vulnerabilities")
     }
   }
+
+  testImplementation(gradleApi())
 }
 
 val depGradleApi = dependencies.gradleApi()
