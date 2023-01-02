@@ -9,7 +9,9 @@
 
 rootProject.name = "RetroFuturaGradleTestMods"
 pluginManagement {
-    includeBuild("plugin")
+    includeBuild("plugin") {
+        name = "retrofuturagradle"
+    }
 }
 
 include("testmod")

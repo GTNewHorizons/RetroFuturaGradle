@@ -175,7 +175,10 @@ tasks.shadowJar.configure {
   archiveClassifier.set("")
 }
 
-tasks.jar.configure { enabled = false }
+tasks.jar.configure {
+  enabled = false
+  dependsOn(tasks.shadowJar)
+}
 
 // Add a source set for the functional test suite
 val functionalTestSourceSet = sourceSets.create("functionalTest") {}
