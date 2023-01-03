@@ -16,6 +16,7 @@ plugins {
   id("com.palantir.git-version") version "0.15.0"
   id("maven-publish")
   id("com.diffplug.spotless") version "6.12.0"
+  id("com.github.gmazzo.buildconfig") version "3.1.0"
 }
 
 repositories {
@@ -103,6 +104,15 @@ dependencies {
   }
 
   testImplementation(gradleApi())
+}
+
+buildConfig {
+  buildConfigField("String", "PLUGIN_NAME", "\"${project.name}\"")
+  buildConfigField("String", "PLUGIN_GROUP", "\"${project.group}\"")
+  buildConfigField("String", "PLUGIN_VERSION", provider { "\"${project.version}\"" })
+  className("BuildConfig")
+  packageName("com.gtnewhorizons.retrofuturagradle")
+  useJavaOutput()
 }
 
 val depGradleApi = dependencies.gradleApi()

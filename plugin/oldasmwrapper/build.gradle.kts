@@ -4,8 +4,6 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     id("com.github.johnrengelman.shadow") version "7.1.2"
     id("java-library")
-    id("com.palantir.git-version") version "0.15.0"
-    id("maven-publish")
 }
 
 java {

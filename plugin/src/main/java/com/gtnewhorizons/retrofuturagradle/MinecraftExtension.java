@@ -3,7 +3,6 @@ package com.gtnewhorizons.retrofuturagradle;
 import com.google.common.collect.Lists;
 import java.util.Objects;
 import org.gradle.api.Project;
-import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -123,14 +122,9 @@ public abstract class MinecraftExtension {
     public abstract MapProperty<String, Object> getInjectedTags();
 
     /**
-     * Deprecated, source files to replace the tokens in
+     * Glob patterns on which to run tag replacement, deprecated as the implementation is very hacky, implemented for compat with FG buildscripts
      */
-    public abstract ConfigurableFileCollection getTokenSubstituteSources();
-
-    /**
-     * Class package and name (e.g. org.mymod.Tags) to fill with the provided tags.
-     */
-    public abstract Property<String> getInjectedTagClass();
+    public abstract ListProperty<String> getTagReplacementFiles();
 
     public Provider<JavaLauncher> getToolchainLauncher() {
         JavaToolchainService jts =

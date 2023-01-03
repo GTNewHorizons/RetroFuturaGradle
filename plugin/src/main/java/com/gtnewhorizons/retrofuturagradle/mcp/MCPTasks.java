@@ -1,6 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.retrofuturagradle.BuildConfig;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
@@ -10,12 +11,19 @@ import com.gtnewhorizons.retrofuturagradle.util.ReclassifiedDependencyArtifact;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
@@ -52,6 +60,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.api.tasks.scala.ScalaCompile;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.base.plugins.LifecycleBasePlugin;
 
@@ -124,6 +133,9 @@ public class MCPTasks {
     private final TaskProvider<RunMinecraftTask> taskRunObfServer;
     private final Configuration obfRuntimeClasspathConfiguration;
     private final Configuration reobfJarConfiguration;
+    private final TaskProvider<InjectTagsTask> taskInjectTags;
+    private final SourceSet injectedSourceSet;
+    private final File injectedSourcesLocation;
 
     public Provider<RegularFile> mcpFile(String path) {
         return project.getLayout()
@@ -418,8 +430,9 @@ public class MCPTasks {
         launcherSources = sourceSets.create(SOURCE_SET_LAUNCHER, sourceSet -> {
             sourceSet.setCompileClasspath(patchedConfiguration);
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet.java(java ->
-                    java.setSrcDirs(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles)));
+            sourceSet
+                    .getJava()
+                    .setSrcDirs(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles));
         });
         javaExt.getSourceSets().add(launcherSources);
         project.getTasks().named("compileMcLauncherJava", JavaCompile.class, task -> {
@@ -438,6 +451,27 @@ public class MCPTasks {
             task.from(launcherSources.getOutput());
             task.from(project.getTasks().named(launcherSources.getClassesTaskName()));
         });
+
+        injectedSourcesLocation = FileUtils.getFile(project.getBuildDir(), "generated", "sources", "injectTags");
+        taskInjectTags = project.getTasks().register("injectTags", InjectTagsTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.getOutputDir().set(injectedSourcesLocation);
+            task.getTags().set(mcExt.getInjectedTags());
+        });
+        injectedSourceSet = sourceSets.create("injectedTags", set -> {
+            set.getJava().setSrcDirs(project.files(injectedSourcesLocation).builtBy(taskInjectTags));
+        });
+        project.getTasks()
+                .named(injectedSourceSet.getCompileJavaTaskName())
+                .configure(task -> task.dependsOn(taskInjectTags));
+        {
+            final SourceSet mainSet = sourceSets.getByName("main");
+            mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
+            mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()));
+            project.getTasks()
+                    .named("jar", Jar.class)
+                    .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
+        }
 
         taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Side.CLIENT);
         taskRunClient.configure(task -> {
@@ -702,6 +736,77 @@ public class MCPTasks {
         deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
         deps.add(
                 forgeUniversalConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:universal");
+        if (mcExt.getTagReplacementFiles().isPresent()
+                && !mcExt.getTagReplacementFiles().get().isEmpty()) {
+            final File replacementPropFile = new File(injectedSourcesLocation.getParentFile(), "injectTags.resources");
+            taskInjectTags.configure(task -> {
+                task.getOutputs().file(replacementPropFile);
+                task.doLast("Generate tag injection resource file", t -> {
+                    final Properties props = new Properties();
+                    int i = 0;
+                    for (String pattern : mcExt.getTagReplacementFiles().get()) {
+                        props.setProperty("files." + i, pattern);
+                    }
+                    for (Map.Entry<String, Object> value : task.getTags().get().entrySet()) {
+                        props.setProperty(
+                                "replacements." + value.getKey(),
+                                value.getValue().toString());
+                    }
+                    try (FileOutputStream fos = new FileOutputStream(replacementPropFile);
+                            BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+                        props.store(bos, "");
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            });
+            // Inject a javac & scalac plugin
+            final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
+            final Configuration rfgJavacCfg = project.getConfigurations().create("rfgJavacPlugin", cfg -> {
+                cfg.setCanBeConsumed(false);
+                cfg.setCanBeResolved(true);
+            });
+            final Dependency rfgJavacPlugin = project.getDependencies()
+                    .add(rfgJavacCfg.getName(), "com.gtnewhorizons:rfg-javac-plugin:" + BuildConfig.PLUGIN_VERSION);
+            project.getConfigurations().getByName("annotationProcessor").extendsFrom(rfgJavacCfg);
+            final URI replacementsUri = replacementPropFile.toURI();
+            project.getTasks().named("compileJava", JavaCompile.class).configure(task -> {
+                task.getOptions()
+                        .getCompilerArgs()
+                        .add("-Xplugin:RetrofuturagradleTokenReplacement " + replacementsUri.toASCIIString());
+                task.getOptions().setFork(true);
+                if (javaExt.getToolchain().getLanguageVersion().get().asInt() > 8) {
+                    final List<String> jargs = Arrays.asList(
+                            "--add-exports",
+                            "jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED",
+                            "--add-exports",
+                            "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+                            "--add-exports",
+                            "jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+                            "--add-exports",
+                            "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+                            "--add-exports",
+                            "jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED",
+                            "--add-opens",
+                            "jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
+                            "--add-opens",
+                            "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED");
+                    task.getOptions().getForkOptions().getJvmArgs().addAll(jargs);
+                }
+            });
+            if (project.getPluginManager().hasPlugin("scala")) {
+                project.getTasks().named("compileScala", ScalaCompile.class, task -> {
+                    task.setScalaCompilerPlugins(task.getScalaCompilerPlugins().plus(rfgJavacCfg));
+                    if (task.getScalaCompileOptions().getAdditionalParameters() == null) {
+                        task.getScalaCompileOptions().setAdditionalParameters(new ArrayList<>());
+                    }
+                    task.getScalaCompileOptions()
+                            .getAdditionalParameters()
+                            .add("-P:RetrofuturagradleScalaTokenReplacement:" + replacementsUri.toASCIIString());
+                    task.getOptions().setFork(true);
+                });
+            }
+        }
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
             deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));

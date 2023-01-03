@@ -1,0 +1,4 @@
+<plugin>
+    <name>RetrofuturagradleScalaTokenReplacement</name>
+    <classname>com.gtnewhorizons.retrofuturagradle.scalac.ScalaTokenReplacement</classname>
+</plugin>

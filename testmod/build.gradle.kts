@@ -1,3 +1,5 @@
+import com.gtnewhorizons.retrofuturagradle.mcp.InjectTagsTask
+
 buildscript {
     repositories {
         maven {
@@ -28,13 +30,18 @@ buildscript {
                 includeGroup("net.minecraft")
             }
         }
-        mavenCentral {}
+        mavenCentral()
     }
 }
 
 plugins {
     id("com.gtnewhorizons.retrofuturagradle")
     id("maven-publish")
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
 }
 
 java {
@@ -46,14 +53,20 @@ java {
     withJavadocJar()
 }
 
+group = "testmod"
+version = "1.0"
+
 minecraft {
     mcVersion.set("1.7.10")
     applyMcDependencies.set(true)
     skipSlowTasks.set(true)
+    injectedTags.put("TAG_VERSION", version)
+    tagReplacementFiles.add("TestMod.java")
 }
 
-group = "testmod"
-version = "1.0"
+tasks.injectTags.configure {
+    outputClassName.set("testmod.Tags")
+}
 
 publishing {
     publications {

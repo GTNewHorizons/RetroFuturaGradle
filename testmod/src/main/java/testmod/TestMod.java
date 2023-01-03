@@ -10,15 +10,19 @@ import org.apache.logging.log4j.Logger;
 /**
  * RFG test mod class
  */
-@Mod(modid = "testmod", version = "1.0", name = "RFG Test Mod", acceptedMinecraftVersions = "[1.7.10]")
+@Mod(modid = "testmod", version = "TAG_VERSION", name = "RFG Test Mod", acceptedMinecraftVersions = "[1.7.10]")
 public class TestMod {
     private static Logger LOG = LogManager.getLogger("testmod");
+    public static String replacedVer = "TAG_VERSION";
 
     @Mod.EventHandler
     // preInit "Run before anything else. Read your config, create blocks, items,
     // etc, and register them with the GameRegistry."
     public void preInit(FMLPreInitializationEvent event) {
         LOG.info("TestMod preInit");
+        if (!replacedVer.equals("1.0")) {
+            throw new RuntimeException("Wrong substitution");
+        }
     }
 
     @Mod.EventHandler
