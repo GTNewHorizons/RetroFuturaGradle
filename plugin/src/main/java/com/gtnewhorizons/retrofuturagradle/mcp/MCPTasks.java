@@ -795,7 +795,11 @@ public class MCPTasks {
                 }
             });
             if (project.getPluginManager().hasPlugin("scala")) {
-                project.getTasks().named("compileScala", ScalaCompile.class, task -> {
+                // Configure the Scala task lazily to avoid failure if it doesn't exist
+                project.getTasks().withType(ScalaCompile.class).configureEach(task -> {
+                    if (!task.getName().equals("compileScala")) {
+                        return;
+                    }
                     task.setScalaCompilerPlugins(task.getScalaCompilerPlugins().plus(rfgJavacCfg));
                     if (task.getScalaCompileOptions().getAdditionalParameters() == null) {
                         task.getScalaCompileOptions().setAdditionalParameters(new ArrayList<>());
