@@ -804,9 +804,11 @@ public class MCPTasks {
                     if (task.getScalaCompileOptions().getAdditionalParameters() == null) {
                         task.getScalaCompileOptions().setAdditionalParameters(new ArrayList<>());
                     }
-                    final String scParam = "-P:RetrofuturagradleScalaTokenReplacement:" + replacementsUri.toASCIIString();
+                    final String scParam =
+                            "-P:RetrofuturagradleScalaTokenReplacement:" + replacementsUri.toASCIIString();
                     // It can be an immutable list
-                    final List<String> scArgs = new ArrayList<>(task.getScalaCompileOptions().getAdditionalParameters());
+                    final List<String> scArgs =
+                            new ArrayList<>(task.getScalaCompileOptions().getAdditionalParameters());
                     scArgs.add(scParam);
                     task.getScalaCompileOptions().setAdditionalParameters(scArgs);
                     task.getOptions().setFork(true);

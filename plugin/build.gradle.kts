@@ -244,4 +244,15 @@ publishing {
       }
     }
   }
+
+  repositories {
+    maven {
+      url = uri("http://jenkins.usrv.eu:8081/nexus/content/repositories/releases")
+      isAllowInsecureProtocol = true
+      credentials {
+        username = System.getenv("MAVEN_USER") ?: "NONE"
+        password = System.getenv("MAVEN_PASSWORD") ?: "NONE"
+      }
+    }
+  }
 }
