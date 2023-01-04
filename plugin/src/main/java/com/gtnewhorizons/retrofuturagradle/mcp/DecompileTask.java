@@ -6,12 +6,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -19,8 +21,9 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
+import org.gradle.work.DisableCachingByDefault;
 
-@CacheableTask
+@DisableCachingByDefault(because = "Uses an internal caching mechanism")
 public abstract class DecompileTask extends DefaultTask {
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -29,6 +32,9 @@ public abstract class DecompileTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
+    @OutputDirectory
+    public abstract DirectoryProperty getCacheDir();
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getFernflower();
@@ -36,6 +42,22 @@ public abstract class DecompileTask extends DefaultTask {
     @TaskAction
     public void decompileAndCleanup() throws IOException {
         final File taskTempDir = getTemporaryDir();
+
+        final DigestUtils digests = new DigestUtils(DigestUtils.getSha256Digest());
+        final String fernflowerChecksum =
+                digests.digestAsHex(getFernflower().get().getAsFile());
+        final String inputFileChecksum = digests.digestAsHex(getInputJar().get().getAsFile());
+        final File cachedOutputFile =
+                new File(getCacheDir().get().getAsFile(), fernflowerChecksum + "-" + inputFileChecksum + ".jar");
+        if (cachedOutputFile.exists()) {
+            getLogger().lifecycle("Using cached decompiled jar from " + cachedOutputFile.getPath());
+            FileUtils.copyFile(cachedOutputFile, getOutputJar().get().getAsFile());
+            return;
+        } else {
+            getLogger()
+                    .lifecycle("Didn't find cached decompiled jar, decompiling and saving to "
+                            + cachedOutputFile.getPath());
+        }
 
         getLogger().lifecycle("Decompiling the srg jar with fernflower");
         final long preDecompileMs = System.currentTimeMillis();
@@ -77,6 +99,9 @@ public abstract class DecompileTask extends DefaultTask {
                 })
                 .assertNormalExitValue();
         FileUtils.delete(ffinpcopy);
+
+        FileUtils.forceMkdirParent(cachedOutputFile);
+        FileUtils.copyFile(ffoutfile, cachedOutputFile);
         FileUtils.copyFile(ffoutfile, getOutputJar().get().getAsFile());
 
         final long postDecompileMs = System.currentTimeMillis();

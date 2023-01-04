@@ -271,6 +271,7 @@ public class MCPTasks {
             task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
             task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(DeobfuscateTask::getOutputJar));
             task.getOutputJar().set(rawDecompiledSrgLocation);
+            task.getCacheDir().set(Utilities.getCacheDir(project, "fernflower-cache"));
             task.getFernflower().set(fernflowerLocation);
         });
         taskCleanupDecompSrgJar = project.getTasks()
@@ -378,11 +379,7 @@ public class MCPTasks {
         taskCreateLauncherFiles = project.getTasks()
                 .register("createMcLauncherFiles", CreateLauncherFiles.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(
-                            taskExtractMcpData,
-                            taskExtractForgeUserdev,
-                            mcTasks.getTaskDownloadVanillaAssets(),
-                            mcTasks.getTaskExtractNatives());
+                    task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev, mcTasks.getTaskExtractNatives());
                     task.getOutputDir().set(launcherSourcesLocation);
                     final ProviderFactory providers = project.getProviders();
                     task.addResource(providers, "GradleStart.java");
