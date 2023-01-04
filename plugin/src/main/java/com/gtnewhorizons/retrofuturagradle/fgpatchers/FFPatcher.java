@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.RegExUtils;
 
 public class FFPatcher {
     static final String MODIFIERS =
@@ -23,26 +24,30 @@ public class FFPatcher {
                     + ") )*)(?<return>[^ ]+) (?<method>func_(?<number>\\d+)_[a-zA-Z_]+)\\((?<arguments>([^ ,]+ (\\.\\.\\. )?var\\d+,? ?)*)\\)(?: throws (?:[\\w$.]+,? ?)+)?;$");
 
     // Remove TRAILING whitespace
-    private static final String TRAILING = "(?m)[ \\t]+$";
+    private static final Pattern TRAILING = Pattern.compile("(?m)[ \\t]+$");
 
     // Remove repeated blank lines
-    private static final String NEWLINES = "(?m)^(\\r\\n|\\r|\\n){2,}";
-    private static final String EMPTY_SUPER = "(?m)^[ \t]+super\\(\\);(\\r\\n|\\n|\\r)";
+    private static final Pattern NEWLINES = Pattern.compile("(?m)^(\\r\\n|\\r|\\n){2,}");
+    private static final Pattern EMPTY_SUPER = Pattern.compile("(?m)^[ \t]+super\\(\\);(\\r\\n|\\n|\\r)");
 
     // strip TRAILING 0 from doubles and floats to fix decompile differences on OSX
     // 0.0010D => 0.001D
     // value, type
-    private static final String TRAILINGZERO = "([0-9]+\\.[0-9]*[1-9])0+([DdFfEe])";
+    private static final Pattern TRAILINGZERO = Pattern.compile("([0-9]+\\.[0-9]*[1-9])0+([DdFfEe])");
 
     // new regexes
-    private static final String CLASS_REGEX = "(?<modifiers>(?:(?:" + MODIFIERS
-            + ") )*)(?<type>enum|class|interface) (?<name>[\\w$]+)(?: (extends|implements) (?:[\\w$.]+(?:, [\\w$.]+)*))* \\{";
+    private static final Pattern CLASS_REGEX = Pattern.compile(
+            "(?<modifiers>(?:(?:" + MODIFIERS
+                    + ") )*)(?<type>enum|class|interface) (?<name>[\\w$]+)(?: (extends|implements) (?:[\\w$.]+(?:, [\\w$.]+)*))* \\{");
     private static final String ENUM_ENTRY_REGEX =
-            "(?<name>[\\w$]+)\\(\"(?:[\\w$]+)\", [0-9]+(?:, (?<body>.*?))?\\)(?<end> *(?:;|,|\\{)$)";
-    private static final String CONSTRUCTOR_REGEX = "(?<modifiers>(?:(?:" + MODIFIERS
-            + ") )*)%s\\((?<parameters>.*?)\\)(?<end>(?: throws (?<throws>[\\w$.]+(?:, [\\w$.]+)*))? *(?:\\{\\}| \\{))";
-    private static final String CONSTRUCTOR_CALL_REGEX = "(?<name>this|super)\\((?<body>.*?)\\)(?<end>;)";
-    private static final String VALUE_FIELD_REGEX = "private static final %s\\[\\] [$\\w\\d]+ = new %s\\[\\]\\{.*?\\};";
+            ("(?<name>[\\w$]+)\\(\"(?:[\\w$]+)\", [0-9]+(?:, (?<body>.*?))?\\)(?<end> *(?:;|,|\\{)$)");
+    private static final String CONSTRUCTOR_REGEX = ("(?<modifiers>(?:(?:" + MODIFIERS
+            + ") )*)%s\\((?<parameters>.*?)\\)(?<end>(?: throws (?<throws>[\\w$.]+(?:, [\\w$.]+)*))? *(?:\\{\\}| \\{))");
+    private static final String CONSTRUCTOR_CALL_REGEX = ("(?<name>this|super)\\((?<body>.*?)\\)(?<end>;)");
+    private static final String VALUE_FIELD_REGEX =
+            ("private static final %s\\[\\] [$\\w\\d]+ = new %s\\[\\]\\{.*?\\};");
+
+    private static final Pattern NEWLINE_PATTERN = Pattern.compile("\r?\n|\r");
 
     public static String processFile(String fileName, String text, boolean fixInterfaces) throws IOException {
         StringBuffer out = new StringBuffer();
@@ -53,18 +58,18 @@ public class FFPatcher {
         m.appendTail(out);
         text = out.toString();
 
-        text = text.replaceAll(TRAILING, "");
+        text = RegExUtils.removeAll(text, TRAILING);
 
-        text = text.replaceAll(TRAILINGZERO, "$1$2");
+        text = RegExUtils.replaceAll(text, TRAILINGZERO, "$1$2");
 
-        List<String> lines = new ArrayList<String>();
-        Collections.addAll(lines, text.split("\r?\n|\r"));
+        List<String> lines = new ArrayList<>(128);
+        Collections.addAll(lines, NEWLINE_PATTERN.split(text));
 
         processClass(lines, "", 0, "", ""); // mutates the list
         text = Joiner.on(System.lineSeparator()).join(lines);
 
-        text = text.replaceAll(NEWLINES, System.lineSeparator());
-        text = text.replaceAll(EMPTY_SUPER, "");
+        text = RegExUtils.replaceAll(text, NEWLINES, System.lineSeparator());
+        text = RegExUtils.replaceAll(text, EMPTY_SUPER, "");
 
         if (fixInterfaces) {
             out = new StringBuffer();
@@ -154,7 +159,13 @@ public class FFPatcher {
                 }
 
                 if (Strings.isNullOrEmpty(body)) newLine += matcher.group("end");
-                else newLine += "(" + body + ")" + matcher.group("end");
+                else
+                    newLine = new StringBuilder(newLine)
+                            .append("(")
+                            .append(body)
+                            .append(")")
+                            .append(matcher.group("end"))
+                            .toString();
             }
 
             // find and replace constructor
@@ -187,7 +198,15 @@ public class FFPatcher {
                     body = Joiner.on(", ").join(args);
                 }
 
-                newLine = newIndent + "   " + matcher.group("name") + "(" + body + ")" + matcher.group("end");
+                newLine = new StringBuilder()
+                        .append(newIndent)
+                        .append("   ")
+                        .append(matcher.group("name"))
+                        .append("(")
+                        .append(body)
+                        .append(")")
+                        .append(matcher.group("end"))
+                        .toString();
             }
 
             if (prevSynthetic) {
@@ -207,6 +226,8 @@ public class FFPatcher {
         }
     }
 
+    private static final Pattern COMMA_SPACE = Pattern.compile(", ");
+
     private static String synthetic_replacement(Matcher match) {
         // This is designed to remove all the synthetic/bridge methods that the compiler will just generate again
         // First off this only works on methods that bounce to methods that are named exactly alike.
@@ -222,7 +243,7 @@ public class FFPatcher {
 
         if (arg1.equals(arg2) && arg1.equals("")) return "";
 
-        String[] args = match.group("arguments").split(", ");
+        String[] args = COMMA_SPACE.split(match.group("arguments"));
         for (int x = 0; x < args.length; x++) args[x] = args[x].split(" ")[1];
 
         StringBuilder b = new StringBuilder();
@@ -241,7 +262,7 @@ public class FFPatcher {
 
         if (Strings.isNullOrEmpty(orig)) return match.group();
 
-        String[] args = orig.split(", ");
+        String[] args = COMMA_SPACE.split(orig);
         StringBuilder fixed = new StringBuilder();
         for (int x = 0; x < args.length; x++) {
             String[] p = args[x].split(" ");

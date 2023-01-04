@@ -84,11 +84,6 @@ tasks.jar.configure {
   dependsOn(tasks.shadowJar)
 }
 
-tasks.withType<ScalaCompile> {
-  targetCompatibility = "1.7"
-  sourceCompatibility = "1.7"
-}
-
 tasks.addRule("Pattern: runTestWithJava<VERSION>") {
   val taskName = this
   if (startsWith("runTestWithJava")) {

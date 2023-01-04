@@ -102,6 +102,7 @@ public class MCPTasks {
     private final ConfigurableFileCollection deobfuscationATs;
 
     private final TaskProvider<DecompileTask> taskDecompileSrgJar;
+    private final TaskProvider<CleanupDecompiledJarTask> taskCleanupDecompSrgJar;
     private final File decompiledSrgLocation;
 
     private final TaskProvider<PatchSourcesTask> taskPatchDecompiledJar;
@@ -263,21 +264,30 @@ public class MCPTasks {
                 });
 
         decompiledSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
+        final File rawDecompiledSrgLocation =
+                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources-rawff.jar");
         taskDecompileSrgJar = project.getTasks().register("decompileSrgJar", DecompileTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
             task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(DeobfuscateTask::getOutputJar));
-            task.getOutputJar().set(decompiledSrgLocation);
+            task.getOutputJar().set(rawDecompiledSrgLocation);
             task.getFernflower().set(fernflowerLocation);
-            task.getPatches().set(userdevDir("conf/minecraft_ff"));
-            task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
         });
+        taskCleanupDecompSrgJar = project.getTasks()
+                .register("cleanupDecompSrgJar", CleanupDecompiledJarTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskDecompileSrgJar, taskExtractForgeUserdev);
+                    task.getInputJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getOutputJar));
+                    task.getOutputJar().set(decompiledSrgLocation);
+                    task.getPatches().set(userdevDir("conf/minecraft_ff"));
+                    task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
+                });
 
         patchedSourcesLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_patched_minecraft-sources.jar");
         taskPatchDecompiledJar = project.getTasks().register("patchDecompiledJar", PatchSourcesTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskDecompileSrgJar);
-            task.getInputJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getOutputJar));
+            task.dependsOn(taskCleanupDecompSrgJar);
+            task.getInputJar().set(taskCleanupDecompSrgJar.flatMap(CleanupDecompiledJarTask::getOutputJar));
             task.getOutputJar().set(patchedSourcesLocation);
             task.getMaxFuzziness().set(1);
         });
