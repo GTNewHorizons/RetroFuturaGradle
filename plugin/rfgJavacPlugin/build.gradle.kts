@@ -46,8 +46,12 @@ dependencies {
           javaToolchains.compilerFor(java.toolchain).map { tc ->
             File(tc.executablePath.asFile.parentFile.parentFile, "lib/tools.jar")
           }))
-  shadow("org.scala-lang:scala-library:2.11.1")
-  shadow("org.scala-lang:scala-compiler:2.11.5")
+  // These are provided by the scala compiler that runs with the plugin enabled
+  compileOnly("org.scala-lang:scala-library:2.11.1")
+  compileOnly("org.scala-lang:scala-compiler:2.11.5")
+  // Allow gradle to detect Scala version when running tests
+  testRuntimeOnly("org.scala-lang:scala-library:2.11.1")
+  testRuntimeOnly("org.scala-lang:scala-compiler:2.11.5")
 
   implementation("org.apache.commons:commons-lang3:3.12.0")
   implementation("net.bytebuddy:byte-buddy:1.12.20")
@@ -151,7 +155,7 @@ tasks.register<ScalaCompile>("runTestWithScala") {
   dependsOn(analysisFiles)
   options.isIncremental = false
 
-  classpath = configurations.shadow.get()
+  classpath = configurations.testRuntimeClasspath.get()
   scalaCompilerPlugins = project.tasks.named("shadowJar").get().outputs.files
   // Can't escape spaces, so use URL-encoding
   val replacementsFile = project.file("test/replacements.properties").toURI()
