@@ -29,6 +29,7 @@ import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
@@ -699,6 +700,18 @@ public class MCPTasks {
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
             task.getMainClass().set("cpw.mods.fml.relauncher.ServerLaunchWrapper");
+        });
+
+        // Mostly for compat with FG
+        project.getTasks().register("setupCIWorkspace", DefaultTask.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription("Prepares everything for mod building on a CI server");
+            task.dependsOn(taskPackagePatchedMc, taskPackageMcLauncher);
+        });
+        project.getTasks().register("setupDecompWorkspace", DefaultTask.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription("Prepares everything for mod building in a dev environment");
+            task.dependsOn(taskPackagePatchedMc, taskPackageMcLauncher, mcTasks.getTaskDownloadVanillaAssets());
         });
     }
 
