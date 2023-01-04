@@ -53,7 +53,7 @@ public abstract class MinecraftExtension {
     // Vanilla configs
 
     /**
-     * MC version to download&use, only 1.7.10 is supported now and it is the default.
+     * MC version to download and use, only 1.7.10 is supported now and it is the default.
      */
     public abstract Property<String> getMcVersion();
 

@@ -17,12 +17,13 @@ In order of operations (some of them can execute in parallel):
  - `generateForgeSrgMappings` - generates remapping configuration files at `build/rfg/forge_srg`
  - `mergeVanillaSidedJars` - merges the client&server, adding appropriate `@SideOnly` annotations into `build/rfg/vanilla_merged_minecraft.jar`
  - `deobfuscateMergedJarToSrg` - deobfuscates the merged jar with the SRG naming scheme (`func_12345_a`) into `build/rfg/srg_merged_minecraft.jar`, it also applies forge&fml access transformers if forge/fml are enabled
- - `decompileSrgJar`:
+ - `decompileSrgJar` and `cleanupDecompSrgJar`:
    - runs FernFlower on the SRG jar to generate a source jar at `build/tmp/decompileSrgJar/ff-out/mc.jar`
    - applies post-FF cleanup regexes (in the `FFPatcher` class) from the MCP tree at `build/tmp/decompileSrgJar/ffpatcher.jar`
    - applies `.patch` files from MCP at `build/tmp/decompileSrgJar/mcppatched.jar`
    - runs final cleanup tasks (AStyle autoformat, GL constant fixer, comment cleanup) at `build/tmp/decompileSrgJar/mcpcleanup.jar`
    - saves the output at `build/rfg/srg_merged_minecraft-sources.jar`
+   - keeps a cache of `SHA256(fernflower.jar)-SHA256(srg_merged_minecraft.jar).jar` outputs at `~/.gradle/caches/retro_futura_gradle/fernflower-cache/`
  - `patchDecompiledJar` - patches the decompiled jar with Forge/FML patches (when enabled) at `build/rfg/srg_patched_minecraft-sources.jar`
  - `remapDecompiledJar` - finds all SRG names in the decompiled patched jar and replaces them with MCP names, also adds javadocs, output at `build/rfg/mcp_patched_minecraft-sources.jar`
  - `decompressDecompiledSources` - decompresses the patched sources into `build/rfg/minecraft-src`

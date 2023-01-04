@@ -181,6 +181,8 @@ publishing {
   publications {
     create<MavenPublication>("rfgJavacPlugin") {
       shadow.component(this)
+      artifact(tasks.named("sourcesJar"))
+      artifact(tasks.named("javadocJar"))
       artifactId = "rfg-javac-plugin"
     }
   }

@@ -172,6 +172,9 @@ java {
       }
     }
   }
+
+  withSourcesJar()
+  withJavadocJar()
 }
 
 // Relocate all dependencies into a subpackage
@@ -217,9 +220,15 @@ tasks.named<Test>("test") {
   useJUnitPlatform()
 }
 
+tasks.named<Jar>("javadocJar").configure { from(fileTree("..").include("docs/*")) }
+
 publishing {
   publications {
-    create<MavenPublication>("retrofuturagradle") { shadow.component(this) }
+    create<MavenPublication>("retrofuturagradle") {
+      shadow.component(this)
+      artifact(tasks.named("sourcesJar"))
+      artifact(tasks.named("javadocJar"))
+    }
     // From org.gradle.plugin.devel.plugins.MavenPluginPublishPlugin.createMavenMarkerPublication
     for (declaration in gradlePlugin.plugins) {
       create<MavenPublication>(declaration.name + "PluginMarkerMaven") {
