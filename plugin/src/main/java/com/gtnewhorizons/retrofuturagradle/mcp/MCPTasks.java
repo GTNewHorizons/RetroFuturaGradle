@@ -486,7 +486,11 @@ public class MCPTasks {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the deobfuscated client with your mod");
-            task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "jar");
+            task.dependsOn(
+                    launcherSources.getClassesTaskName(),
+                    mcTasks.getTaskDownloadVanillaAssets(),
+                    taskPackagePatchedMc,
+                    "jar");
 
             task.classpath(project.getTasks().named("jar"));
             task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
