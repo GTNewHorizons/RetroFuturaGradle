@@ -17,16 +17,15 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -47,8 +46,8 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
-    private Map<String, byte[]> loadedResources = new ConcurrentHashMap<>();
-    private Map<String, String> loadedSources = new ConcurrentHashMap<>();
+    private Map<String, byte[]> loadedResources = new HashMap<>();
+    private Map<String, String> loadedSources = new HashMap<>();
 
     @InputDirectory
     @PathSensitive(PathSensitivity.RELATIVE)
@@ -62,16 +61,6 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
 
     @TaskAction
     public void doCleanup() throws IOException {
-        {
-            try {
-                System.err.printf(
-                        "Debug in; tid=%d:%s%n",
-                        Thread.currentThread().getId(), Thread.currentThread().getName());
-                System.in.read();
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
-        }
         taskTempDir = getTemporaryDir();
         loadedResources.clear();
         loadedSources.clear();
@@ -101,10 +90,17 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
     private File loadAndApplyFfPatches(File decompiled) throws IOException {
         Utilities.loadMemoryJar(decompiled, loadedResources, loadedSources);
 
-        for (Map.Entry<String, String> entry : loadedSources.entrySet()) {
-            final String patchedSrc = FFPatcher.processFile(entry.getKey(), entry.getValue(), true);
-            entry.setValue(patchedSrc);
-        }
+        loadedSources = loadedSources.entrySet().parallelStream()
+                .map(entry -> {
+                    try {
+                        return MutablePair.of(
+                                entry.getKey(), FFPatcher.processFile(entry.getKey(), entry.getValue(), true));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
+
         return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "ffpatcher.jar"));
     }
 
@@ -158,46 +154,52 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
     private static final Pattern AFTER_RULE =
             Pattern.compile("(?m)(?:\\r\\n|\\r|\\n)((?:\\r\\n|\\r|\\n)[ \\t]+(case|default))");
 
+    private static final ThreadLocal<ASFormatter> formatters = new ThreadLocal<>();
+
     private File applyMcpCleanup() throws IOException {
-        ASFormatter formatter = new ASFormatter();
-        OptParser parser = new OptParser(formatter);
-        parser.parseOptionFile(getAstyleConfig().get().getAsFile());
+        final File astyleOptions = getAstyleConfig().get().getAsFile();
 
         final GLConstantFixer glFixer = new GLConstantFixer();
-        final List<String> files = new ArrayList<>(loadedSources.keySet());
-        Collections.sort(files);
 
-        for (String filePath : files) {
-            String text = loadedSources.get(filePath);
+        loadedSources = loadedSources.entrySet().parallelStream()
+                .map(entry -> {
+                    try {
+                        final String filePath = entry.getKey();
+                        String text = entry.getValue();
+                        ASFormatter formatter = formatters.get();
 
-            getLogger().debug("Processing file: " + filePath);
+                        if (formatter == null) {
+                            formatter = new ASFormatter();
+                            OptParser parser = new OptParser(formatter);
+                            parser.parseOptionFile(astyleOptions);
+                            formatters.set(formatter);
+                        }
 
-            getLogger().debug("processing comments");
-            text = McpCleanup.stripComments(text);
+                        text = McpCleanup.stripComments(text);
 
-            getLogger().debug("fixing imports comments");
-            text = McpCleanup.fixImports(text);
+                        text = McpCleanup.fixImports(text);
 
-            getLogger().debug("various other cleanup");
-            text = McpCleanup.cleanup(text);
+                        text = McpCleanup.cleanup(text);
 
-            getLogger().debug("fixing OGL constants");
-            text = glFixer.fixOGL(text);
+                        text = glFixer.fixOGL(text);
 
-            getLogger().debug("formatting source");
-            try (Reader reader = new StringReader(text);
-                    StringWriter writer = new StringWriter()) {
-                formatter.format(reader, writer);
-                text = writer.toString();
-            }
+                        try (Reader reader = new StringReader(text);
+                                StringWriter writer = new StringWriter()) {
+                            formatter.format(reader, writer);
+                            text = writer.toString();
+                        }
 
-            getLogger().debug("applying FML transformations");
-            text = BEFORE_RULE.matcher(text).replaceAll("$1");
-            text = AFTER_RULE.matcher(text).replaceAll("$1");
-            text = FmlCleanup.renameClass(text);
+                        text = BEFORE_RULE.matcher(text).replaceAll("$1");
+                        text = AFTER_RULE.matcher(text).replaceAll("$1");
+                        text = FmlCleanup.renameClass(text);
 
-            loadedSources.put(filePath, text);
-        }
+                        return MutablePair.of(filePath, text);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
+
         return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcpcleanup.jar"));
     }
 
