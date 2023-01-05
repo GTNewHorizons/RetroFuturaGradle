@@ -621,6 +621,7 @@ public class MCPTasks {
                             }
                             newArtifacts.add(artifact);
                         }
+                        mDep.setTransitive(false);
                         mDep.getArtifacts().clear();
                         mDep.getArtifacts().addAll(newArtifacts);
                         depset.add(mDep);
