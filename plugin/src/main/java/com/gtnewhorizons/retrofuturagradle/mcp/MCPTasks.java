@@ -585,11 +585,17 @@ public class MCPTasks {
                 task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
                 task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                 task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
-                task.getRecompMcJar().set(taskPackageMcLauncher.flatMap(Jar::getArchiveFile));
+                task.getRecompMcJar().set(taskPackagePatchedMc.flatMap(Jar::getArchiveFile));
                 task.getReferenceClasspath()
                         .from(project.getConfigurations()
                                 .getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME)
                                 .fileCollection(Specs.SATISFIES_ALL));
+                final ConfigurableFileCollection refCp = task.getReferenceClasspath();
+                refCp.from(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
+                refCp.from(project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
+                refCp.from(taskPackageMcLauncher);
+                refCp.from(taskPackagePatchedMc);
+                refCp.from(patchedConfiguration);
             });
         });
 
