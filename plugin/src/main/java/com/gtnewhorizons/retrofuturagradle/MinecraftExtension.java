@@ -7,6 +7,7 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.jvm.toolchain.JavaCompiler;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaLauncher;
@@ -39,6 +40,7 @@ public abstract class MinecraftExtension {
         getMcpMappingVersion().convention("12");
         getUseForgeEmbeddedMappings().convention(true);
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
+        getGroupsToExcludeFromAutoReobfMapping().set(Lists.newArrayList("curse.maven"));
 
         getUsesFml().convention(true);
         getUsesForge().convention(true);
@@ -132,6 +134,13 @@ public abstract class MinecraftExtension {
      * Glob patterns on which to run tag replacement, deprecated as the implementation is very hacky, implemented for compat with FG buildscripts
      */
     public abstract ListProperty<String> getTagReplacementFiles();
+
+    /**
+     * Dependency groups to exclude from automatic remapping from dev to reobf jars.
+     * Add reobfed dependencies manually to reobfJarConfiguration as needed
+     * Defaults to "curse.maven"
+     */
+    public abstract SetProperty<String> getGroupsToExcludeFromAutoReobfMapping();
 
     public Provider<JavaLauncher> getToolchainLauncher() {
         JavaToolchainService jts =

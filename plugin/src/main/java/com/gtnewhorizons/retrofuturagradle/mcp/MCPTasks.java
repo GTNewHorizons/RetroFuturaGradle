@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
@@ -603,9 +604,14 @@ public class MCPTasks {
             reobfJarConfiguration.withDependencies(depset -> {
                 final Configuration parent =
                         project.getConfigurations().getByName(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME);
+                final Set<String> excludedGroups =
+                        mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
                 for (Dependency dep : parent.getAllDependencies()) {
                     if (dep instanceof ModuleDependency) {
                         ModuleDependency mDep = (ModuleDependency) dep.copy();
+                        if (excludedGroups.contains(mDep.getGroup())) {
+                            continue;
+                        }
                         // The artifacts only exist for dependencies with a classifier (eg :dev)
                         LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
                         for (DependencyArtifact artifact : mDep.getArtifacts()) {
