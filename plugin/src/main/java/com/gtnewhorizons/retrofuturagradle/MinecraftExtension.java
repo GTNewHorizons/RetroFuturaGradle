@@ -91,7 +91,7 @@ public abstract class MinecraftExtension {
     public abstract Property<String> getMcpMappingVersion();
 
     /**
-     * Whether to use the mappings embedded in Forge for methods&fields (params are taken from MCP because Forge doesn't have any)
+     * Whether to use the mappings embedded in Forge for methods and fields (params are taken from MCP because Forge doesn't have any)
      * Default: true.
      */
     public abstract Property<Boolean> getUseForgeEmbeddedMappings();
