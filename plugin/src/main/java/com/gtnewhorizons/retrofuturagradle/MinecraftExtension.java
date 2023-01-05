@@ -37,6 +37,7 @@ public abstract class MinecraftExtension {
 
         getMcpMappingChannel().convention("stable");
         getMcpMappingVersion().convention("12");
+        getUseForgeEmbeddedMappings().convention(true);
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
 
         getUsesFml().convention(true);
@@ -88,6 +89,12 @@ public abstract class MinecraftExtension {
      * From <a href="https://maven.minecraftforge.net/de/oceanlabs/mcp/versions.json">the MCP versions.json file</a>
      */
     public abstract Property<String> getMcpMappingVersion();
+
+    /**
+     * Whether to use the mappings embedded in Forge for methods&fields (params are taken from MCP because Forge doesn't have any)
+     * Default: true.
+     */
+    public abstract Property<Boolean> getUseForgeEmbeddedMappings();
 
     /**
      * Fernflower args, default is "-din=1","-rbr=0","-dgs=1","-asc=1","-log=ERROR"

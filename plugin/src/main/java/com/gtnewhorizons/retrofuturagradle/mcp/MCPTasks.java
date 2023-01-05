@@ -298,12 +298,19 @@ public class MCPTasks {
                 FileUtils.getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskPatchDecompiledJar);
+            task.dependsOn(taskPatchDecompiledJar, taskExtractForgeUserdev, taskExtractMcpData);
             task.getInputJar().set(taskPatchDecompiledJar.flatMap(PatchSourcesTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
-            task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
-            task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
-            task.getParamCsv().set(FileUtils.getFile(mcpDataLocation, "params.csv"));
+            task.getFieldCsv()
+                    .set(mcExt.getUseForgeEmbeddedMappings()
+                            .flatMap(useForge ->
+                                    useForge.booleanValue() ? userdevFile("conf/fields.csv") : mcpFile("fields.csv")));
+            task.getMethodCsv()
+                    .set(mcExt.getUseForgeEmbeddedMappings()
+                            .flatMap(useForge -> useForge.booleanValue()
+                                    ? userdevFile("conf/methods.csv")
+                                    : mcpFile("methods.csv")));
+            task.getParamCsv().set(mcpFile("params.csv"));
             task.getAddJavadocs().set(true);
         });
 
@@ -562,8 +569,8 @@ public class MCPTasks {
                 task.setInputJarFromTask(subjectTask);
                 task.getMcVersion().set(mcExt.getMcVersion());
                 task.getSrg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMcpToSrg));
-                task.getFieldCsv().set(mcpFile("fields.csv"));
-                task.getMethodCsv().set(mcpFile("methods.csv"));
+                task.getFieldCsv().set(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getFieldCsv));
+                task.getMethodCsv().set(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getMethodCsv));
                 task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                 task.getRecompMcJar().set(taskPackageMcLauncher.flatMap(Jar::getArchiveFile));
                 task.getReferenceClasspath()
