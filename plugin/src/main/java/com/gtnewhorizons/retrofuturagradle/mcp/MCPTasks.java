@@ -223,8 +223,16 @@ public class MCPTasks {
                     // inputs
                     task.getInputSrg().set(userdevFile("conf/packaged.srg"));
                     task.getInputExc().set(userdevFile("conf/packaged.exc"));
-                    task.getMethodsCsv().set(mcpFile("methods.csv"));
-                    task.getFieldsCsv().set(mcpFile("fields.csv"));
+                    task.getFieldsCsv()
+                            .set(mcExt.getUseForgeEmbeddedMappings()
+                                    .flatMap(useForge -> useForge.booleanValue()
+                                            ? userdevFile("conf/fields.csv")
+                                            : mcpFile("fields.csv")));
+                    task.getMethodsCsv()
+                            .set(mcExt.getUseForgeEmbeddedMappings()
+                                    .flatMap(useForge -> useForge.booleanValue()
+                                            ? userdevFile("conf/methods.csv")
+                                            : mcpFile("methods.csv")));
                     // outputs
                     task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
                     task.getNotchToMcp().set(FileUtils.getFile(forgeSrgLocation, "notch-mcp.srg"));
@@ -301,15 +309,8 @@ public class MCPTasks {
             task.dependsOn(taskPatchDecompiledJar, taskExtractForgeUserdev, taskExtractMcpData);
             task.getInputJar().set(taskPatchDecompiledJar.flatMap(PatchSourcesTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
-            task.getFieldCsv()
-                    .set(mcExt.getUseForgeEmbeddedMappings()
-                            .flatMap(useForge ->
-                                    useForge.booleanValue() ? userdevFile("conf/fields.csv") : mcpFile("fields.csv")));
-            task.getMethodCsv()
-                    .set(mcExt.getUseForgeEmbeddedMappings()
-                            .flatMap(useForge -> useForge.booleanValue()
-                                    ? userdevFile("conf/methods.csv")
-                                    : mcpFile("methods.csv")));
+            task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
+            task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
             task.getParamCsv().set(mcpFile("params.csv"));
             task.getAddJavadocs().set(true);
         });
@@ -435,7 +436,11 @@ public class MCPTasks {
                                     .flatMap(GenSrgMappingsTask::getMcpToNotch)
                                     .map(RegularFile::getAsFile)
                                     .map(File::getPath));
-                    replacements.put("@@CSVDIR@@", mcpDataLocation.getPath());
+                    replacements.put(
+                            "@@CSVDIR@@",
+                            taskGenerateForgeSrgMappings
+                                    .flatMap(GenSrgMappingsTask::getFieldsCsv)
+                                    .map(f -> f.getAsFile().getParentFile().getPath()));
                     replacements.put("@@CLIENTTWEAKER@@", "cpw.mods.fml.common.launcher.FMLTweaker");
                     replacements.put("@@SERVERTWEAKER@@", "cpw.mods.fml.common.launcher.FMLServerTweaker");
                     replacements.put("@@BOUNCERCLIENT@@", "net.minecraft.launchwrapper.Launch");
@@ -569,8 +574,8 @@ public class MCPTasks {
                 task.setInputJarFromTask(subjectTask);
                 task.getMcVersion().set(mcExt.getMcVersion());
                 task.getSrg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMcpToSrg));
-                task.getFieldCsv().set(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getFieldCsv));
-                task.getMethodCsv().set(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getMethodCsv));
+                task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
+                task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                 task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                 task.getRecompMcJar().set(taskPackageMcLauncher.flatMap(Jar::getArchiveFile));
                 task.getReferenceClasspath()
@@ -667,8 +672,8 @@ public class MCPTasks {
                     task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                     task.getInputJar().set(taskInstallBinaryPatchedVersion.flatMap(BinaryPatchJarTask::getOutputJar));
                     task.getOutputJar().set(srgBinaryPatchedMcLocation);
-                    task.getFieldCsv().set(FileUtils.getFile(mcpDataLocation, "fields.csv"));
-                    task.getMethodCsv().set(FileUtils.getFile(mcpDataLocation, "methods.csv"));
+                    task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
+                    task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
