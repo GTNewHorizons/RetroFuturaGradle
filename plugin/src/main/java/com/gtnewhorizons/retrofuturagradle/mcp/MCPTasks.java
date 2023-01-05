@@ -737,21 +737,36 @@ public class MCPTasks {
                 .attribute(
                         ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(project.getObjects()));
 
+        final File obfRunFolder = new File(mcTasks.getRunDirectory(), "obfuscated/");
+        final TaskProvider<Copy> taskPrepareObfMods = project.getTasks()
+                .register("prepareObfModsFolder", Copy.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskPackageMcLauncher, taskPackagePatchedMc, taskReobfJar);
+
+                    task.from(taskReobfJar);
+                    task.from(obfRuntimeClasspathConfiguration);
+
+                    task.into(new File(obfRunFolder, "mods/"));
+                });
+
         taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Side.CLIENT);
         taskRunObfClient.configure(task -> {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the Forge obfuscated client with your mod");
-            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), mcTasks.getTaskDownloadVanillaAssets(), taskReobfJar);
+            task.dependsOn(
+                    mcTasks.getTaskDownloadVanillaJars(),
+                    mcTasks.getTaskDownloadVanillaAssets(),
+                    taskReobfJar,
+                    taskPrepareObfMods);
 
+            task.setWorkingDir(obfRunFolder);
             task.systemProperty("retrofuturagradle.reobfDev", true);
-            task.classpath(project.getTasks().named("reobfJar"));
-            task.classpath(obfRuntimeClasspathConfiguration);
-            task.classpath(taskPackageMcLauncher);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaClientLocation());
             task.classpath(patchedConfiguration);
-            task.getMainClass().set("GradleStart");
+            task.getMainClass().set("net.minecraft.launchwrapper.Launch");
+            task.getTweakClasses().add("cpw.mods.fml.common.launcher.FMLTweaker");
         });
 
         taskRunObfServer = project.getTasks().register("runObfServer", RunMinecraftTask.class, Side.SERVER);
@@ -759,16 +774,15 @@ public class MCPTasks {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the Forge obfuscated server with your mod");
-            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar);
+            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar, taskPrepareObfMods);
 
+            task.setWorkingDir(obfRunFolder);
             task.systemProperty("retrofuturagradle.reobfDev", true);
             task.classpath(project.getTasks().named("reobfJar"));
-            task.classpath(obfRuntimeClasspathConfiguration);
-            task.classpath(taskPackageMcLauncher);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
-            task.getMainClass().set("GradleStartServer");
+            task.getMainClass().set("cpw.mods.fml.relauncher.ServerLaunchWrapper");
         });
 
         // Mostly for compat with FG

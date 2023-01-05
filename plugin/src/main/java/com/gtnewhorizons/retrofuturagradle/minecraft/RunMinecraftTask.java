@@ -107,7 +107,7 @@ public abstract class RunMinecraftTask extends JavaExec {
                         "--version",
                         mcExt.getMcVersion().get(),
                         "--gameDir",
-                        mcTasks.getRunDirectory().getAbsolutePath(),
+                        getWorkingDir(),
                         "--assetsDir",
                         mcTasks.getVanillaAssetsLocation().getAbsolutePath(),
                         "--assetIndex",
@@ -119,7 +119,7 @@ public abstract class RunMinecraftTask extends JavaExec {
                         "--accessToken",
                         getAccessToken().get());
             } else {
-                final File eula = new File(mcTasks.getRunDirectory(), "eula.txt");
+                final File eula = new File(getWorkingDir(), "eula.txt");
                 if (!eula.exists()) {
                     getLogger()
                             .warn(
