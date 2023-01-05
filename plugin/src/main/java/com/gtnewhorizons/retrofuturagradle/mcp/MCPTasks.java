@@ -7,7 +7,6 @@ import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
-import com.gtnewhorizons.retrofuturagradle.util.ReclassifiedDependencyArtifact;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
@@ -17,8 +16,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +40,8 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencyArtifact;
 import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.artifacts.ResolvedArtifact;
+import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
@@ -50,6 +54,7 @@ import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.internal.artifacts.dependencies.DefaultDependencyArtifact;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -159,6 +164,8 @@ public class MCPTasks {
         this.project = project;
         this.mcExt = mcExt;
         this.mcTasks = mcTasks;
+
+        final ObjectFactory objectFactory = project.getObjects();
 
         project.afterEvaluate(p -> this.afterEvaluate());
 
@@ -601,36 +608,66 @@ public class MCPTasks {
             reobfJarConfiguration.setCanBeResolved(false);
             reobfJarConfiguration.setDescription("Reobfuscated jar");
 
-            reobfJarConfiguration.withDependencies(depset -> {
-                final Configuration parent =
+            project.afterEvaluate(p -> {
+                final DependencyHandler deps = project.getDependencies();
+                final Configuration parentUnresolved =
                         project.getConfigurations().getByName(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME);
+                final Configuration parentResolved = project.getConfigurations()
+                        .detachedConfiguration(
+                                parentUnresolved.getAllDependencies().toArray(new Dependency[0]));
+                final AttributeContainer parentAttrs = parentResolved.getAttributes();
+                parentAttrs.attribute(
+                        ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getMcp(objectFactory));
+                parentAttrs.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                parentAttrs.attribute(
+                        Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                parentAttrs.attribute(
+                        Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+
+                parentResolved.setCanBeConsumed(false);
+                parentResolved.setCanBeResolved(true);
+                parentResolved.resolve();
                 final Set<String> excludedGroups =
                         mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
-                for (Dependency dep : parent.getAllDependencies()) {
-                    if (dep instanceof ModuleDependency) {
-                        ModuleDependency mDep = (ModuleDependency) dep.copy();
-                        if (excludedGroups.contains(mDep.getGroup())) {
-                            continue;
-                        }
-                        // The artifacts only exist for dependencies with a classifier (eg :dev)
-                        LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
-                        for (DependencyArtifact artifact : mDep.getArtifacts()) {
-                            final String classifier = artifact.getClassifier();
-                            if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
-                                artifact = new ReclassifiedDependencyArtifact(artifact, "");
-                            }
-                            newArtifacts.add(artifact);
-                        }
-                        mDep.setTransitive(false);
-                        mDep.getArtifacts().clear();
-                        mDep.getArtifacts().addAll(newArtifacts);
-                        depset.add(mDep);
+                final HashSet<ResolvedDependency> visited = new HashSet<>();
+                final Deque<ResolvedDependency> toVisit = new ArrayDeque<>(64);
+                toVisit.addAll(parentResolved.getResolvedConfiguration().getFirstLevelModuleDependencies());
+                while (!toVisit.isEmpty()) {
+                    final ResolvedDependency dep = toVisit.removeFirst();
+                    if (!visited.add(dep)
+                            || dep.getModuleGroup() == null
+                            || dep.getModuleGroup().isEmpty()) {
+                        continue;
                     }
+                    toVisit.addAll(dep.getChildren());
+
+                    ModuleDependency mDep = (ModuleDependency) deps.create(ImmutableMap.of(
+                            "group",
+                            dep.getModuleGroup(),
+                            "name",
+                            dep.getModuleName(),
+                            "version",
+                            dep.getModuleVersion()));
+                    if (excludedGroups.contains(mDep.getGroup())) {
+                        continue;
+                    }
+                    // The artifacts only exist for dependencies with a classifier (eg :dev)
+                    LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
+                    for (ResolvedArtifact artifact : dep.getModuleArtifacts()) {
+                        String classifier = artifact.getClassifier();
+                        if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
+                            classifier = "";
+                        }
+                        newArtifacts.add(new DefaultDependencyArtifact(
+                                artifact.getName(), artifact.getType(), artifact.getExtension(), classifier, null));
+                    }
+                    mDep.setTransitive(false);
+                    mDep.getArtifacts().clear();
+                    mDep.getArtifacts().addAll(newArtifacts);
+                    reobfJarConfiguration.getDependencies().add(mDep);
                 }
             });
-            reobfJarConfiguration.extendsFrom();
             final AttributeContainer attributes = reobfJarConfiguration.getAttributes();
-            final ObjectFactory objectFactory = project.getObjects();
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
             attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
