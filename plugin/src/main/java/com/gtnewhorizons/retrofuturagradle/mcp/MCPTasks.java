@@ -387,6 +387,7 @@ public class MCPTasks {
         taskPackagePatchedMc = project.getTasks().register("packagePatchedMc", Jar.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources, patchedMcSources.getClassesTaskName());
+            task.getArchiveVersion().set(mcExt.getMcVersion());
             task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLocation.getParentFile());
             task.from(patchedMcSources.getOutput());
@@ -473,6 +474,7 @@ public class MCPTasks {
         taskPackageMcLauncher = project.getTasks().register("packageMcLauncher", Jar.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());
+            task.getArchiveVersion().set(mcExt.getMcVersion());
             task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLauncherLocation.getParentFile());
 
