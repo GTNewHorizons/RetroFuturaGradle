@@ -8,7 +8,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -92,33 +95,55 @@ public abstract class RunMinecraftTask extends JavaExec {
         doFirst("setup late-binding arguments", this::setupLateArgs);
     }
 
-    private void setupLateArgs(Task task) {
-        try {
-            Project project = getProject();
+    public List<String> calculateArgs(Project project) {
+        ArrayList<String> args = new ArrayList<>();
+        if (side == Side.CLIENT) {
             MinecraftExtension mcExt =
                     Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
             MinecraftTasks mcTasks =
                     Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
+            args.addAll(Arrays.asList(
+                    "--username",
+                    getUsername().get(),
+                    "--version",
+                    mcExt.getMcVersion().get(),
+                    "--gameDir",
+                    getWorkingDir().getAbsolutePath(),
+                    "--assetsDir",
+                    mcTasks.getVanillaAssetsLocation().getAbsolutePath(),
+                    "--assetIndex",
+                    mcExt.getMcVersion().get(),
+                    "--uuid",
+                    getUserUUID().get().toString(),
+                    "--userProperties",
+                    "{}",
+                    "--accessToken",
+                    getAccessToken().get()));
+        }
+        for (String tweakClass : getTweakClasses().get()) {
+            args.add("--tweakClass");
+            args.add(tweakClass);
+        }
+        args.addAll(getExtraArgs().get());
+        return args;
+    }
+
+    public List<String> calculateJvmArgs(Project project) {
+        MinecraftExtension mcExt =
+                Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
+        ArrayList<String> args = new ArrayList<>();
+        args.addAll(getExtraJvmArgs().get());
+        args.addAll(mcExt.getExtraRunJvmArguments().get());
+        return args;
+    }
+
+    private void setupLateArgs(Task task) {
+        try {
+            Project project = getProject();
             FileUtils.forceMkdir(getWorkingDir());
-            if (side == Side.CLIENT) {
-                args(
-                        "--username",
-                        getUsername().get(),
-                        "--version",
-                        mcExt.getMcVersion().get(),
-                        "--gameDir",
-                        getWorkingDir(),
-                        "--assetsDir",
-                        mcTasks.getVanillaAssetsLocation().getAbsolutePath(),
-                        "--assetIndex",
-                        mcExt.getMcVersion().get(),
-                        "--uuid",
-                        getUserUUID().get().toString(),
-                        "--userProperties",
-                        "{}",
-                        "--accessToken",
-                        getAccessToken().get());
-            } else {
+            args(calculateArgs(project));
+            jvmArgs(calculateJvmArgs(project));
+            if (side == Side.SERVER) {
                 final File eula = new File(getWorkingDir(), "eula.txt");
                 if (!eula.exists()) {
                     getLogger()
@@ -137,12 +162,6 @@ public abstract class RunMinecraftTask extends JavaExec {
                     }
                 }
             }
-            jvmArgs(getExtraJvmArgs().get());
-            jvmArgs(mcExt.getExtraRunJvmArguments().get());
-            for (String tweakClass : getTweakClasses().get()) {
-                args("--tweakClass", tweakClass);
-            }
-            args(getExtraArgs().get());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
