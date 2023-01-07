@@ -40,7 +40,7 @@ public abstract class MinecraftExtension {
         getMcpMappingVersion().convention("12");
         getUseForgeEmbeddedMappings().convention(true);
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
-        getGroupsToExcludeFromAutoReobfMapping().set(Lists.newArrayList("curse.maven"));
+        getGroupsToExcludeFromAutoReobfMapping().set(Lists.newArrayList());
 
         getUsesFml().convention(true);
         getUsesForge().convention(true);
@@ -138,7 +138,6 @@ public abstract class MinecraftExtension {
     /**
      * Dependency groups to exclude from automatic remapping from dev to reobf jars.
      * Add reobfed dependencies manually to reobfJarConfiguration as needed
-     * Defaults to "curse.maven"
      */
     public abstract SetProperty<String> getGroupsToExcludeFromAutoReobfMapping();
 

@@ -50,6 +50,7 @@ import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
@@ -647,6 +648,9 @@ public class MCPTasks {
                             || dep.getModuleGroup().isEmpty()) {
                         continue;
                     }
+                    if (excludedGroups.contains(dep.getModuleGroup())) {
+                        continue;
+                    }
                     toVisit.addAll(dep.getChildren());
 
                     ModuleDependency mDep = (ModuleDependency) deps.create(ImmutableMap.of(
@@ -656,15 +660,15 @@ public class MCPTasks {
                             dep.getModuleName(),
                             "version",
                             dep.getModuleVersion()));
-                    if (excludedGroups.contains(mDep.getGroup())) {
-                        continue;
-                    }
                     // The artifacts only exist for dependencies with a classifier (eg :dev)
                     LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
                     for (ResolvedArtifact artifact : dep.getModuleArtifacts()) {
                         String classifier = artifact.getClassifier();
                         if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
                             classifier = "";
+                        }
+                        if ("api".equalsIgnoreCase(classifier)) {
+                            continue;
                         }
                         newArtifacts.add(new DefaultDependencyArtifact(
                                 artifact.getName(), artifact.getType(), artifact.getExtension(), classifier, null));
@@ -693,10 +697,7 @@ public class MCPTasks {
             SoftwareComponent javaComponent = project.getComponents().getByName("java");
             if (javaComponent instanceof AdhocComponentWithVariants) {
                 AdhocComponentWithVariants java = (AdhocComponentWithVariants) javaComponent;
-                java.addVariantsFromConfiguration(reobfJarConfiguration, cvd -> {
-                    cvd.mapToMavenScope("runtime");
-                    cvd.mapToOptional();
-                });
+                java.addVariantsFromConfiguration(reobfJarConfiguration, ConfigurationVariantDetails::skip);
             }
         }
 
@@ -749,6 +750,16 @@ public class MCPTasks {
                     task.from(obfRuntimeClasspathConfiguration);
 
                     task.into(new File(obfRunFolder, "mods/"));
+
+                    task.doFirst(t -> {
+                        final File obfModsFolder = task.getDestinationDir();
+                        final File[] children = obfModsFolder.listFiles();
+                        if (children != null) {
+                            for (final File child : children) {
+                                FileUtils.deleteQuietly(child);
+                            }
+                        }
+                    });
                 });
 
         taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Side.CLIENT);
