@@ -43,6 +43,7 @@ import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
@@ -694,10 +695,19 @@ public class MCPTasks {
             attributes.attribute(
                     ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(objectFactory));
             project.getArtifacts().add(reobfJarConfiguration.getName(), taskReobfJar);
+
+            final Configuration reobfElements = project.getConfigurations().create("reobfElements");
+            reobfElements.setCanBeResolved(false);
+            reobfElements.setCanBeConsumed(true);
+            reobfElements.getOutgoing().artifact(taskReobfJar);
+            attributes.keySet().forEach(attr -> reobfElements
+                    .getAttributes()
+                    .attribute((Attribute) attr, attributes.getAttribute(attr)));
+
             SoftwareComponent javaComponent = project.getComponents().getByName("java");
             if (javaComponent instanceof AdhocComponentWithVariants) {
                 AdhocComponentWithVariants java = (AdhocComponentWithVariants) javaComponent;
-                java.addVariantsFromConfiguration(reobfJarConfiguration, ConfigurationVariantDetails::skip);
+                java.addVariantsFromConfiguration(reobfElements, ConfigurationVariantDetails::mapToOptional);
             }
         }
 
