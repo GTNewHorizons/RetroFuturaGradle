@@ -359,13 +359,14 @@ public class MCPTasks {
             JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME
         }) {
             project.getConfigurations().getByName(configName).extendsFrom(this.patchedConfiguration);
+            project.getConfigurations().getByName(configName).extendsFrom(mcTasks.getLwjglModConfiguration());
         }
 
         final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
 
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
-            sourceSet.setCompileClasspath(patchedConfiguration);
+            sourceSet.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjglCompileMcConfiguration()));
             sourceSet.setRuntimeClasspath(patchedConfiguration);
             sourceSet.java(java -> java.setSrcDirs(project.files(new File(decompressedSourcesLocation, "java"))
                     .builtBy(taskDecompressDecompiledSources)));
@@ -787,6 +788,7 @@ public class MCPTasks {
             task.systemProperty("retrofuturagradle.reobfDev", true);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaClientLocation());
+            task.classpath(mcTasks.getLwjglModConfiguration());
             task.classpath(patchedConfiguration);
             task.getMainClass().set("net.minecraft.launchwrapper.Launch");
             task.getTweakClasses().add("cpw.mods.fml.common.launcher.FMLTweaker");
