@@ -1,7 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle.minecraft;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
@@ -32,7 +32,7 @@ public final class MinecraftTasks {
     private static final String TASK_GROUP_INTERNAL = "Internal Vanilla Minecraft";
     private static final String TASK_GROUP_USER = "Vanilla Minecraft";
     private final Project project;
-    private final MinecraftExtension mcExt;
+    private final IMinecraftyExtension mcExt;
 
     private final File allVersionsManifestLocation;
     private final TaskProvider<Download> taskDownloadLauncherAllVersionsManifest;
@@ -67,7 +67,7 @@ public final class MinecraftTasks {
     // LWJGL to run the mod with, used for hacking in lwjgl3 via asm transformers
     private final Configuration lwjglModConfiguration;
 
-    public MinecraftTasks(Project project, MinecraftExtension mcExt) {
+    public MinecraftTasks(Project project, IMinecraftyExtension mcExt) {
         this.project = project;
         this.mcExt = mcExt;
         allVersionsManifestLocation =

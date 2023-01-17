@@ -9,10 +9,8 @@ import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import cpw.mods.fml.relauncher.Side;
-import de.undercouch.gradle.tasks.download.Download;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -23,14 +21,10 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.JavaVersion;
@@ -76,26 +70,11 @@ import org.gradle.language.base.plugins.LifecycleBasePlugin;
 /**
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
  */
-public class MCPTasks {
-    private static final String TASK_GROUP_INTERNAL = "Internal Modded Minecraft";
-    private static final String TASK_GROUP_USER = "Modded Minecraft";
-    public static final String RFG_DIR = "rfg";
-    public static final String SOURCE_SET_PATCHED_MC = "patchedMc";
-    public static final String SOURCE_SET_LAUNCHER = "mcLauncher";
+public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
-    private final Project project;
-    private final MinecraftExtension mcExt;
-    private final MinecraftTasks mcTasks;
-
-    private final Configuration mcpMappingDataConfiguration;
     private final Configuration forgeUserdevConfiguration;
     private final Configuration forgeUniversalConfiguration;
 
-    private final File fernflowerLocation;
-    private final TaskProvider<Download> taskDownloadFernflower;
-
-    private final File mcpDataLocation;
-    private final TaskProvider<Copy> taskExtractMcpData;
     private final File forgeUserdevLocation;
     private final TaskProvider<Copy> taskExtractForgeUserdev;
     private final File forgeSrgLocation;
@@ -147,11 +126,6 @@ public class MCPTasks {
     private final SourceSet injectedSourceSet;
     private final File injectedSourcesLocation;
 
-    public Provider<RegularFile> mcpFile(String path) {
-        return project.getLayout()
-                .file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
-    }
-
     public Provider<RegularFile> userdevFile(String path) {
         return project.getLayout()
                 .file(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
@@ -163,58 +137,18 @@ public class MCPTasks {
     }
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
-        this.project = project;
-        this.mcExt = mcExt;
-        this.mcTasks = mcTasks;
+        super(project, mcExt, mcTasks);
+
+        forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
+        forgeUserdevConfiguration.setCanBeConsumed(false);
+        forgeUniversalConfiguration = project.getConfigurations().create("forgeUniversal");
+        forgeUniversalConfiguration.setCanBeConsumed(false);
 
         final ObjectFactory objectFactory = project.getObjects();
 
         project.afterEvaluate(p -> this.afterEvaluate());
 
-        mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
-        mcpMappingDataConfiguration.setCanBeConsumed(false);
-        forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
-        forgeUserdevConfiguration.setCanBeConsumed(false);
-        forgeUniversalConfiguration = project.getConfigurations().create("forgeUniversal");
-        forgeUniversalConfiguration.setCanBeConsumed(false);
         deobfuscationATs = project.getObjects().fileCollection();
-
-        final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
-        fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
-        taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
-            task.setGroup(TASK_GROUP_INTERNAL);
-            task.src(Constants.URL_FERNFLOWER);
-            task.onlyIf(t -> !fernflowerLocation.exists());
-            task.overwrite(false);
-            task.onlyIfModified(true);
-            task.useETag(true);
-            task.dest(fernflowerDownloadLocation);
-            task.doLast(_t -> {
-                try (final FileInputStream fis = new FileInputStream(fernflowerDownloadLocation);
-                        final ZipInputStream zis = new ZipInputStream(fis);
-                        final FileOutputStream fos = new FileOutputStream(fernflowerLocation)) {
-                    ZipEntry entry;
-                    while ((entry = zis.getNextEntry()) != null) {
-                        if (entry.getName().toLowerCase(Locale.ROOT).endsWith("fernflower.jar")) {
-                            IOUtils.copy(zis, fos);
-                            break;
-                        }
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            task.getOutputs().file(fernflowerLocation);
-        });
-
-        mcpDataLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "data");
-        taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
-            task.setGroup(TASK_GROUP_INTERNAL);
-            task.from(project.provider(() -> project.zipTree(getMcpMappingDataConfiguration()
-                    .fileCollection(Specs.SATISFIES_ALL)
-                    .getSingleFile())));
-            task.into(mcpDataLocation);
-        });
 
         forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "userdev");
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
@@ -991,28 +925,8 @@ public class MCPTasks {
         }
     }
 
-    public Configuration getMcpMappingDataConfiguration() {
-        return mcpMappingDataConfiguration;
-    }
-
     public Configuration getForgeUserdevConfiguration() {
         return forgeUserdevConfiguration;
-    }
-
-    public File getFernflowerLocation() {
-        return fernflowerLocation;
-    }
-
-    public TaskProvider<Download> getTaskDownloadFernflower() {
-        return taskDownloadFernflower;
-    }
-
-    public File getMcpDataLocation() {
-        return mcpDataLocation;
-    }
-
-    public TaskProvider<Copy> getTaskExtractMcpData() {
-        return taskExtractMcpData;
     }
 
     public File getForgeUserdevLocation() {

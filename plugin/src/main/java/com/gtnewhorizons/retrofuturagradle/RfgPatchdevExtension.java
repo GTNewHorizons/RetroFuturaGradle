@@ -7,35 +7,21 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.jvm.toolchain.JavaCompiler;
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 
 /**
- * Parameter block for the `minecraft {...}` Gradle script extension
+ * Parameter block for the `rfgPatchDev {...}` Gradle script extension
  */
-public abstract class MinecraftExtension implements IMinecraftyExtension {
+public abstract class RfgPatchdevExtension implements IMinecraftyExtension {
     private final Project project;
 
-    public MinecraftExtension(Project project) {
+    public RfgPatchdevExtension(Project project) {
         this.project = project;
-        getSkipSlowTasks().convention(false);
-        applyMinecraftyConventions(project.getObjects());
-
-        getGroupsToExcludeFromAutoReobfMapping().set(Lists.newArrayList());
-
-        getUsesFml().convention(true);
-        getUsesForge().convention(true);
+        this.applyMinecraftyConventions(project.getObjects());
     }
-
-    // Internal configs
-
-    /**
-     * Skips slow-running tasks (decompilation, jar merging, etc.) if the artifacts already exist, useful for development of the plugin.
-     */
-    public abstract Property<Boolean> getSkipSlowTasks();
 
     // Vanilla configs
 
@@ -77,18 +63,7 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
     @Override
     public abstract ListProperty<String> getFernflowerArguments();
 
-    // Forge configs
-
-    /**
-     * Whether FML is included in the decompiled environment, default is true.
-     */
-    public abstract Property<Boolean> getUsesFml();
-
-    /**
-     * Whether Forge is included in the decompiled environment, default is true.
-     */
-    public abstract Property<Boolean> getUsesForge();
-
+    // Launching & end product
     /**
      * Extra LaunchWrapper tweak classes to use when running Minecraft
      */
@@ -103,17 +78,6 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
      * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or generating a small Java file with the tag values.
      */
     public abstract MapProperty<String, Object> getInjectedTags();
-
-    /**
-     * Glob patterns on which to run tag replacement, deprecated as the implementation is very hacky, implemented for compat with FG buildscripts
-     */
-    public abstract ListProperty<String> getTagReplacementFiles();
-
-    /**
-     * Dependency groups to exclude from automatic remapping from dev to reobf jars.
-     * Add reobfed dependencies manually to reobfJarConfiguration as needed
-     */
-    public abstract SetProperty<String> getGroupsToExcludeFromAutoReobfMapping();
 
     public Provider<JavaLauncher> getToolchainLauncher() {
         JavaToolchainService jts =

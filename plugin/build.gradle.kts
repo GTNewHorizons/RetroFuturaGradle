@@ -158,6 +158,13 @@ gradlePlugin {
       description = "Provides a Minecraft 1.7.10 and Forge modding toolchain"
       tags.set(listOf("minecraft", "modding"))
     }
+    create("patchDev") {
+      id = "com.gtnewhorizons.retrofuturagradle.patchdev"
+      implementationClass = "com.gtnewhorizons.retrofuturagradle.PatchDevPlugin"
+      displayName = "RetroFuturaGradle-PatchDev"
+      description = "Provides a Minecraft 1.7.10 and Forge modding toolchain"
+      tags.set(listOf("minecraft", "modding"))
+    }
   }
 }
 
