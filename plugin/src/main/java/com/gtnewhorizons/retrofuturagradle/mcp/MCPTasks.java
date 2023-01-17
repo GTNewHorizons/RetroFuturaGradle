@@ -48,14 +48,12 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.internal.artifacts.dependencies.DefaultDependencyArtifact;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
@@ -72,13 +70,8 @@ import org.gradle.language.base.plugins.LifecycleBasePlugin;
  */
 public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
-    private final Configuration forgeUserdevConfiguration;
     private final Configuration forgeUniversalConfiguration;
 
-    private final File forgeUserdevLocation;
-    private final TaskProvider<Copy> taskExtractForgeUserdev;
-    private final File forgeSrgLocation;
-    private final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
     private final File mergedVanillaJarLocation;
     private final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars;
     /**
@@ -126,21 +119,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final SourceSet injectedSourceSet;
     private final File injectedSourcesLocation;
 
-    public Provider<RegularFile> userdevFile(String path) {
-        return project.getLayout()
-                .file(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
-    }
-
-    public Provider<Directory> userdevDir(String path) {
-        return project.getLayout()
-                .dir(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
-    }
-
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         super(project, mcExt, mcTasks);
 
-        forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
-        forgeUserdevConfiguration.setCanBeConsumed(false);
         forgeUniversalConfiguration = project.getConfigurations().create("forgeUniversal");
         forgeUniversalConfiguration.setCanBeConsumed(false);
 
@@ -149,43 +130,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         project.afterEvaluate(p -> this.afterEvaluate());
 
         deobfuscationATs = project.getObjects().fileCollection();
-
-        forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "userdev");
-        taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
-            task.setGroup(TASK_GROUP_INTERNAL);
-            task.from(project.provider(() -> project.zipTree(getForgeUserdevConfiguration()
-                    .fileCollection(Specs.SATISFIES_ALL)
-                    .getSingleFile())));
-            task.into(forgeUserdevLocation);
-        });
-
-        forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "forge_srg");
-        taskGenerateForgeSrgMappings = project.getTasks()
-                .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
-                    task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
-                    // inputs
-                    task.getInputSrg().set(userdevFile("conf/packaged.srg"));
-                    task.getInputExc().set(userdevFile("conf/packaged.exc"));
-                    task.getFieldsCsv()
-                            .set(mcExt.getUseForgeEmbeddedMappings()
-                                    .flatMap(useForge -> useForge.booleanValue()
-                                            ? userdevFile("conf/fields.csv")
-                                            : mcpFile("fields.csv")));
-                    task.getMethodsCsv()
-                            .set(mcExt.getUseForgeEmbeddedMappings()
-                                    .flatMap(useForge -> useForge.booleanValue()
-                                            ? userdevFile("conf/methods.csv")
-                                            : mcpFile("methods.csv")));
-                    // outputs
-                    task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
-                    task.getNotchToMcp().set(FileUtils.getFile(forgeSrgLocation, "notch-mcp.srg"));
-                    task.getSrgToMcp().set(FileUtils.getFile(forgeSrgLocation, "srg-mcp.srg"));
-                    task.getMcpToSrg().set(FileUtils.getFile(forgeSrgLocation, "mcp-srg.srg"));
-                    task.getMcpToNotch().set(FileUtils.getFile(forgeSrgLocation, "mcp-notch.srg"));
-                    task.getSrgExc().set(FileUtils.getFile(forgeSrgLocation, "srg.exc"));
-                    task.getMcpExc().set(FileUtils.getFile(forgeSrgLocation, "mcp.exc"));
-                });
 
         mergedVanillaJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
         taskMergeVanillaSidedJars = project.getTasks()

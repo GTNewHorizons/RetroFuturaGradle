@@ -1,8 +1,8 @@
 package com.gtnewhorizons.retrofuturagradle;
 
-import com.google.common.collect.Lists;
 import java.util.Objects;
 import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -62,6 +62,11 @@ public abstract class RfgPatchdevExtension implements IMinecraftyExtension {
     /** {@inheritDoc} */
     @Override
     public abstract ListProperty<String> getFernflowerArguments();
+
+    /**
+     * ATs to apply to the deobfuscated jar before decompilation
+     */
+    public abstract ConfigurableFileCollection getAccessTransformers();
 
     // Launching & end product
     /**

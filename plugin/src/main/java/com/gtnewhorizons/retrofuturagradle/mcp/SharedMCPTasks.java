@@ -16,6 +16,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Specs;
@@ -35,9 +36,15 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
     protected final MinecraftTasks mcTasks;
 
     protected final Configuration mcpMappingDataConfiguration;
+    protected final Configuration forgeUserdevConfiguration;
 
     protected final File mcpDataLocation;
     protected final TaskProvider<Copy> taskExtractMcpData;
+
+    protected final File forgeUserdevLocation;
+    protected final TaskProvider<Copy> taskExtractForgeUserdev;
+    protected final File forgeSrgLocation;
+    protected final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
 
     protected final File fernflowerLocation;
     protected final TaskProvider<Download> taskDownloadFernflower;
@@ -49,6 +56,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
         mcpMappingDataConfiguration.setCanBeConsumed(false);
+
+        forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
+        forgeUserdevConfiguration.setCanBeConsumed(false);
 
         fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
         final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
@@ -86,11 +96,58 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     .getSingleFile())));
             task.into(mcpDataLocation);
         });
+
+        forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "userdev");
+        taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.from(project.provider(() -> project.zipTree(forgeUserdevConfiguration
+                    .fileCollection(Specs.SATISFIES_ALL)
+                    .getSingleFile())));
+            task.into(forgeUserdevLocation);
+        });
+
+        forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "forge_srg");
+        taskGenerateForgeSrgMappings = project.getTasks()
+                .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
+                    // inputs
+                    task.getInputSrg().set(userdevFile("conf/packaged.srg"));
+                    task.getInputExc().set(userdevFile("conf/packaged.exc"));
+                    task.getFieldsCsv()
+                            .set(mcExt.getUseForgeEmbeddedMappings()
+                                    .flatMap(useForge -> useForge.booleanValue()
+                                            ? userdevFile("conf/fields.csv")
+                                            : mcpFile("fields.csv")));
+                    task.getMethodsCsv()
+                            .set(mcExt.getUseForgeEmbeddedMappings()
+                                    .flatMap(useForge -> useForge.booleanValue()
+                                            ? userdevFile("conf/methods.csv")
+                                            : mcpFile("methods.csv")));
+                    // outputs
+                    task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
+                    task.getNotchToMcp().set(FileUtils.getFile(forgeSrgLocation, "notch-mcp.srg"));
+                    task.getSrgToMcp().set(FileUtils.getFile(forgeSrgLocation, "srg-mcp.srg"));
+                    task.getMcpToSrg().set(FileUtils.getFile(forgeSrgLocation, "mcp-srg.srg"));
+                    task.getMcpToNotch().set(FileUtils.getFile(forgeSrgLocation, "mcp-notch.srg"));
+                    task.getSrgExc().set(FileUtils.getFile(forgeSrgLocation, "srg.exc"));
+                    task.getMcpExc().set(FileUtils.getFile(forgeSrgLocation, "mcp.exc"));
+                });
     }
 
     public Provider<RegularFile> mcpFile(String path) {
         return project.getLayout()
                 .file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
+    public Provider<RegularFile> userdevFile(String path) {
+        return project.getLayout()
+                .file(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
+    public Provider<Directory> userdevDir(String path) {
+        return project.getLayout()
+                .dir(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
     public Configuration getMcpMappingDataConfiguration() {
