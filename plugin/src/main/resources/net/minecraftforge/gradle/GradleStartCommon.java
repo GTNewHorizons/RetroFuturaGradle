@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.*;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -207,11 +206,10 @@ public abstract class GradleStartCommon {
         } catch (Throwable t) {
         }
 
-        for (URL url : ((URLClassLoader) GradleStartCommon.class.getClassLoader()).getURLs()) {
-            if (!url.getProtocol().startsWith("file")) // because file urls start with file://
-            continue; //         this isnt a file
-
-            File coreMod = new File(url.toURI().getPath());
+        final String cpString = System.getProperty("java.class.path");
+        final String[] cpEntries = cpString.split(File.pathSeparator);
+        for (String cpEntry : cpEntries) {
+            File coreMod = new File(cpEntry);
             Manifest manifest = null;
 
             if (!coreMod.exists()) continue;
