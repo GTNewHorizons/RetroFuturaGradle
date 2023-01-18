@@ -398,10 +398,16 @@ public final class MinecraftTasks {
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjglVersion);
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjglVersion);
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjglVersion);
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjglVersion);
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjglVersion);
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjglVersion);
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjglVersion + ":" + lwjgl3Natives);
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjglVersion + ":" + lwjgl3Natives);
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjglVersion + ":" + lwjgl3Natives);
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjglVersion + ":" + lwjgl3Natives);
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjglVersion + ":" + lwjgl3Natives);
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjglVersion + ":" + lwjgl3Natives);
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjglVersion + ":" + lwjgl3Natives);
                 }
                 deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput-platform:2.0.5:" + lwjgl2Natives);
                 deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");
