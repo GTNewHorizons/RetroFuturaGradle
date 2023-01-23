@@ -257,7 +257,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         final SourceSet testSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
         final SourceSet apiSet = javaExt.getSourceSets().create("api", set -> {
-            set.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjglModConfiguration()));
+            set.setCompileClasspath(patchedConfiguration
+                    .plus(mcTasks.getLwjglModConfiguration())
+                    .plus(patchedMcSources.getOutput()));
             set.setRuntimeClasspath(patchedConfiguration);
         });
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
