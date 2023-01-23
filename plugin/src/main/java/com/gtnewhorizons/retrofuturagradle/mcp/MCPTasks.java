@@ -254,6 +254,17 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         });
         javaExt.getSourceSets().add(patchedMcSources);
 
+        final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+        final SourceSet testSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
+        final SourceSet apiSet = javaExt.getSourceSets().create("api", set -> {
+            set.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjglModConfiguration()));
+            set.setRuntimeClasspath(patchedConfiguration);
+        });
+        mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
+        testSet.setCompileClasspath(testSet.getCompileClasspath().plus(apiSet.getOutput()));
+
+        project.getConfigurations().getByName(apiSet.getCompileClasspathConfigurationName()).extendsFrom(project.getConfigurations().getByName(mainSet.getCompileClasspathConfigurationName()));
+
         taskBuildPatchedMc = project.getTasks()
                 .named(patchedMcSources.getCompileJavaTaskName(), JavaCompile.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -375,14 +386,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         project.getTasks()
                 .named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
-        {
-            final SourceSet mainSet = sourceSets.getByName("main");
-            mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
-            mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()));
-            project.getTasks()
-                    .named("jar", Jar.class)
-                    .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
-        }
+        mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
+        mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()));
+        project.getTasks()
+                .named("jar", Jar.class)
+                .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
 
         taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Side.CLIENT);
         taskRunClient.configure(task -> {
