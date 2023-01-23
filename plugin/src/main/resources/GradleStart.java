@@ -81,8 +81,7 @@ public class GradleStart extends GradleStartCommon {
             auth.logIn();
         } catch (AuthenticationException e) {
             LOGGER.error("-- Login failed!  " + e.getMessage());
-            Throwables.propagate(e);
-            return; // dont set other variables
+            throw Throwables.propagate(e);
         }
 
         LOGGER.info("Login Succesful!");
@@ -143,7 +142,7 @@ public class GradleStart extends GradleStartCommon {
                 virtual.delete();
             }
         } catch (Throwable t) {
-            Throwables.propagate(t);
+            throw Throwables.propagate(t);
         }
     }
 
