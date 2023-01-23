@@ -263,7 +263,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
         testSet.setCompileClasspath(testSet.getCompileClasspath().plus(apiSet.getOutput()));
 
-        project.getConfigurations().getByName(apiSet.getCompileClasspathConfigurationName()).extendsFrom(project.getConfigurations().getByName(mainSet.getCompileClasspathConfigurationName()));
+        project.getConfigurations()
+                .getByName(apiSet.getCompileClasspathConfigurationName())
+                .extendsFrom(project.getConfigurations().getByName(mainSet.getCompileClasspathConfigurationName()));
 
         taskBuildPatchedMc = project.getTasks()
                 .named(patchedMcSources.getCompileJavaTaskName(), JavaCompile.class, task -> {

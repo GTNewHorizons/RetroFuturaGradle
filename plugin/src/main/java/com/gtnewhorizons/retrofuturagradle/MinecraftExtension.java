@@ -126,4 +126,10 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
                 Objects.requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
         return getJavaToolchain().flatMap(jts::compilerFor);
     }
+
+    // FG compatibility shims for changes that can cause confusing behaviour
+    @Deprecated
+    public void setVersion(String version) {
+        throw new UnsupportedOperationException("RFG no longer has a version field in the minecraft {} block");
+    }
 }
