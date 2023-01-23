@@ -58,8 +58,6 @@ public abstract class RunMinecraftTask extends JavaExec {
         getExtraArgs().convention((side == Side.SERVER) ? Collections.singletonList("nogui") : Collections.emptyList());
         getExtraJvmArgs().convention(Collections.emptyList());
 
-        // Always enable assertions as we are in a development environment
-        setEnableAssertions(true);
         // Forward stdio
         setStandardInput(System.in);
         setStandardOutput(System.out);
