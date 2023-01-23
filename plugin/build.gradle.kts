@@ -31,12 +31,6 @@ repositories {
     }
   }
   maven {
-    // because Srg2Source needs an eclipse dependency.
-    name = "eclipse"
-    url = uri("https://repo.eclipse.org/content/groups/eclipse/")
-    mavenContent { includeGroup("org.eclipse.jdt") }
-  }
-  maven {
     name = "mojang"
     url = uri("https://libraries.minecraft.net/")
     mavenContent {
@@ -47,6 +41,11 @@ repositories {
       includeGroup("tv.twitch")
       includeGroup("net.minecraft")
     }
+  }
+  maven {
+    name = "gtnh"
+    isAllowInsecureProtocol = true
+    url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
   }
   mavenCentral {}
   gradlePluginPortal()
