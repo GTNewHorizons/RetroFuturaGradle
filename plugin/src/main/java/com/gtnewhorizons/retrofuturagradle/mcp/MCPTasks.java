@@ -525,51 +525,53 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 parentAttrs.attribute(
                         Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
 
-                parentResolved.setCanBeConsumed(false);
-                parentResolved.setCanBeResolved(true);
-                parentResolved.resolve();
-                final Set<String> excludedGroups =
-                        mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
-                final HashSet<ResolvedDependency> visited = new HashSet<>();
-                final Deque<ResolvedDependency> toVisit = new ArrayDeque<>(64);
-                toVisit.addAll(parentResolved.getResolvedConfiguration().getFirstLevelModuleDependencies());
-                while (!toVisit.isEmpty()) {
-                    final ResolvedDependency dep = toVisit.removeFirst();
-                    if (!visited.add(dep)
-                            || dep.getModuleGroup() == null
-                            || dep.getModuleGroup().isEmpty()) {
-                        continue;
-                    }
-                    if (excludedGroups.contains(dep.getModuleGroup())) {
-                        continue;
-                    }
-                    toVisit.addAll(dep.getChildren());
-
-                    ModuleDependency mDep = (ModuleDependency) deps.create(ImmutableMap.of(
-                            "group",
-                            dep.getModuleGroup(),
-                            "name",
-                            dep.getModuleName(),
-                            "version",
-                            dep.getModuleVersion()));
-                    // The artifacts only exist for dependencies with a classifier (eg :dev)
-                    LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
-                    for (ResolvedArtifact artifact : dep.getModuleArtifacts()) {
-                        String classifier = artifact.getClassifier();
-                        if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
-                            classifier = "";
-                        }
-                        if ("api".equalsIgnoreCase(classifier)) {
+                reobfJarConfiguration.withDependencies(depset -> {
+                    parentResolved.setCanBeConsumed(false);
+                    parentResolved.setCanBeResolved(true);
+                    parentResolved.resolve();
+                    final Set<String> excludedGroups =
+                            mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
+                    final HashSet<ResolvedDependency> visited = new HashSet<>();
+                    final Deque<ResolvedDependency> toVisit = new ArrayDeque<>(64);
+                    toVisit.addAll(parentResolved.getResolvedConfiguration().getFirstLevelModuleDependencies());
+                    while (!toVisit.isEmpty()) {
+                        final ResolvedDependency dep = toVisit.removeFirst();
+                        if (!visited.add(dep)
+                                || dep.getModuleGroup() == null
+                                || dep.getModuleGroup().isEmpty()) {
                             continue;
                         }
-                        newArtifacts.add(new DefaultDependencyArtifact(
-                                artifact.getName(), artifact.getType(), artifact.getExtension(), classifier, null));
+                        if (excludedGroups.contains(dep.getModuleGroup())) {
+                            continue;
+                        }
+                        toVisit.addAll(dep.getChildren());
+
+                        ModuleDependency mDep = (ModuleDependency) deps.create(ImmutableMap.of(
+                                "group",
+                                dep.getModuleGroup(),
+                                "name",
+                                dep.getModuleName(),
+                                "version",
+                                dep.getModuleVersion()));
+                        // The artifacts only exist for dependencies with a classifier (eg :dev)
+                        LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
+                        for (ResolvedArtifact artifact : dep.getModuleArtifacts()) {
+                            String classifier = artifact.getClassifier();
+                            if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
+                                classifier = "";
+                            }
+                            if ("api".equalsIgnoreCase(classifier)) {
+                                continue;
+                            }
+                            newArtifacts.add(new DefaultDependencyArtifact(
+                                    artifact.getName(), artifact.getType(), artifact.getExtension(), classifier, null));
+                        }
+                        mDep.setTransitive(false);
+                        mDep.getArtifacts().clear();
+                        mDep.getArtifacts().addAll(newArtifacts);
+                        depset.add(mDep);
                     }
-                    mDep.setTransitive(false);
-                    mDep.getArtifacts().clear();
-                    mDep.getArtifacts().addAll(newArtifacts);
-                    reobfJarConfiguration.getDependencies().add(mDep);
-                }
+                });
             });
             final AttributeContainer attributes = reobfJarConfiguration.getAttributes();
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));

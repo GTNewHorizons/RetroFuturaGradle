@@ -2,6 +2,7 @@
 .settings
 /.idea/
 /.vscode/
+/plugin/gradle
 /run/
 /plugin/run/
 /testmod/run/

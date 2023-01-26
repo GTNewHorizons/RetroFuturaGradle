@@ -5,6 +5,7 @@ package com.gtnewhorizons.retrofuturagradle;
 
 import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.modutils.ModUtils;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaLibraryPlugin;
@@ -31,5 +32,7 @@ public class UserDevPlugin implements Plugin<Project> {
         project.getExtensions().add("minecraftTasks", mcTasks);
         final MCPTasks mcpTasks = new MCPTasks(project, mcExt, mcTasks);
         project.getExtensions().add("mcpTasks", mcpTasks);
+        final ModUtils modUtils = new ModUtils(project, mcExt, mcTasks, mcpTasks);
+        project.getExtensions().add("modUtils", modUtils);
     }
 }
