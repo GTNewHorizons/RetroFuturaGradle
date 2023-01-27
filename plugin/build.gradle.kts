@@ -74,6 +74,9 @@ dependencies {
   implementation("com.cloudbees:diff4j:1.1")
   implementation("com.github.jponge:lzma-java:1.3")
   implementation("net.md-5:SpecialSource:1.11.0")
+  // Java source manipulation
+  implementation("com.github.javaparser:javaparser-core:3.24.10")
+  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.24.10")
   // "MCP stuff"
   implementation(project(":oldasmwrapper", "shadow"))
   // Startup classes

@@ -56,6 +56,12 @@ public interface IMinecraftyExtension {
     public abstract Property<Boolean> getUseForgeEmbeddedMappings();
 
     /**
+     * Whether to use the generics map to add missing generic parameters to non-private types in the decompiled source code.
+     * Default: false. (This is new in RFG compared to FG)
+     */
+    public abstract Property<Boolean> getInjectMissingGenerics();
+
+    /**
      * Fernflower args, default is "-din=1","-rbr=0","-dgs=1","-asc=1","-log=ERROR"
      */
     public abstract ListProperty<String> getFernflowerArguments();

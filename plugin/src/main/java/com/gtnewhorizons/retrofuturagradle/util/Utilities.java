@@ -16,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -52,6 +53,18 @@ public final class Utilities {
 
     public static File getCacheDir(Project project, String... paths) {
         return FileUtils.getFile(getCacheRoot(project), paths);
+    }
+
+    public static CSVReader createCsvReader(URL url) throws IOException {
+        final CSVParser csvParser = new CSVParserBuilder()
+                .withEscapeChar(CSVParser.NULL_CHARACTER)
+                .withStrictQuotes(false)
+                .build();
+        final String content = IOUtils.toString(url, StandardCharsets.UTF_8);
+        return new CSVReaderBuilder(new StringReader(content))
+                .withSkipLines(1)
+                .withCSVParser(csvParser)
+                .build();
     }
 
     public static CSVReader createCsvReader(File file) throws IOException {

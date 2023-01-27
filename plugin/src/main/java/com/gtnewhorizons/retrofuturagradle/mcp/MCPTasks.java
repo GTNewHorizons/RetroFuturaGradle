@@ -195,11 +195,19 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskPatchDecompiledJar, taskExtractForgeUserdev, taskExtractMcpData);
+            task.getBinaryJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getInputJar));
             task.getInputJar().set(taskPatchDecompiledJar.flatMap(PatchSourcesTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
             task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
             task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
             task.getParamCsv().set(mcpFile("params.csv"));
+            task.getGenericFieldsCsvName().set(mcExt.getInjectMissingGenerics().flatMap(enabled -> {
+                if (enabled) {
+                    return mcExt.getMcVersion().map(mcv -> "genericFields-" + mcv + ".csv");
+                } else {
+                    return project.provider(() -> null);
+                }
+            }));
             task.getAddJavadocs().set(true);
         });
 
