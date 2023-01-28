@@ -120,17 +120,46 @@ public abstract class RemapSourceJarTask extends DefaultTask {
         public final String zipEntry;
         public final String param;
         public final String suffix;
+        public final String type;
         public int uses = 0;
 
-        private GenericMapping(String zipEntry, String param, String suffix) {
+        private GenericMapping(String zipEntry, String param, String suffix, String type) {
             this.zipEntry = zipEntry;
             this.param = Objects.requireNonNull(param);
             this.suffix = Objects.requireNonNull(suffix);
+            this.type = type;
         }
 
         @Override
         public String toString() {
-            return "GenericMapping{" + "param='" + param + '\'' + ", suffix='" + suffix + '\'' + '}';
+            return "GenericMapping{" + "zipEntry='"
+                    + zipEntry + '\'' + ", param='"
+                    + param + '\'' + ", suffix='"
+                    + suffix + '\'' + ", type='"
+                    + type + '\'' + '}';
+        }
+    }
+
+    private static final class GenericPatch {
+        public final String zipEntry;
+        public final String containsFilter;
+        public final String toReplace;
+        public final String replaceWith;
+
+        private GenericPatch(String zipEntry, String containsFilter, String toReplace, String replaceWith) {
+            this.zipEntry = zipEntry;
+            this.containsFilter = containsFilter;
+            this.toReplace = toReplace;
+            this.replaceWith = replaceWith;
+        }
+
+        @Override
+        public String toString() {
+            return "GenericPatch{" + "zipEntry='"
+                    + zipEntry + '\'' + ", containsFilter='"
+                    + containsFilter + '\'' + ", toReplace='"
+                    + toReplace + '\'' + ", replaceWith='"
+                    + replaceWith + '\'' + '}';
         }
     }
 
@@ -139,6 +168,9 @@ public abstract class RemapSourceJarTask extends DefaultTask {
     private final Map<String, String> paramMappings = new HashMap<>();
     // srg name -> mapping
     private final ListMultimap<String, GenericMapping> genericMappings =
+            MultimapBuilder.hashKeys().arrayListValues().build();
+    // zip entry -> patch list
+    private final ListMultimap<String, GenericPatch> genericPatches =
             MultimapBuilder.hashKeys().arrayListValues().build();
 
     // Matches SRG-style names (func_123_g/field_1_p/p_123_1_)
@@ -190,6 +222,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
 
         if (DEBUG_PRINT_ALL_GENERICS) {
             genericMappings.clear();
+            genericPatches.clear();
         }
 
         for (Map.Entry<String, String> srcEntry : loadedSources.entrySet()) {
@@ -203,116 +236,135 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                 mMethod.reset(originalLine);
                 mField.reset(originalLine);
                 mCtor.reset(originalLine);
-                if (mMethod.find() && !Character.isUpperCase(mMethod.group(2).charAt(0))) {
-                    final String methodName = mMethod.group(2);
-                    final Mapping methodMapping = methodMappings.get(methodName);
-                    if ((addJavadocs || addDummyJavadocs)
-                            && methodMapping != null
-                            && !methodMapping.javadoc.isEmpty()) {
-                        addBeforeAnnotations(
-                                newLines,
-                                addDummyJavadocs
-                                        ? (mMethod.group(1) + "// JAVADOC METHOD $$ " + methodName)
-                                        : JavadocAdder.buildJavadoc(mMethod.group(1), methodMapping.javadoc, true));
-                    }
-                    final List<GenericMapping> genMaps = genericMappings.get(methodName);
-                    for (GenericMapping genMap : genMaps) {
-                        if (!genMap.zipEntry.equals(srcEntry.getKey())) {
-                            continue;
+                if (!newLine.trim().startsWith("return ")) {
+                    if (mMethod.find()
+                            && !Character.isUpperCase(mMethod.group(2).charAt(0))) {
+                        final String methodName = mMethod.group(2);
+                        final Mapping methodMapping = methodMappings.get(methodName);
+                        if ((addJavadocs || addDummyJavadocs)
+                                && methodMapping != null
+                                && !methodMapping.javadoc.isEmpty()) {
+                            addBeforeAnnotations(
+                                    newLines,
+                                    addDummyJavadocs
+                                            ? (mMethod.group(1) + "// JAVADOC METHOD $$ " + methodName)
+                                            : JavadocAdder.buildJavadoc(mMethod.group(1), methodMapping.javadoc, true));
                         }
-                        genMap.uses++;
-                        try {
-                            if (genMap.param.equals("@return")) {
-                                final int parenIdx = newLine.indexOf('(');
-                                final int nameIdx =
-                                        newLine.substring(0, parenIdx).lastIndexOf(' ');
-                                newLine = newLine.substring(0, nameIdx) + genMap.suffix + newLine.substring(nameIdx);
-                            } else {
-                                final int whichParam = Integer.parseInt(genMap.param);
-                                final int paramsOffset = newLine.indexOf('(');
-                                int paramStart = (whichParam == 0)
-                                        ? (paramsOffset + 1)
-                                        : (StringUtils.ordinalIndexOf(newLine, ",", whichParam) + 1);
-                                while (Character.isWhitespace(newLine.charAt(paramStart))) {
-                                    paramStart++;
+                        final List<GenericMapping> genMaps = genericMappings.get(methodName);
+                        for (GenericMapping genMap : genMaps) {
+                            if (!genMap.zipEntry.equals(srcEntry.getKey())) {
+                                continue;
+                            }
+                            final String[] typeComps = genMap.type.split("\\.");
+                            if (!newLine.contains(typeComps[typeComps.length - 1])) {
+                                continue;
+                            }
+                            genMap.uses++;
+                            try {
+                                if (genMap.param.equals("@return")) {
+                                    final int parenIdx = newLine.indexOf('(');
+                                    final int nameIdx =
+                                            newLine.substring(0, parenIdx).lastIndexOf(' ');
+                                    newLine =
+                                            newLine.substring(0, nameIdx) + genMap.suffix + newLine.substring(nameIdx);
+                                } else {
+                                    final int whichParam = Integer.parseInt(genMap.param);
+                                    final int paramsOffset = newLine.indexOf('(');
+                                    int paramStart = (whichParam == 0)
+                                            ? (paramsOffset + 1)
+                                            : (StringUtils.ordinalIndexOf(newLine, ",", whichParam) + 1);
+                                    while (Character.isWhitespace(newLine.charAt(paramStart))) {
+                                        paramStart++;
+                                    }
+                                    int paramSplit = newLine.indexOf(' ', paramStart);
+                                    while (newLine.substring(0, paramSplit)
+                                            .trim()
+                                            .endsWith("final")) {
+                                        paramSplit = newLine.indexOf(' ', paramSplit + 1);
+                                    }
+                                    if (paramSplit == -1) {
+                                        throw new IllegalStateException(
+                                                "Could not find param " + whichParam + " in line: |" + newLine
+                                                        + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                                    }
+                                    newLine = newLine.substring(0, paramSplit)
+                                            + genMap.suffix
+                                            + newLine.substring(paramSplit);
                                 }
-                                final int paramSplit = newLine.indexOf(' ', paramStart);
-                                if (paramSplit == -1) {
-                                    throw new IllegalStateException("Could not find param " + whichParam + " in line: |"
-                                            + newLine + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                            } catch (Exception e) {
+                                throw new IllegalStateException(
+                                        "Error applying generic mapping " + genMap + " to line |" + newLine + "| file: "
+                                                + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                            }
+                        }
+                    } else if ((addJavadocs || addDummyJavadocs)
+                            && originalLine.trim().startsWith("// JAVADOC ")) {
+                        if (mSrg.find()) {
+                            final String indent = originalLine.substring(0, originalLine.indexOf("// JAVADOC"));
+                            final String entityName = mSrg.group();
+                            if (entityName.startsWith("func_")) {
+                                final Mapping methodMapping = methodMappings.get(entityName);
+                                if (methodMapping != null && !Strings.isNullOrEmpty(methodMapping.javadoc)) {
+                                    newLine = JavadocAdder.buildJavadoc(indent, methodMapping.javadoc, true);
                                 }
-                                newLine = newLine.substring(0, paramSplit)
-                                        + genMap.suffix
-                                        + newLine.substring(paramSplit);
+                            } else if (entityName.startsWith("field_")) {
+                                final Mapping fieldMapping = fieldMappings.get(entityName);
+                                if (fieldMapping != null && !Strings.isNullOrEmpty(fieldMapping.javadoc)) {
+                                    newLine = JavadocAdder.buildJavadoc(indent, fieldMapping.javadoc, true);
+                                }
                             }
-                        } catch (Exception e) {
-                            throw new IllegalStateException("Error applying generic mapping " + genMap + " to line |"
-                                    + newLine + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
-                        }
-                    }
-                } else if ((addJavadocs || addDummyJavadocs)
-                        && originalLine.trim().startsWith("// JAVADOC ")) {
-                    if (mSrg.find()) {
-                        final String indent = originalLine.substring(0, originalLine.indexOf("// JAVADOC"));
-                        final String entityName = mSrg.group();
-                        if (entityName.startsWith("func_")) {
-                            final Mapping methodMapping = methodMappings.get(entityName);
-                            if (methodMapping != null && !Strings.isNullOrEmpty(methodMapping.javadoc)) {
-                                newLine = JavadocAdder.buildJavadoc(indent, methodMapping.javadoc, true);
-                            }
-                        } else if (entityName.startsWith("field_")) {
-                            final Mapping fieldMapping = fieldMappings.get(entityName);
-                            if (fieldMapping != null && !Strings.isNullOrEmpty(fieldMapping.javadoc)) {
-                                newLine = JavadocAdder.buildJavadoc(indent, fieldMapping.javadoc, true);
-                            }
-                        }
 
-                        if (newLine.endsWith(System.lineSeparator())) {
-                            newLine = newLine.substring(
-                                    0, newLine.length() - System.lineSeparator().length());
+                            if (newLine.endsWith(System.lineSeparator())) {
+                                newLine = newLine.substring(
+                                        0,
+                                        newLine.length()
+                                                - System.lineSeparator().length());
+                            }
                         }
-                    }
-                } else if (mField.find() && !newLine.trim().startsWith("return ")) {
-                    final String fieldName = mField.group(2);
-                    final Mapping fieldMapping = fieldMappings.get(fieldName);
-                    if ((addJavadocs || addDummyJavadocs) && fieldMapping != null && !fieldMapping.javadoc.isEmpty()) {
-                        addBeforeAnnotations(
-                                newLines,
-                                addDummyJavadocs
-                                        ? (mField.group(1) + "// JAVADOC FIELD $$ " + fieldName)
-                                        : JavadocAdder.buildJavadoc(mField.group(1), fieldMapping.javadoc, false));
-                    }
-                    final List<GenericMapping> genMaps = genericMappings.get(fieldName);
-                    for (GenericMapping genMap : genMaps) {
-                        if (!genMap.zipEntry.equals(srcEntry.getKey())) {
-                            continue;
+                    } else if (mField.find()) {
+                        final String fieldName = mField.group(2);
+                        final Mapping fieldMapping = fieldMappings.get(fieldName);
+                        if ((addJavadocs || addDummyJavadocs)
+                                && fieldMapping != null
+                                && !fieldMapping.javadoc.isEmpty()) {
+                            addBeforeAnnotations(
+                                    newLines,
+                                    addDummyJavadocs
+                                            ? (mField.group(1) + "// JAVADOC FIELD $$ " + fieldName)
+                                            : JavadocAdder.buildJavadoc(mField.group(1), fieldMapping.javadoc, false));
                         }
-                        genMap.uses++;
-                        final int splitIdx = newLine.indexOf(" field_");
-                        newLine = newLine.substring(0, splitIdx) + genMap.suffix + newLine.substring(splitIdx);
-                    }
-                } else if (mCtor.find()) {
-                    final String key = srcEntry.getKey() + "@init:" + extractCtorSig(newLine, newLines.size() + 1);
-                    final List<GenericMapping> genMaps = genericMappings.get(key);
-                    for (GenericMapping genMap : genMaps) {
-                        if (!genMap.zipEntry.equals(srcEntry.getKey())) {
-                            continue;
+                        final List<GenericMapping> genMaps = genericMappings.get(fieldName);
+                        for (GenericMapping genMap : genMaps) {
+                            if (!genMap.zipEntry.equals(srcEntry.getKey())) {
+                                continue;
+                            }
+                            genMap.uses++;
+                            final int splitIdx = newLine.indexOf(" field_");
+                            newLine = newLine.substring(0, splitIdx) + genMap.suffix + newLine.substring(splitIdx);
                         }
-                        genMap.uses++;
-                        final int whichParam = Integer.parseInt(genMap.param);
-                        final int paramsOffset = newLine.indexOf('(');
-                        int paramStart = (whichParam == 0)
-                                ? (paramsOffset + 1)
-                                : (StringUtils.ordinalIndexOf(newLine, ",", whichParam) + 1);
-                        while (Character.isWhitespace(newLine.charAt(paramStart))) {
-                            paramStart++;
+                    } else if (mCtor.find()) {
+                        final String key = srcEntry.getKey() + "@init:" + extractCtorSig(newLine, newLines.size() + 1);
+                        final List<GenericMapping> genMaps = genericMappings.get(key);
+                        for (GenericMapping genMap : genMaps) {
+                            if (!genMap.zipEntry.equals(srcEntry.getKey())) {
+                                continue;
+                            }
+                            genMap.uses++;
+                            final int whichParam = Integer.parseInt(genMap.param);
+                            final int paramsOffset = newLine.indexOf('(');
+                            int paramStart = (whichParam == 0)
+                                    ? (paramsOffset + 1)
+                                    : (StringUtils.ordinalIndexOf(newLine, ",", whichParam) + 1);
+                            while (Character.isWhitespace(newLine.charAt(paramStart))) {
+                                paramStart++;
+                            }
+                            final int paramSplit = newLine.indexOf(' ', paramStart);
+                            if (paramSplit == -1) {
+                                throw new IllegalStateException("Could not find param " + whichParam + " in line: |"
+                                        + newLine + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                            }
+                            newLine = newLine.substring(0, paramSplit) + genMap.suffix + newLine.substring(paramSplit);
                         }
-                        final int paramSplit = newLine.indexOf(' ', paramStart);
-                        if (paramSplit == -1) {
-                            throw new IllegalStateException("Could not find param " + whichParam + " in line: |"
-                                    + newLine + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
-                        }
-                        newLine = newLine.substring(0, paramSplit) + genMap.suffix + newLine.substring(paramSplit);
                     }
                 }
                 if (!genericMappings.isEmpty()) {
@@ -340,10 +392,16 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                         mappedLine.append(mSrg.group(2));
                     }
                     mSrg.appendTail(mappedLine);
-                    newLines.add(mappedLine.toString());
-                } else {
-                    newLines.add(newLine);
+                    newLine = mappedLine.toString();
+
+                    final List<GenericPatch> patches = genericPatches.get(srcEntry.getKey());
+                    for (GenericPatch patch : patches) {
+                        if (newLine.contains(patch.containsFilter)) {
+                            newLine = newLine.replace(patch.toReplace, patch.replaceWith);
+                        }
+                    }
                 }
+                newLines.add(newLine);
             }
 
             srcEntry.setValue(StringUtils.join(newLines, System.lineSeparator()));
@@ -537,8 +595,10 @@ public abstract class RemapSourceJarTask extends DefaultTask {
         }
         final String genericsFilename = getGenericFieldsCsvName().getOrNull();
         genericMappings.clear();
+        genericPatches.clear();
         if (StringUtils.isNotBlank(genericsFilename)) {
             URL genericsUrl = getClass().getResource(genericsFilename);
+            URL genericPatchesUrl = getClass().getResource(genericsFilename.replace("Fields", "Patches"));
             try (CSVReader genReader = Utilities.createCsvReader(genericsUrl)) {
                 for (String[] genLine : genReader) {
                     // zipEntry, className, srg, mcp, param, type, suffix, comment
@@ -549,9 +609,16 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                     }
                     final String zipEntry = genLine[0];
                     final String param = genLine[4];
+                    final String type = genLine[5];
                     final String suffix = genLine[6];
                     final String key = srg.equals("@init") ? (zipEntry + genLine[2]) : srg;
-                    genericMappings.put(key, new GenericMapping(zipEntry, param, suffix));
+                    genericMappings.put(key, new GenericMapping(zipEntry, param, suffix, type));
+                }
+            }
+            try (CSVReader genReader = Utilities.createCsvReader(genericPatchesUrl)) {
+                for (String[] genLine : genReader) {
+                    // zipEntry, className, containsFilter, toReplace, replaceWith, reason
+                    genericPatches.put(genLine[0], new GenericPatch(genLine[0], genLine[2], genLine[3], genLine[4]));
                 }
             }
         }

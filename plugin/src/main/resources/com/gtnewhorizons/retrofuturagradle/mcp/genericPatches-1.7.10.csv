@@ -1,0 +1,2 @@
+zipEntry,className,containsFilter,toReplace,replaceWith,reason
+cpw/mods/fml/common/network/internal/EntitySpawnHandler.java,cpw.mods.fml.common.network.internal.EntitySpawnHandler,getDataWatcher().updateWatchedObjectsFromList,(List<?>) spawnMsg.dataWatcherList,spawnMsg.dataWatcherList,It has a proper type now
