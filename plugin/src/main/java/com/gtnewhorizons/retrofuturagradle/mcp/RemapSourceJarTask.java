@@ -208,7 +208,18 @@ public abstract class RemapSourceJarTask extends DefaultTask {
             parserCfg.setTabSize(4);
             javaParser = new JavaParser(parserCfg);
             final CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
-            combinedTypeSolver.add(new JarTypeSolver(getInputJar().get().getAsFile()));
+            combinedTypeSolver.add(new JarTypeSolver(getBinaryJar().get().getAsFile()));
+            int deps = 0;
+            for (File depJar : getProject()
+                    .getConfigurations()
+                    .getByName(MCPTasks.PATCHED_MINECRAFT_CONFIGURATION_NAME)
+                    .resolve()) {
+                if (depJar.isFile() && depJar.getName().endsWith(".jar")) {
+                    deps++;
+                    combinedTypeSolver.add(new JarTypeSolver(depJar));
+                }
+            }
+            getLogger().lifecycle("Injected {} jars into the parser solver", deps + 1);
             combinedTypeSolver.add(new ReflectionTypeSolver(true));
             final File genericLogFile = new File(getTemporaryDir(), "genericlog.csv");
             FileOutputStream fos = FileUtils.openOutputStream(genericLogFile);

@@ -118,6 +118,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final TaskProvider<InjectTagsTask> taskInjectTags;
     private final SourceSet injectedSourceSet;
     private final File injectedSourcesLocation;
+    public static final String PATCHED_MINECRAFT_CONFIGURATION_NAME = "patchedMinecraft";
 
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         super(project, mcExt, mcTasks);
@@ -233,7 +234,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.into(decompressedSourcesLocation);
                 });
 
-        this.patchedConfiguration = project.getConfigurations().create("patchedMinecraft");
+        this.patchedConfiguration = project.getConfigurations().create(PATCHED_MINECRAFT_CONFIGURATION_NAME);
         this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
         this.patchedConfiguration.setDescription("Dependencies needed to run modded minecraft");
         this.patchedConfiguration.setCanBeConsumed(false);
