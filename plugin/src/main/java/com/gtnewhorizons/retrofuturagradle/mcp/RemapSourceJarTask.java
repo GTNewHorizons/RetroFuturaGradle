@@ -35,9 +35,11 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -236,6 +238,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
             genericPatches.clear();
         }
 
+        final Set<String> paramsApplied = new HashSet<>(16);
         for (Map.Entry<String, String> srcEntry : loadedSources.entrySet()) {
             final String originalSrc = srcEntry.getValue();
             final String[] originalLines = originalSrc.split("(\r\n)|\n|\r");
@@ -247,6 +250,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                 mMethod.reset(originalLine);
                 mField.reset(originalLine);
                 mCtor.reset(originalLine);
+                paramsApplied.clear();
                 if (!newLine.trim().startsWith("return ")) {
                     if (mMethod.find()
                             && !Character.isUpperCase(mMethod.group(2).charAt(0))) {
@@ -266,11 +270,15 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                             if (!genMap.zipEntry.equals(srcEntry.getKey())) {
                                 continue;
                             }
+                            if (paramsApplied.contains(genMap.param)) {
+                                continue;
+                            }
                             final String[] typeComps = genMap.type.split("\\.");
                             if (!newLine.contains(typeComps[typeComps.length - 1])) {
                                 continue;
                             }
                             genMap.uses++;
+                            paramsApplied.add(genMap.param);
                             try {
                                 if (genMap.param.equals("@return")) {
                                     final int parenIdx = newLine.indexOf('(');
@@ -360,7 +368,15 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                             if (!genMap.zipEntry.equals(srcEntry.getKey())) {
                                 continue;
                             }
+                            if (paramsApplied.contains(genMap.param)) {
+                                continue;
+                            }
+                            final String[] typeComps = genMap.type.split("\\.");
+                            if (!newLine.contains(typeComps[typeComps.length - 1])) {
+                                continue;
+                            }
                             genMap.uses++;
+                            paramsApplied.add(genMap.param);
                             final int whichParam = Integer.parseInt(genMap.param);
                             final int paramsOffset = newLine.indexOf('(');
                             int paramStart = (whichParam == 0)
@@ -369,7 +385,10 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                             while (Character.isWhitespace(newLine.charAt(paramStart))) {
                                 paramStart++;
                             }
-                            final int paramSplit = newLine.indexOf(' ', paramStart);
+                            int paramSplit = newLine.indexOf(' ', paramStart);
+                            while (newLine.substring(0, paramSplit).trim().endsWith("final")) {
+                                paramSplit = newLine.indexOf(' ', paramSplit + 1);
+                            }
                             if (paramSplit == -1) {
                                 throw new IllegalStateException("Could not find param " + whichParam + " in line: |"
                                         + newLine + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
@@ -434,9 +453,6 @@ public abstract class RemapSourceJarTask extends DefaultTask {
 
         int totalGenericsApplied = 0;
         for (Map.Entry<String, GenericMapping> entry : genericMappings.entries()) {
-            if (entry.getValue().uses <= 0) {
-                getLogger().error("Did not use genmap entry " + entry.getKey() + " : " + entry.getValue());
-            }
             totalGenericsApplied += entry.getValue().uses;
         }
         getLogger().lifecycle("Applied {} missing generics", totalGenericsApplied);
