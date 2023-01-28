@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.MapProperty;
@@ -33,7 +34,9 @@ public abstract class CreateLauncherFiles extends DefaultTask {
         }
         final Map<String, String> replacements = getReplacementTokens().get();
         final String[] repFrom = replacements.keySet().toArray(new String[0]);
-        final String[] repTo = replacements.values().toArray(new String[0]);
+        final String[] repTo = replacements.values().stream()
+                .map(StringEscapeUtils::escapeJava)
+                .toArray(String[]::new);
         for (Map.Entry<String, String> inputResource : getInputResources().get().entrySet()) {
             FileUtils.write(
                     new File(outputDir, inputResource.getKey()),
