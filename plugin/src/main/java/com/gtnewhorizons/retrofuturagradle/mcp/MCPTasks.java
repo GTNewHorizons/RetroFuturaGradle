@@ -864,7 +864,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             deps.add(PATCHED_MC_CFG, "com.typesafe.akka:akka-actor_2.11:2.3.3");
             deps.add(PATCHED_MC_CFG, "com.typesafe:config:1.2.1");
             deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-actors-migration_2.11:1.1.0");
-            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-compiler:2.11.1");
+            deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-compiler:2.11.5");
             deps.add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-library_2.11:1.0.2");
             deps.add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-plugin_2.11.1:1.0.2");
             deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-library:2.11.1");
