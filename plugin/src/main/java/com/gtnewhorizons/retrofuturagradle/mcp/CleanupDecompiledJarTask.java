@@ -126,6 +126,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
                 patch = ContextualPatch.create(
                         FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8),
                         new Utilities.InMemoryJarContextProvider(loadedSources, 1));
+                patch.setAccessC14N(true);
                 final List<ContextualPatch.PatchReport> errors;
                 try {
                     errors = patch.patch(true);

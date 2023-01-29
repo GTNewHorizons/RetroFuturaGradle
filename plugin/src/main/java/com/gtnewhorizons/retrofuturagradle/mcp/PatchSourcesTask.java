@@ -126,6 +126,7 @@ public abstract class PatchSourcesTask extends DefaultTask {
                     patchCount++;
                     final ContextualPatch patch = ContextualPatch.create(
                             FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8), contextProvider);
+                    patch.setAccessC14N(true);
                     patch.setMaxFuzz(getMaxFuzziness().get());
                     final List<ContextualPatch.PatchReport> reports = patch.patch(false);
                     for (ContextualPatch.PatchReport report : reports) {
