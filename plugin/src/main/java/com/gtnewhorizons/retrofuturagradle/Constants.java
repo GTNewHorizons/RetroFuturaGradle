@@ -13,4 +13,7 @@ public final class Constants {
     // Well-known paths
     public static final String PATH_USERDEV_FML_ACCESS_TRANFORMER = "src/main/resources/fml_at.cfg";
     public static final String PATH_USERDEV_FORGE_ACCESS_TRANFORMER = "src/main/resources/forge_at.cfg";
+
+    // Debug toggles for local development
+    public static final boolean DEBUG_NO_TMP_CLEANUP = false;
 }

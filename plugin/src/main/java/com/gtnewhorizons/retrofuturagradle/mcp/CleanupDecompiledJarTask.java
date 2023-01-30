@@ -84,7 +84,8 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
         getLogger().lifecycle("  Stage 3 took " + (post3Ms - pre3Ms) + " ms");
 
         getLogger().lifecycle("Saving the fixed-up jar");
-        FileUtils.copyFile(mcpCleaned, getOutputJar().get().getAsFile());
+        Utilities.saveMemoryJar(
+                loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private File loadAndApplyFfPatches(File decompiled) throws IOException {
@@ -101,7 +102,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
                 })
                 .collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
 
-        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "ffpatcher.jar"));
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "ffpatcher.jar"), true);
     }
 
     private File applyMcpPatches() throws IOException {
@@ -147,7 +148,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
             printPatchErrors(errors);
         }
 
-        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcppatched.jar"));
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcppatched.jar"), true);
     }
 
     private static final Pattern BEFORE_RULE =
@@ -201,7 +202,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
                 })
                 .collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
 
-        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcpcleanup.jar"));
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcpcleanup.jar"), true);
     }
 
     private void printPatchErrors(List<ContextualPatch.PatchReport> errors) throws IOException {

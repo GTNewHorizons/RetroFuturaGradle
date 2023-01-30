@@ -6,6 +6,7 @@ import static org.objectweb.asm.Opcodes.ACC_PROTECTED;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
 import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -128,6 +129,12 @@ public abstract class DeobfuscateTask extends DefaultTask {
         getLogger()
                 .lifecycle("Cleaning up generated debuginfo{}", isStrippingSynths ? " and stripping synthetics" : "");
         cleanupJar(exceptedJar, getOutputJar().get().getAsFile(), isStrippingSynths);
+
+        // Clean up temporary files
+        if (!Constants.DEBUG_NO_TMP_CLEANUP) {
+            FileUtils.deleteQuietly(deobfedJar);
+            FileUtils.deleteQuietly(exceptedJar);
+        }
     }
 
     private void applySpecialSource(File tempDeobfJar, Set<File> atFiles) throws IOException {
@@ -170,6 +177,11 @@ public abstract class DeobfuscateTask extends DefaultTask {
         inheritanceProviders.add(new JarProvider(input));
         mapping.setFallbackInheritanceProvider(inheritanceProviders);
         remapper.remapJar(input, tempDeobfJar);
+
+        // Clean up temporary files
+        if (!Constants.DEBUG_NO_TMP_CLEANUP) {
+            FileUtils.deleteQuietly(inputFile);
+        }
     }
 
     private void applyExceptor(File deobfJar, File tempExceptorJar, File logFile, Set<File> atFiles)

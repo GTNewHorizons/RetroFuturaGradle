@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle.util;
 import com.google.common.base.Joiner;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
@@ -152,7 +153,11 @@ public final class Utilities {
     }
 
     public static File saveMemoryJar(
-            Map<String, byte[]> loadedResources, Map<String, String> loadedSources, File target) throws IOException {
+            Map<String, byte[]> loadedResources, Map<String, String> loadedSources, File target, boolean isTemporary)
+            throws IOException {
+        if (isTemporary && !Constants.DEBUG_NO_TMP_CLEANUP) {
+            return null;
+        }
         try (FileOutputStream fos = new FileOutputStream(target);
                 BufferedOutputStream bos = new BufferedOutputStream(fos);
                 ZipOutputStream zos = new ZipOutputStream(bos)) {

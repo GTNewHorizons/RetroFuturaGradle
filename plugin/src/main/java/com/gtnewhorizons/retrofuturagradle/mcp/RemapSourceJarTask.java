@@ -462,7 +462,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
         }
 
         Utilities.saveMemoryJar(
-                loadedResources, loadedSources, getOutputJar().get().getAsFile());
+                loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private static String extractCtorSig(String line, int lineNo) {

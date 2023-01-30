@@ -83,7 +83,7 @@ public abstract class PatchSourcesTask extends DefaultTask {
         patchFiles();
 
         Utilities.saveMemoryJar(
-                loadedResources, loadedSources, getOutputJar().get().getAsFile());
+                loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private void injectFiles() throws IOException {

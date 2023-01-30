@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.ReobfExceptor;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import java.io.File;
@@ -124,10 +125,13 @@ public abstract class ReobfuscatedJar extends Jar {
             final File outputJar = super.getArchiveFile().get().getAsFile();
             FileUtils.copyFile(tmpInjectedJar, outputJar);
 
-            FileUtils.deleteQuietly(tmpInjectedJar);
-            FileUtils.deleteQuietly(tmpObfedJar);
-            FileUtils.deleteQuietly(srg);
-            FileUtils.deleteQuietly(extraSrg);
+            if (!Constants.DEBUG_NO_TMP_CLEANUP) {
+                FileUtils.deleteQuietly(tmpInjectedJar);
+                FileUtils.deleteQuietly(tmpObfedJar);
+                FileUtils.deleteQuietly(srg);
+                FileUtils.deleteQuietly(extraSrg);
+                FileUtils.deleteQuietly(recompJar);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
