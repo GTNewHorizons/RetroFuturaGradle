@@ -39,7 +39,10 @@ public class JarChain {
 
     public void addTask(@Nonnull TaskProvider<? extends IJarOutputTask> newTask) {
         taskChain.add(newTask);
-        newTask.configure(task -> { task.getOutputs().upToDateWhen(ignored -> this.isUpToDate()); });
+        newTask.configure(task -> {
+            task.getOutputs().upToDateWhen(ignored -> this.isUpToDate());
+            task.onlyIf(ignored -> !this.isUpToDate());
+        });
     }
 
     public void finish() {
@@ -87,6 +90,8 @@ public class JarChain {
             final boolean isUpToDate = savedInputsDigest.equals(hexDigest);
             lastUpToDateCheck = System.currentTimeMillis();
             wasUpToDate = isUpToDate;
+
+            System.err.println("Up to date: " + isUpToDate + " ; file,current:\n" + savedInputsDigest + "\n" + hexDigest);
 
             return isUpToDate;
         } catch (IOException e) {
