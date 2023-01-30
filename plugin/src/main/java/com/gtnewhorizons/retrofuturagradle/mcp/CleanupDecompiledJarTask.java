@@ -1,16 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.cloudbees.diff.PatchException;
-import com.github.abrarsyed.jastyle.ASFormatter;
-import com.github.abrarsyed.jastyle.OptParser;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -24,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.gradle.api.DefaultTask;
@@ -36,6 +26,18 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+
+import com.cloudbees.diff.PatchException;
+import com.github.abrarsyed.jastyle.ASFormatter;
+import com.github.abrarsyed.jastyle.OptParser;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 
 public abstract class CleanupDecompiledJarTask extends DefaultTask {
 
@@ -84,34 +86,26 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
         getLogger().lifecycle("  Stage 3 took " + (post3Ms - pre3Ms) + " ms");
 
         getLogger().lifecycle("Saving the fixed-up jar");
-        Utilities.saveMemoryJar(
-                loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
+        Utilities.saveMemoryJar(loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private File loadAndApplyFfPatches(File decompiled) throws IOException {
         Utilities.loadMemoryJar(decompiled, loadedResources, loadedSources);
 
-        loadedSources = loadedSources.entrySet().parallelStream()
-                .map(entry -> {
-                    try {
-                        return MutablePair.of(
-                                entry.getKey(), FFPatcher.processFile(entry.getKey(), entry.getValue(), true));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
+        loadedSources = loadedSources.entrySet().parallelStream().map(entry -> {
+            try {
+                return MutablePair.of(entry.getKey(), FFPatcher.processFile(entry.getKey(), entry.getValue(), true));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
 
         return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "ffpatcher.jar"), true);
     }
 
     private File applyMcpPatches() throws IOException {
         Multimap<String, File> patches = ArrayListMultimap.create();
-        Set<File> patchDir = getPatches()
-                .get()
-                .getAsFileTree()
-                .filter(f -> f.getName().contains(".patch"))
-                .getFiles();
+        Set<File> patchDir = getPatches().get().getAsFileTree().filter(f -> f.getName().contains(".patch")).getFiles();
         for (File patchFile : patchDir) {
             String base = patchFile.getName();
             final int extLoc = base.lastIndexOf(".patch");
@@ -151,10 +145,10 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
         return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcppatched.jar"), true);
     }
 
-    private static final Pattern BEFORE_RULE =
-            Pattern.compile("(?m)((case|default).+(?:\\r\\n|\\r|\\n))(?:\\r\\n|\\r|\\n)");
-    private static final Pattern AFTER_RULE =
-            Pattern.compile("(?m)(?:\\r\\n|\\r|\\n)((?:\\r\\n|\\r|\\n)[ \\t]+(case|default))");
+    private static final Pattern BEFORE_RULE = Pattern
+            .compile("(?m)((case|default).+(?:\\r\\n|\\r|\\n))(?:\\r\\n|\\r|\\n)");
+    private static final Pattern AFTER_RULE = Pattern
+            .compile("(?m)(?:\\r\\n|\\r|\\n)((?:\\r\\n|\\r|\\n)[ \\t]+(case|default))");
 
     private static final ThreadLocal<ASFormatter> formatters = new ThreadLocal<>();
 
@@ -163,44 +157,41 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask {
 
         final GLConstantFixer glFixer = new GLConstantFixer();
 
-        loadedSources = loadedSources.entrySet().parallelStream()
-                .map(entry -> {
-                    try {
-                        final String filePath = entry.getKey();
-                        String text = entry.getValue();
-                        ASFormatter formatter = formatters.get();
+        loadedSources = loadedSources.entrySet().parallelStream().map(entry -> {
+            try {
+                final String filePath = entry.getKey();
+                String text = entry.getValue();
+                ASFormatter formatter = formatters.get();
 
-                        if (formatter == null) {
-                            formatter = new ASFormatter();
-                            OptParser parser = new OptParser(formatter);
-                            parser.parseOptionFile(astyleOptions);
-                            formatters.set(formatter);
-                        }
+                if (formatter == null) {
+                    formatter = new ASFormatter();
+                    OptParser parser = new OptParser(formatter);
+                    parser.parseOptionFile(astyleOptions);
+                    formatters.set(formatter);
+                }
 
-                        text = McpCleanup.stripComments(text);
+                text = McpCleanup.stripComments(text);
 
-                        text = McpCleanup.fixImports(text);
+                text = McpCleanup.fixImports(text);
 
-                        text = McpCleanup.cleanup(text);
+                text = McpCleanup.cleanup(text);
 
-                        text = glFixer.fixOGL(text);
+                text = glFixer.fixOGL(text);
 
-                        try (Reader reader = new StringReader(text);
-                                StringWriter writer = new StringWriter()) {
-                            formatter.format(reader, writer);
-                            text = writer.toString();
-                        }
+                try (Reader reader = new StringReader(text); StringWriter writer = new StringWriter()) {
+                    formatter.format(reader, writer);
+                    text = writer.toString();
+                }
 
-                        text = BEFORE_RULE.matcher(text).replaceAll("$1");
-                        text = AFTER_RULE.matcher(text).replaceAll("$1");
-                        text = FmlCleanup.renameClass(text);
+                text = BEFORE_RULE.matcher(text).replaceAll("$1");
+                text = AFTER_RULE.matcher(text).replaceAll("$1");
+                text = FmlCleanup.renameClass(text);
 
-                        return MutablePair.of(filePath, text);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
+                return MutablePair.of(filePath, text);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
 
         return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcpcleanup.jar"), true);
     }

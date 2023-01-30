@@ -1,10 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.fgpatchers;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -14,9 +9,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.apache.commons.lang3.StringUtils;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 public class FmlCleanup {
+
     // private static final Pattern METHOD_REG = Pattern.compile("^ {4}(\\w+\\s+\\S.*\\(.*|static)$");
     private static final Pattern METHOD_REG = Pattern.compile(
             "^(?<indent>\\s+)(?<modifiers>(?:(?:" + FFPatcher.MODIFIERS
@@ -29,6 +32,7 @@ public class FmlCleanup {
     private static final Pattern VAR = Pattern.compile("var\\d+(?:x)*");
 
     private static final Comparator<String> COMPARATOR = new Comparator<String>() {
+
         @Override
         public int compare(String str1, String str2) {
             return str2.length() - str1.length();
@@ -43,20 +47,18 @@ public class FmlCleanup {
         for (String line : lines) {
             Matcher matcher = METHOD_REG.matcher(line);
             boolean found = matcher.find();
-            if (!line.endsWith(";")
-                    && !line.endsWith(",")
-                    && found) // && !line.contains("=") && !NESTED_PERINTH.matcher(line).find())
+            if (!line.endsWith(";") && !line.endsWith(",") && found) // && !line.contains("=") &&
+                                                                     // !NESTED_PERINTH.matcher(line).find())
             {
                 method = new MethodInfo(method, matcher.group("indent"));
                 method.lines.add(line);
 
-                boolean invalid =
-                        false; // Can't think of a better way to filter out enum declarations, so make sure that all the
+                boolean invalid = false; // Can't think of a better way to filter out enum declarations, so make sure
+                                         // that all the
                 // parameters have types
                 String args = matcher.group("parameters");
                 if (args != null) {
-                    for (String str :
-                            Splitter.on(',').trimResults().omitEmptyStrings().split(args)) {
+                    for (String str : Splitter.on(',').trimResults().omitEmptyStrings().split(args)) {
                         if (str.indexOf(' ') == -1) {
                             invalid = true;
                             break;
@@ -72,7 +74,7 @@ public class FmlCleanup {
                     method = method.parent;
 
                     if (method == null) // dont output if there is a parent method.
-                    output.add(line);
+                        output.add(line);
                 }
             } else if (method != null && method.ENDING.equals(line)) {
                 method.lines.add(line);
@@ -108,6 +110,7 @@ public class FmlCleanup {
     }
 
     private static class MethodInfo {
+
         private MethodInfo parent = null;
         private List<Object> lines = Lists.newArrayList();
         private List<String> vars = Lists.newArrayList();
@@ -145,6 +148,7 @@ public class FmlCleanup {
                 // different orders.
                 List<String> sorted = new ArrayList<String>(unnamed.keySet());
                 Collections.sort(sorted, new Comparator<String>() {
+
                     @Override
                     public int compare(String o1, String o2) {
                         if (o1.length() < o2.length()) return -1;
@@ -235,8 +239,7 @@ public class FmlCleanup {
             index = remap.get(type);
         }
 
-        if (Strings.isNullOrEmpty(index)
-                && (CAPS_START.matcher(type).find() || ARRAY.matcher(type).find())) {
+        if (Strings.isNullOrEmpty(index) && (CAPS_START.matcher(type).find() || ARRAY.matcher(type).find())) {
             // replace multi things with arrays.
             type = type.replace("...", "[]");
 
@@ -282,6 +285,7 @@ public class FmlCleanup {
     }
 
     private class Holder {
+
         public int id;
         public boolean skip_zero;
         public final List<String> names = Lists.newArrayList();

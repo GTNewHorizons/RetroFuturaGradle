@@ -6,6 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class McpCleanup {
+
     public static final Pattern COMMENTS_TRAILING = Pattern.compile("(?m)[ \\t]+$");
     public static final Pattern COMMENTS_NEWLINES = Pattern.compile("(?m)^(?:\\r\\n|\\r|\\n){2,}");
 
@@ -97,7 +98,7 @@ public class McpCleanup {
     }
 
     // ---------------------------------------------
-    //  CLEANUP REGEXES.
+    // CLEANUP REGEXES.
     // ----------------------------------------------
 
     public static final Pattern CLEANUP_header = Pattern.compile("^\\s+"); // Remove extra whitespace at start of file
@@ -106,27 +107,29 @@ public class McpCleanup {
 
     public static final Pattern CLEANUP_trailing = Pattern.compile("(?m)[ \\t]+$"); // Remove TRAILING whitespace
 
-    public static final Pattern CLEANUP_package =
-            Pattern.compile("(?m)^package ([\\w.]+);$"); // find package --- in quots since its a special word
+    public static final Pattern CLEANUP_package = Pattern.compile("(?m)^package ([\\w.]+);$"); // find package --- in
+                                                                                               // quots since its a
+                                                                                               // special word
 
-    public static final Pattern CLEANUP_import =
-            Pattern.compile("(?m)^import (?:([\\w.]*?)\\.)?(?:[\\w]+);(?:\\r\\n|\\r|\\n)"); // package and class.
+    public static final Pattern CLEANUP_import = Pattern
+            .compile("(?m)^import (?:([\\w.]*?)\\.)?(?:[\\w]+);(?:\\r\\n|\\r|\\n)"); // package and class.
 
-    public static final Pattern CLEANUP_newlines =
-            Pattern.compile("(?m)^\\s*(?:\\r\\n|\\r|\\n){2,}"); // remove repeated blank lines   ?? JDT?
+    public static final Pattern CLEANUP_newlines = Pattern.compile("(?m)^\\s*(?:\\r\\n|\\r|\\n){2,}"); // remove
+                                                                                                       // repeated blank
+                                                                                                       // lines ?? JDT?
 
-    public static final Pattern CLEANUP_ifstarts = Pattern.compile(
-            "(?m)(^(?![\\s{}]*$).+(?:\\r\\n|\\r|\\n))((?:[ \\t]+)if.*)"); // add new line before IF statements
+    public static final Pattern CLEANUP_ifstarts = Pattern
+            .compile("(?m)(^(?![\\s{}]*$).+(?:\\r\\n|\\r|\\n))((?:[ \\t]+)if.*)"); // add new line before IF statements
 
     // close up blanks in code like:
     // {
     //
-    //     private
-    public static final Pattern CLEANUP_blockstarts =
-            Pattern.compile("(?m)(?<=\\{)\\s+(?=(?:\\r\\n|\\r|\\n)[ \\t]*\\S)");
+    // private
+    public static final Pattern CLEANUP_blockstarts = Pattern
+            .compile("(?m)(?<=\\{)\\s+(?=(?:\\r\\n|\\r|\\n)[ \\t]*\\S)");
 
     // close up blanks in code like:
-    //     }
+    // }
     //
     // }
     public static final Pattern CLEANUP_blockends = Pattern.compile("(?m)(?<=[;}])\\s+(?=(?:\\r\\n|\\r|\\n)\\s*})");
@@ -247,7 +250,7 @@ public class McpCleanup {
         // charval.. its stupid.
         text = CLEANUP_charval.matcher(text).replaceAll("$1"); // TESTING NEEDED
 
-        //		 pi?   true
+        // pi? true
         text = CLEANUP_piD.matcher(text).replaceAll("Math.PI");
         text = CLEANUP_piF.matcher(text).replaceAll("(float)Math.PI");
         text = CLEANUP_2piD.matcher(text).replaceAll("(Math.PI * 2D)");

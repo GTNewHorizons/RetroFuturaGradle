@@ -132,18 +132,12 @@ tasks.named<org.gradle.jvm.tasks.Jar>("jar").configure { from("LICENSE", "docs")
 
 spotless {
   encoding("UTF-8")
+
   java {
     toggleOffOn()
-    importOrder()
+    importOrderFile("../spotless.importorder")
     removeUnusedImports()
-    palantirJavaFormat("1.1.0")
-  }
-  kotlinGradle {
-    toggleOffOn()
-    ktfmt("0.39")
-    trimTrailingWhitespace()
-    indentWithSpaces(4)
-    endWithNewline()
+    eclipse("4.19.0").configFile("../spotless.eclipseformat.xml")
   }
 }
 

@@ -5,15 +5,18 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 import net.minecraftforge.gradle.GradleStartCommon;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class CoremodTweaker implements ITweaker {
+
     protected static final Logger LOGGER = LogManager.getLogger("GradleStart");
     private static final String COREMOD_CLASS = "fml.relauncher.CoreModManager";
     private static final String TWEAKER_SORT_FIELD = "tweakSorting";
@@ -30,8 +33,8 @@ public class CoremodTweaker implements ITweaker {
             coreModList.setAccessible(true);
 
             // grab constructor.
-            Class<ITweaker> clazz = (Class<ITweaker>)
-                    GradleStartCommon.getFmlClass("fml.relauncher.CoreModManager$FMLPluginWrapper", classLoader);
+            Class<ITweaker> clazz = (Class<ITweaker>) GradleStartCommon
+                    .getFmlClass("fml.relauncher.CoreModManager$FMLPluginWrapper", classLoader);
             Constructor<ITweaker> construct = (Constructor<ITweaker>) clazz.getConstructors()[0];
             construct.setAccessible(true);
 
@@ -51,22 +54,20 @@ public class CoremodTweaker implements ITweaker {
                 if (clazz.isInstance(tweaker)) {
                     Object coreMod = pluginField.get(tweaker);
                     Object oldFile = fileField.get(tweaker);
-                    File newFile =
-                            GradleStartCommon.coreMap.get(coreMod.getClass().getCanonicalName());
+                    File newFile = GradleStartCommon.coreMap.get(coreMod.getClass().getCanonicalName());
 
-                    LOGGER.info(
-                            "Injecting location in coremod {}",
-                            coreMod.getClass().getCanonicalName());
+                    LOGGER.info("Injecting location in coremod {}", coreMod.getClass().getCanonicalName());
 
                     if (newFile != null && oldFile == null) {
                         // build new tweaker.
-                        oldList.set(i, construct.newInstance(new Object[] {
-                            (String) fields[0].get(tweaker), // name
-                            coreMod, // coremod
-                            newFile, // location
-                            fields[4].getInt(tweaker), // sort index?
-                            ((List<String>) listField.get(tweaker)).toArray(new String[0])
-                        }));
+                        oldList.set(
+                                i,
+                                construct.newInstance(
+                                        new Object[] { (String) fields[0].get(tweaker), // name
+                                                coreMod, // coremod
+                                                newFile, // location
+                                                fields[4].getInt(tweaker), // sort index?
+                                                ((List<String>) listField.get(tweaker)).toArray(new String[0]) }));
                     }
                 }
             }

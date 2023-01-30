@@ -1,10 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.google.common.base.Charsets;
-import com.google.common.collect.Maps;
-import com.google.common.io.Files;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import com.opencsv.CSVReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -13,8 +8,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import net.minecraftforge.srg2source.rangeapplier.MethodData;
 import net.minecraftforge.srg2source.rangeapplier.SrgContainer;
+
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -26,11 +23,18 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
+import com.google.common.base.Charsets;
+import com.google.common.collect.Maps;
+import com.google.common.io.Files;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+import com.opencsv.CSVReader;
+
 /**
  * Generates Deobf(Mcp)-Searge(Srg)-Obf(Notch) name mappings
  */
 @CacheableTask
 public abstract class GenSrgMappingsTask extends DefaultTask {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputSrg();
@@ -82,14 +86,12 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
         HashMap<String, String> methods = new HashMap<>(5000);
         HashMap<String, String> fields = new HashMap<>(5000);
 
-        try (CSVReader csvReader =
-                Utilities.createCsvReader(getMethodsCsv().get().getAsFile())) {
+        try (CSVReader csvReader = Utilities.createCsvReader(getMethodsCsv().get().getAsFile())) {
             for (String[] line : csvReader) {
                 methods.put(line[0], line[1]);
             }
         }
-        try (CSVReader csvReader =
-                Utilities.createCsvReader(getFieldsCsv().get().getAsFile())) {
+        try (CSVReader csvReader = Utilities.createCsvReader(getFieldsCsv().get().getAsFile())) {
             for (String[] line : csvReader) {
                 fields.put(line[0], line[1]);
             }
@@ -115,12 +117,10 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
         // create streams
 
         try (BufferedWriter notchToSrg = Files.newWriter(getNotchToSrg().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter notchToMcp =
-                        Files.newWriter(getNotchToMcp().get().getAsFile(), Charsets.UTF_8);
+                BufferedWriter notchToMcp = Files.newWriter(getNotchToMcp().get().getAsFile(), Charsets.UTF_8);
                 BufferedWriter srgToMcp = Files.newWriter(getSrgToMcp().get().getAsFile(), Charsets.UTF_8);
                 BufferedWriter mcpToSrg = Files.newWriter(getMcpToSrg().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter mcpToNotch =
-                        Files.newWriter(getMcpToNotch().get().getAsFile(), Charsets.UTF_8)) {
+                BufferedWriter mcpToNotch = Files.newWriter(getMcpToNotch().get().getAsFile(), Charsets.UTF_8)) {
             String line, temp, mcpName;
             // packages
             for (Map.Entry<String, String> e : inSrg.packageMap.entrySet()) {
@@ -239,10 +239,10 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
         com.google.common.io.Files.createParentDirs(getMcpExc().get().getAsFile());
 
         // create streams
-        try (BufferedWriter srgOut =
-                        com.google.common.io.Files.newWriter(getSrgExc().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter mcpOut =
-                        com.google.common.io.Files.newWriter(getMcpExc().get().getAsFile(), Charsets.UTF_8)) {
+        try (BufferedWriter srgOut = com.google.common.io.Files
+                .newWriter(getSrgExc().get().getAsFile(), Charsets.UTF_8);
+                BufferedWriter mcpOut = com.google.common.io.Files
+                        .newWriter(getMcpExc().get().getAsFile(), Charsets.UTF_8)) {
 
             // read and write existing lines
             Set<File> excFiles = new HashSet<>(getExtraExcs().getFiles());

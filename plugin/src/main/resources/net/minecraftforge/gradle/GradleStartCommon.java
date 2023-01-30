@@ -1,13 +1,5 @@
 package net.minecraftforge.gradle;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.io.Files;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,17 +8,30 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import joptsimple.NonOptionArgumentSpec;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
+
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.io.Files;
+
+import joptsimple.NonOptionArgumentSpec;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+
 public abstract class GradleStartCommon {
+
     protected static Logger LOGGER = LogManager.getLogger("GradleStart");
     private static final String NO_CORE_SEARCH = "noCoreSearch";
 
@@ -90,10 +95,8 @@ public abstract class GradleStartCommon {
         System.gc();
         String bounce = getBounceClass(); // marginally faster. And we need the launch wrapper anyways.
         if (bounce.endsWith("launchwrapper.Launch")) Launch.main(args);
-        else
-            Class.forName(getBounceClass())
-                    .getDeclaredMethod("main", String[].class)
-                    .invoke(null, new Object[] {args});
+        else Class.forName(getBounceClass()).getDeclaredMethod("main", String[].class)
+                .invoke(null, new Object[] { args });
     }
 
     private String[] getArgs() {
@@ -177,7 +180,7 @@ public abstract class GradleStartCommon {
     @SuppressWarnings("rawtypes")
     public static Class getFmlClass(String classname, ClassLoader loader) throws ClassNotFoundException {
         if (!classname.startsWith("fml")) // dummy check myself
-        throw new IllegalArgumentException("invalid FML classname");
+            throw new IllegalArgumentException("invalid FML classname");
 
         if (MC_VERSION.startsWith("1.7")) classname = FML_PACK_OLD + "." + classname;
         else classname = FML_PACK_NEW + "." + classname;
@@ -202,8 +205,7 @@ public abstract class GradleStartCommon {
         Method atRegistrar = null;
         try {
             atRegistrar = getFmlClass(MOD_ATD_CLASS).getDeclaredMethod(MOD_AT_METHOD, JarFile.class);
-        } catch (Throwable t) {
-        }
+        } catch (Throwable t) {}
 
         final String cpString = System.getProperty("java.class.path");
         final String[] cpEntries = cpString.split(File.pathSeparator);
@@ -256,11 +258,12 @@ public abstract class GradleStartCommon {
 
     // here and not in the tweaker package because classloader hell
     public static final class AccessTransformerTransformer implements IClassTransformer {
+
         public AccessTransformerTransformer() {
             doStuff((LaunchClassLoader) getClass().getClassLoader());
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
+        @SuppressWarnings({ "rawtypes", "unchecked" })
         private void doStuff(LaunchClassLoader classloader) {
             // the class and instance of ModAccessTransformer
             Class<? extends IClassTransformer> clazz = null;
@@ -284,8 +287,8 @@ public abstract class GradleStartCommon {
             Collection<Object> modifiers = null;
             try {
                 // super class of ModAccessTransformer is AccessTransformer
-                Field f = clazz.getSuperclass()
-                        .getDeclaredFields()[1]; // its the modifiers map. Only non-static field there.
+                Field f = clazz.getSuperclass().getDeclaredFields()[1]; // its the modifiers map. Only non-static field
+                                                                        // there.
                 f.setAccessible(true);
 
                 modifiers = ((com.google.common.collect.Multimap) f.get(instance)).values();
@@ -350,7 +353,7 @@ public abstract class GradleStartCommon {
             Splitter split = Splitter.on(',').trimResults().limit(3);
             for (String line : Files.readLines(file, Charsets.UTF_8)) {
                 if (line.startsWith("searge")) // header line
-                continue;
+                    continue;
 
                 List<String> splits = split.splitToList(line);
                 map.put(splits.get(0), splits.get(1));

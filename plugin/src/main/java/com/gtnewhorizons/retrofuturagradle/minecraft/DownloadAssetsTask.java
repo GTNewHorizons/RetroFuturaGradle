@@ -1,6 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.minecraft;
 
-import com.gtnewhorizons.retrofuturagradle.Constants;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -10,7 +9,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import javax.inject.Inject;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
@@ -23,10 +24,13 @@ import org.gradle.workers.WorkParameters;
 import org.gradle.workers.WorkQueue;
 import org.gradle.workers.WorkerExecutor;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
+
 /**
  * Downloads vanilla game assets based on a JSON manifest and puts them in a readable location.
  */
 public abstract class DownloadAssetsTask extends DefaultTask {
+
     /**
      * Asset download root path
      */
@@ -78,6 +82,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     }
 
     public interface AssetParameters extends WorkParameters {
+
         Property<URL> getSourceUrl();
 
         Property<String> getSha1();
@@ -86,6 +91,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     }
 
     public abstract static class AssetAction implements WorkAction<AssetParameters> {
+
         @Inject
         public AssetAction() {}
 
@@ -98,10 +104,8 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             }
 
             for (int retry = 0; retry < 5; retry++) {
-                try (BufferedInputStream bis = new BufferedInputStream(
-                                params.getSourceUrl().get().openStream());
-                        FileOutputStream fos =
-                                new FileOutputStream(params.getTargetFile().get());
+                try (BufferedInputStream bis = new BufferedInputStream(params.getSourceUrl().get().openStream());
+                        FileOutputStream fos = new FileOutputStream(params.getTargetFile().get());
                         BufferedOutputStream bos = new BufferedOutputStream(fos)) {
                     IOUtils.copy(bis, bos);
                     bos.flush();
@@ -123,17 +127,17 @@ public abstract class DownloadAssetsTask extends DefaultTask {
 
             final String realSha1;
             try {
-                realSha1 = new DigestUtils(DigestUtils.getSha1Digest())
-                        .digestAsHex(params.getTargetFile().get());
+                realSha1 = new DigestUtils(DigestUtils.getSha1Digest()).digestAsHex(params.getTargetFile().get());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
             if (!realSha1.equals(params.getSha1().get())) {
-                throw new RuntimeException(String.format(
-                        "Asset %s sha1sum doesn't match! Downloaded: %s Expected: %s",
-                        params.getTargetFile().get().getAbsolutePath(),
-                        realSha1,
-                        params.getSha1().get()));
+                throw new RuntimeException(
+                        String.format(
+                                "Asset %s sha1sum doesn't match! Downloaded: %s Expected: %s",
+                                params.getTargetFile().get().getAbsolutePath(),
+                                realSha1,
+                                params.getSha1().get()));
             }
         }
     }

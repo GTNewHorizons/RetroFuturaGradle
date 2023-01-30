@@ -1,17 +1,20 @@
 package com.gtnewhorizons.retrofuturagradle.minecraft;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 public class AssetManifest {
+
     private final JsonObject root;
 
     public AssetManifest(final String assetManifestContents) {
@@ -43,6 +46,7 @@ public class AssetManifest {
     }
 
     public static class Asset {
+
         public final String realName;
         public final long size;
         public final String hash;

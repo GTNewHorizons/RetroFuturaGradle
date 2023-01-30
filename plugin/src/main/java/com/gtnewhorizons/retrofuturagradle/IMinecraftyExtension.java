@@ -1,6 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle;
 
-import com.google.common.collect.Lists;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -8,6 +7,8 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
 import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec;
+
+import com.google.common.collect.Lists;
 
 public interface IMinecraftyExtension {
     // Vanilla configs
@@ -50,14 +51,14 @@ public interface IMinecraftyExtension {
     public abstract Property<String> getMcpMappingVersion();
 
     /**
-     * Whether to use the mappings embedded in Forge for methods and fields (params are taken from MCP because Forge doesn't have any)
-     * Default: true.
+     * Whether to use the mappings embedded in Forge for methods and fields (params are taken from MCP because Forge
+     * doesn't have any) Default: true.
      */
     public abstract Property<Boolean> getUseForgeEmbeddedMappings();
 
     /**
-     * Whether to use the generics map to add missing generic parameters to non-private types in the decompiled source code.
-     * Default: false. (This is new in RFG compared to FG)
+     * Whether to use the generics map to add missing generic parameters to non-private types in the decompiled source
+     * code. Default: false. (This is new in RFG compared to FG)
      */
     public abstract Property<Boolean> getInjectMissingGenerics();
 

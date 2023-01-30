@@ -1,8 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.minecraft;
 
-import com.google.common.base.Strings;
-import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
-import cpw.mods.fml.relauncher.Side;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +11,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+
 import javax.inject.Inject;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.gradle.api.Project;
@@ -25,9 +24,15 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.work.DisableCachingByDefault;
 
+import com.google.common.base.Strings;
+import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+
+import cpw.mods.fml.relauncher.Side;
+
 @DisableCachingByDefault(because = "Executes code for manual interaction")
 public abstract class RunMinecraftTask extends JavaExec {
-    public static final UUID DEFAULT_UUID = UUID.nameUUIDFromBytes(new byte[] {'d', 'e', 'v'});
+
+    public static final UUID DEFAULT_UUID = UUID.nameUUIDFromBytes(new byte[] { 'd', 'e', 'v' });
 
     @Input
     public abstract Property<String> getUsername();
@@ -68,8 +73,7 @@ public abstract class RunMinecraftTask extends JavaExec {
      * Run this in the first configuration block of the task, constructors can't register actions so this is necessary
      */
     public void setup(Project project) {
-        MinecraftExtension mcExt =
-                Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
+        MinecraftExtension mcExt = Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
         MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
         getTweakClasses().convention(mcExt.getExtraTweakClasses());
         setWorkingDir(mcTasks.getRunDirectory());
@@ -78,8 +82,7 @@ public abstract class RunMinecraftTask extends JavaExec {
         getJavaLauncher().convention(mcExt.getToolchainLauncher());
         if (side == Side.CLIENT) {
             dependsOn(mcTasks.getTaskExtractNatives());
-            final String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath()
-                    + File.pathSeparator
+            final String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath() + File.pathSeparator
                     + System.getProperty("java.library.path");
             systemProperty("java.library.path", libraryPath);
 
@@ -96,27 +99,27 @@ public abstract class RunMinecraftTask extends JavaExec {
     public List<String> calculateArgs(Project project) {
         ArrayList<String> args = new ArrayList<>();
         if (side == Side.CLIENT) {
-            MinecraftExtension mcExt =
-                    Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
-            MinecraftTasks mcTasks =
-                    Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
-            args.addAll(Arrays.asList(
-                    "--username",
-                    getUsername().get(),
-                    "--version",
-                    mcExt.getMcVersion().get(),
-                    "--gameDir",
-                    getWorkingDir().getAbsolutePath(),
-                    "--assetsDir",
-                    mcTasks.getVanillaAssetsLocation().getAbsolutePath(),
-                    "--assetIndex",
-                    mcExt.getMcVersion().get(),
-                    "--uuid",
-                    getUserUUID().get().toString(),
-                    "--userProperties",
-                    "{}",
-                    "--accessToken",
-                    getAccessToken().get()));
+            MinecraftExtension mcExt = Objects
+                    .requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
+            MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
+            args.addAll(
+                    Arrays.asList(
+                            "--username",
+                            getUsername().get(),
+                            "--version",
+                            mcExt.getMcVersion().get(),
+                            "--gameDir",
+                            getWorkingDir().getAbsolutePath(),
+                            "--assetsDir",
+                            mcTasks.getVanillaAssetsLocation().getAbsolutePath(),
+                            "--assetIndex",
+                            mcExt.getMcVersion().get(),
+                            "--uuid",
+                            getUserUUID().get().toString(),
+                            "--userProperties",
+                            "{}",
+                            "--accessToken",
+                            getAccessToken().get()));
         }
         for (String tweakClass : getTweakClasses().get()) {
             args.add("--tweakClass");
@@ -127,8 +130,7 @@ public abstract class RunMinecraftTask extends JavaExec {
     }
 
     public List<String> calculateJvmArgs(Project project) {
-        MinecraftExtension mcExt =
-                Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
+        MinecraftExtension mcExt = Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
         ArrayList<String> args = new ArrayList<>();
         args.addAll(getExtraJvmArgs().get());
         args.addAll(mcExt.getExtraRunJvmArguments().get());
@@ -144,9 +146,8 @@ public abstract class RunMinecraftTask extends JavaExec {
             if (side == Side.SERVER) {
                 final File eula = new File(getWorkingDir(), "eula.txt");
                 if (!eula.exists()) {
-                    getLogger()
-                            .warn(
-                                    "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
+                    getLogger().warn(
+                            "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
                     final String userInput;
                     try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
                             BufferedReader reader = new BufferedReader(isr)) {

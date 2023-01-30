@@ -1,10 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
-import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -12,6 +7,7 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
@@ -23,7 +19,15 @@ import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.TaskProvider;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
+import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
+import de.undercouch.gradle.tasks.download.Download;
+
 public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
+
     protected static final String TASK_GROUP_INTERNAL = "Internal Modded Minecraft";
     protected static final String TASK_GROUP_USER = "Modded Minecraft";
 
@@ -91,18 +95,20 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         mcpDataLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "data");
         taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.from(project.provider(() -> project.zipTree(mcpMappingDataConfiguration
-                    .fileCollection(Specs.SATISFIES_ALL)
-                    .getSingleFile())));
+            task.from(
+                    project.provider(
+                            () -> project.zipTree(
+                                    mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
             task.into(mcpDataLocation);
         });
 
         forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "userdev");
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.from(project.provider(() -> project.zipTree(forgeUserdevConfiguration
-                    .fileCollection(Specs.SATISFIES_ALL)
-                    .getSingleFile())));
+            task.from(
+                    project.provider(
+                            () -> project.zipTree(
+                                    forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
             task.into(forgeUserdevLocation);
         });
 
@@ -114,15 +120,13 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     // inputs
                     task.getInputSrg().set(userdevFile("conf/packaged.srg"));
                     task.getInputExc().set(userdevFile("conf/packaged.exc"));
-                    task.getFieldsCsv()
-                            .set(mcExt.getUseForgeEmbeddedMappings()
-                                    .flatMap(useForge -> useForge.booleanValue()
-                                            ? userdevFile("conf/fields.csv")
+                    task.getFieldsCsv().set(
+                            mcExt.getUseForgeEmbeddedMappings().flatMap(
+                                    useForge -> useForge.booleanValue() ? userdevFile("conf/fields.csv")
                                             : mcpFile("fields.csv")));
-                    task.getMethodsCsv()
-                            .set(mcExt.getUseForgeEmbeddedMappings()
-                                    .flatMap(useForge -> useForge.booleanValue()
-                                            ? userdevFile("conf/methods.csv")
+                    task.getMethodsCsv().set(
+                            mcExt.getUseForgeEmbeddedMappings().flatMap(
+                                    useForge -> useForge.booleanValue() ? userdevFile("conf/methods.csv")
                                             : mcpFile("methods.csv")));
                     // outputs
                     task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
@@ -136,8 +140,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
     }
 
     public Provider<RegularFile> mcpFile(String path) {
-        return project.getLayout()
-                .file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+        return project.getLayout().file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
     public Provider<RegularFile> userdevFile(String path) {

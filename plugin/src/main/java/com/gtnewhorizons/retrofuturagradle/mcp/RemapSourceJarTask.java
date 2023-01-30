@@ -1,5 +1,36 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.CacheableTask;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskAction;
+
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ParserConfiguration;
@@ -27,35 +58,6 @@ import com.google.common.collect.MultimapBuilder;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.JavadocAdder;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.opencsv.CSVReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.gradle.api.DefaultTask;
-import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.CacheableTask;
-import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.Optional;
-import org.gradle.api.tasks.OutputFile;
-import org.gradle.api.tasks.PathSensitive;
-import org.gradle.api.tasks.PathSensitivity;
-import org.gradle.api.tasks.TaskAction;
 
 @CacheableTask
 public abstract class RemapSourceJarTask extends DefaultTask {
@@ -103,6 +105,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
     private final Map<String, String> loadedSources = new HashMap<>();
 
     private static final class Mapping {
+
         public final String name;
         public final String javadoc;
 
@@ -119,6 +122,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
     }
 
     private static final class GenericMapping {
+
         public final String zipEntry;
         public final String param;
         public final String suffix;
@@ -135,14 +139,23 @@ public abstract class RemapSourceJarTask extends DefaultTask {
         @Override
         public String toString() {
             return "GenericMapping{" + "zipEntry='"
-                    + zipEntry + '\'' + ", param='"
-                    + param + '\'' + ", suffix='"
-                    + suffix + '\'' + ", type='"
-                    + type + '\'' + '}';
+                    + zipEntry
+                    + '\''
+                    + ", param='"
+                    + param
+                    + '\''
+                    + ", suffix='"
+                    + suffix
+                    + '\''
+                    + ", type='"
+                    + type
+                    + '\''
+                    + '}';
         }
     }
 
     private static final class GenericPatch {
+
         public final String zipEntry;
         public final String containsFilter;
         public final String toReplace;
@@ -158,10 +171,18 @@ public abstract class RemapSourceJarTask extends DefaultTask {
         @Override
         public String toString() {
             return "GenericPatch{" + "zipEntry='"
-                    + zipEntry + '\'' + ", containsFilter='"
-                    + containsFilter + '\'' + ", toReplace='"
-                    + toReplace + '\'' + ", replaceWith='"
-                    + replaceWith + '\'' + '}';
+                    + zipEntry
+                    + '\''
+                    + ", containsFilter='"
+                    + containsFilter
+                    + '\''
+                    + ", toReplace='"
+                    + toReplace
+                    + '\''
+                    + ", replaceWith='"
+                    + replaceWith
+                    + '\''
+                    + '}';
         }
     }
 
@@ -169,22 +190,22 @@ public abstract class RemapSourceJarTask extends DefaultTask {
     private final Map<String, Mapping> fieldMappings = new HashMap<>();
     private final Map<String, String> paramMappings = new HashMap<>();
     // srg name -> mapping
-    private final ListMultimap<String, GenericMapping> genericMappings =
-            MultimapBuilder.hashKeys().arrayListValues().build();
+    private final ListMultimap<String, GenericMapping> genericMappings = MultimapBuilder.hashKeys().arrayListValues()
+            .build();
     // zip entry -> patch list
-    private final ListMultimap<String, GenericPatch> genericPatches =
-            MultimapBuilder.hashKeys().arrayListValues().build();
+    private final ListMultimap<String, GenericPatch> genericPatches = MultimapBuilder.hashKeys().arrayListValues()
+            .build();
 
     // Matches SRG-style names (func_123_g/field_1_p/p_123_1_)
-    private static final Pattern SRG_FINDER =
-            Pattern.compile("(func_\\d+_[a-zA-Z_]+|field_\\d+_[a-zA-Z_]+|p_\\w+_\\d+_)([^\\w$])");
-    private static final Pattern METHOD_DEFINITION =
-            Pattern.compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )+([0-9a-zA-Z_]+)\\(");
+    private static final Pattern SRG_FINDER = Pattern
+            .compile("(func_\\d+_[a-zA-Z_]+|field_\\d+_[a-zA-Z_]+|p_\\w+_\\d+_)([^\\w$])");
+    private static final Pattern METHOD_DEFINITION = Pattern
+            .compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )+([0-9a-zA-Z_]+)\\(");
 
-    private static final Pattern CONSTRUCTOR_DEFINITION =
-            Pattern.compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )*([a-zA-Z0-9_]+)\\(");
-    private static final Pattern FIELD_DEFINITION =
-            Pattern.compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )+(field_[0-9]+_[a-zA-Z_]+) *(?:=|;)");
+    private static final Pattern CONSTRUCTOR_DEFINITION = Pattern
+            .compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )*([a-zA-Z0-9_]+)\\(");
+    private static final Pattern FIELD_DEFINITION = Pattern
+            .compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )+(field_[0-9]+_[a-zA-Z_]+) *(?:=|;)");
 
     @TaskAction
     public void remapSources() throws IOException {
@@ -212,9 +233,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
             final CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
             combinedTypeSolver.add(new JarTypeSolver(getBinaryJar().get().getAsFile()));
             int deps = 0;
-            for (File depJar : getProject()
-                    .getConfigurations()
-                    .getByName(MCPTasks.PATCHED_MINECRAFT_CONFIGURATION_NAME)
+            for (File depJar : getProject().getConfigurations().getByName(MCPTasks.PATCHED_MINECRAFT_CONFIGURATION_NAME)
                     .resolve()) {
                 if (depJar.isFile() && depJar.getName().endsWith(".jar")) {
                     deps++;
@@ -252,17 +271,14 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                 mCtor.reset(originalLine);
                 paramsApplied.clear();
                 if (!newLine.trim().startsWith("return ")) {
-                    if (mMethod.find()
-                            && !Character.isUpperCase(mMethod.group(2).charAt(0))) {
+                    if (mMethod.find() && !Character.isUpperCase(mMethod.group(2).charAt(0))) {
                         final String methodName = mMethod.group(2);
                         final Mapping methodMapping = methodMappings.get(methodName);
-                        if ((addJavadocs || addDummyJavadocs)
-                                && methodMapping != null
+                        if ((addJavadocs || addDummyJavadocs) && methodMapping != null
                                 && !methodMapping.javadoc.isEmpty()) {
                             addBeforeAnnotations(
                                     newLines,
-                                    addDummyJavadocs
-                                            ? (mMethod.group(1) + "// JAVADOC METHOD $$ " + methodName)
+                                    addDummyJavadocs ? (mMethod.group(1) + "// JAVADOC METHOD $$ " + methodName)
                                             : JavadocAdder.buildJavadoc(mMethod.group(1), methodMapping.javadoc, true));
                         }
                         final List<GenericMapping> genMaps = genericMappings.get(methodName);
@@ -282,42 +298,46 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                             try {
                                 if (genMap.param.equals("@return")) {
                                     final int parenIdx = newLine.indexOf('(');
-                                    final int nameIdx =
-                                            newLine.substring(0, parenIdx).lastIndexOf(' ');
-                                    newLine =
-                                            newLine.substring(0, nameIdx) + genMap.suffix + newLine.substring(nameIdx);
+                                    final int nameIdx = newLine.substring(0, parenIdx).lastIndexOf(' ');
+                                    newLine = newLine.substring(0, nameIdx) + genMap.suffix
+                                            + newLine.substring(nameIdx);
                                 } else {
                                     final int whichParam = Integer.parseInt(genMap.param);
                                     final int paramsOffset = newLine.indexOf('(');
-                                    int paramStart = (whichParam == 0)
-                                            ? (paramsOffset + 1)
+                                    int paramStart = (whichParam == 0) ? (paramsOffset + 1)
                                             : (StringUtils.ordinalIndexOf(newLine, ",", whichParam) + 1);
                                     while (Character.isWhitespace(newLine.charAt(paramStart))) {
                                         paramStart++;
                                     }
                                     int paramSplit = newLine.indexOf(' ', paramStart);
-                                    while (newLine.substring(0, paramSplit)
-                                            .trim()
-                                            .endsWith("final")) {
+                                    while (newLine.substring(0, paramSplit).trim().endsWith("final")) {
                                         paramSplit = newLine.indexOf(' ', paramSplit + 1);
                                     }
                                     if (paramSplit == -1) {
                                         throw new IllegalStateException(
-                                                "Could not find param " + whichParam + " in line: |" + newLine
-                                                        + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                                                "Could not find param " + whichParam
+                                                        + " in line: |"
+                                                        + newLine
+                                                        + "| file: "
+                                                        + srcEntry.getKey()
+                                                        + ":"
+                                                        + (newLines.size() + 1));
                                     }
-                                    newLine = newLine.substring(0, paramSplit)
-                                            + genMap.suffix
+                                    newLine = newLine.substring(0, paramSplit) + genMap.suffix
                                             + newLine.substring(paramSplit);
                                 }
                             } catch (Exception e) {
                                 throw new IllegalStateException(
-                                        "Error applying generic mapping " + genMap + " to line |" + newLine + "| file: "
-                                                + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                                        "Error applying generic mapping " + genMap
+                                                + " to line |"
+                                                + newLine
+                                                + "| file: "
+                                                + srcEntry.getKey()
+                                                + ":"
+                                                + (newLines.size() + 1));
                             }
                         }
-                    } else if ((addJavadocs || addDummyJavadocs)
-                            && originalLine.trim().startsWith("// JAVADOC ")) {
+                    } else if ((addJavadocs || addDummyJavadocs) && originalLine.trim().startsWith("// JAVADOC ")) {
                         if (mSrg.find()) {
                             final String indent = originalLine.substring(0, originalLine.indexOf("// JAVADOC"));
                             final String entityName = mSrg.group();
@@ -334,22 +354,17 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                             }
 
                             if (newLine.endsWith(System.lineSeparator())) {
-                                newLine = newLine.substring(
-                                        0,
-                                        newLine.length()
-                                                - System.lineSeparator().length());
+                                newLine = newLine.substring(0, newLine.length() - System.lineSeparator().length());
                             }
                         }
                     } else if (mField.find()) {
                         final String fieldName = mField.group(2);
                         final Mapping fieldMapping = fieldMappings.get(fieldName);
-                        if ((addJavadocs || addDummyJavadocs)
-                                && fieldMapping != null
+                        if ((addJavadocs || addDummyJavadocs) && fieldMapping != null
                                 && !fieldMapping.javadoc.isEmpty()) {
                             addBeforeAnnotations(
                                     newLines,
-                                    addDummyJavadocs
-                                            ? (mField.group(1) + "// JAVADOC FIELD $$ " + fieldName)
+                                    addDummyJavadocs ? (mField.group(1) + "// JAVADOC FIELD $$ " + fieldName)
                                             : JavadocAdder.buildJavadoc(mField.group(1), fieldMapping.javadoc, false));
                         }
                         final List<GenericMapping> genMaps = genericMappings.get(fieldName);
@@ -379,8 +394,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                             paramsApplied.add(genMap.param);
                             final int whichParam = Integer.parseInt(genMap.param);
                             final int paramsOffset = newLine.indexOf('(');
-                            int paramStart = (whichParam == 0)
-                                    ? (paramsOffset + 1)
+                            int paramStart = (whichParam == 0) ? (paramsOffset + 1)
                                     : (StringUtils.ordinalIndexOf(newLine, ",", whichParam) + 1);
                             while (Character.isWhitespace(newLine.charAt(paramStart))) {
                                 paramStart++;
@@ -390,8 +404,14 @@ public abstract class RemapSourceJarTask extends DefaultTask {
                                 paramSplit = newLine.indexOf(' ', paramSplit + 1);
                             }
                             if (paramSplit == -1) {
-                                throw new IllegalStateException("Could not find param " + whichParam + " in line: |"
-                                        + newLine + "| file: " + srcEntry.getKey() + ":" + (newLines.size() + 1));
+                                throw new IllegalStateException(
+                                        "Could not find param " + whichParam
+                                                + " in line: |"
+                                                + newLine
+                                                + "| file: "
+                                                + srcEntry.getKey()
+                                                + ":"
+                                                + (newLines.size() + 1));
                             }
                             newLine = newLine.substring(0, paramSplit) + genMap.suffix + newLine.substring(paramSplit);
                         }
@@ -437,8 +457,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
             srcEntry.setValue(StringUtils.join(newLines, System.lineSeparator()));
 
             if (DEBUG_PRINT_ALL_GENERICS) {
-                if (!srcEntry.getKey().startsWith("net/minecraft")
-                        && !srcEntry.getKey().startsWith("/net/minecraft")) {
+                if (!srcEntry.getKey().startsWith("net/minecraft") && !srcEntry.getKey().startsWith("/net/minecraft")) {
                     continue;
                 }
 
@@ -461,8 +480,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
             genLog.close();
         }
 
-        Utilities.saveMemoryJar(
-                loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
+        Utilities.saveMemoryJar(loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private static String extractCtorSig(String line, int lineNo) {
@@ -475,9 +493,7 @@ public abstract class RemapSourceJarTask extends DefaultTask {
             final String argStr = line.substring(lparen + 1, rparen);
             final String[] argStrs = argStr.split(",");
             return cname + ":"
-                    + Arrays.stream(argStrs)
-                            .map(String::trim)
-                            .map(arg -> arg.substring(0, arg.lastIndexOf(' ')).trim())
+                    + Arrays.stream(argStrs).map(String::trim).map(arg -> arg.substring(0, arg.lastIndexOf(' ')).trim())
                             .collect(Collectors.joining(","));
         } catch (Exception e) {
             return "???" + lineNo;
@@ -488,132 +504,115 @@ public abstract class RemapSourceJarTask extends DefaultTask {
         return extractCtorSig(ctor.getDeclarationAsString(true, false, true), lineNo);
     }
 
-    private void printRawGenericFile(
-            PrintWriter genLog, Map.Entry<String, String> srcEntry, List<String> srcLines, CompilationUnit cu) {
-        cu.accept(
-                new ModifierVisitor<Void>() {
+    private void printRawGenericFile(PrintWriter genLog, Map.Entry<String, String> srcEntry, List<String> srcLines,
+            CompilationUnit cu) {
+        cu.accept(new ModifierVisitor<Void>() {
 
-                    @Override
-                    public Visitable visit(FieldDeclaration decl, Void arg) {
-                        if (decl.isPrivate()) {
-                            return super.visit(decl, arg);
-                        }
-                        try {
-                            final ResolvedFieldDeclaration rfd = decl.resolve();
-                            final ResolvedType rDecl = rfd.getType();
-                            for (VariableDeclarator var0 : decl.getVariables()) {
-                                final String srgName = var0.getNameAsString();
-                                final Mapping map = fieldMappings.get(srgName);
-                                analyzeType(
-                                        rfd.declaringType(),
-                                        rDecl,
-                                        srgName,
-                                        map == null ? (srgName + "?") : map.name,
-                                        "@field");
-                            }
-                        } catch (Exception e) {
-                        }
-                        return super.visit(decl, arg);
+            @Override
+            public Visitable visit(FieldDeclaration decl, Void arg) {
+                if (decl.isPrivate()) {
+                    return super.visit(decl, arg);
+                }
+                try {
+                    final ResolvedFieldDeclaration rfd = decl.resolve();
+                    final ResolvedType rDecl = rfd.getType();
+                    for (VariableDeclarator var0 : decl.getVariables()) {
+                        final String srgName = var0.getNameAsString();
+                        final Mapping map = fieldMappings.get(srgName);
+                        analyzeType(
+                                rfd.declaringType(),
+                                rDecl,
+                                srgName,
+                                map == null ? (srgName + "?") : map.name,
+                                "@field");
                     }
+                } catch (Exception e) {}
+                return super.visit(decl, arg);
+            }
 
-                    @Override
-                    public Visitable visit(ConstructorDeclaration n, Void arg) {
-                        if (n.isPrivate()) {
-                            return super.visit(n, arg);
-                        }
-                        final int lineNumber = n.getName().getBegin().orElse(Position.HOME).line;
-                        try {
-                            final ResolvedConstructorDeclaration resolved = n.resolve();
-                            for (int param = 0; param < resolved.getNumberOfParams(); param++) {
-                                analyzeType(
-                                        resolved.declaringType(),
-                                        resolved.getParam(param).getType(),
-                                        "@init:" + extractCtorSig(n, lineNumber),
-                                        "@init:" + extractCtorSig(n, lineNumber),
-                                        Integer.toString(param));
-                            }
-                        } catch (Exception e) {
-                        }
-                        return super.visit(n, arg);
+            @Override
+            public Visitable visit(ConstructorDeclaration n, Void arg) {
+                if (n.isPrivate()) {
+                    return super.visit(n, arg);
+                }
+                final int lineNumber = n.getName().getBegin().orElse(Position.HOME).line;
+                try {
+                    final ResolvedConstructorDeclaration resolved = n.resolve();
+                    for (int param = 0; param < resolved.getNumberOfParams(); param++) {
+                        analyzeType(
+                                resolved.declaringType(),
+                                resolved.getParam(param).getType(),
+                                "@init:" + extractCtorSig(n, lineNumber),
+                                "@init:" + extractCtorSig(n, lineNumber),
+                                Integer.toString(param));
                     }
+                } catch (Exception e) {}
+                return super.visit(n, arg);
+            }
 
-                    @Override
-                    public Visitable visit(MethodDeclaration decl, Void arg) {
-                        if (decl.isPrivate()) {
-                            return super.visit(decl, arg);
-                        }
-                        try {
-                            final ResolvedMethodDeclaration resolved = decl.resolve();
-                            final int declLineIndex = decl.getName().getBegin().orElse(Position.HOME).line;
-                            final String srgName = decl.getNameAsString().trim();
-                            final Mapping map = methodMappings.get(srgName);
-                            final String mcpName = (map == null ? (srgName + "?") : map.name) + ":" + declLineIndex;
-                            analyzeType(
-                                    resolved.declaringType(),
-                                    resolved.getReturnType(),
-                                    srgName + ":" + declLineIndex,
-                                    mcpName,
-                                    "@return");
-                            for (int param = 0; param < resolved.getNumberOfParams(); param++) {
-                                analyzeType(
-                                        resolved.declaringType(),
-                                        resolved.getParam(param).getType(),
-                                        srgName + ":" + declLineIndex,
-                                        mcpName,
-                                        Integer.toString(param));
-                            }
-                        } catch (Exception e) {
-                        }
-                        return super.visit(decl, arg);
+            @Override
+            public Visitable visit(MethodDeclaration decl, Void arg) {
+                if (decl.isPrivate()) {
+                    return super.visit(decl, arg);
+                }
+                try {
+                    final ResolvedMethodDeclaration resolved = decl.resolve();
+                    final int declLineIndex = decl.getName().getBegin().orElse(Position.HOME).line;
+                    final String srgName = decl.getNameAsString().trim();
+                    final Mapping map = methodMappings.get(srgName);
+                    final String mcpName = (map == null ? (srgName + "?") : map.name) + ":" + declLineIndex;
+                    analyzeType(
+                            resolved.declaringType(),
+                            resolved.getReturnType(),
+                            srgName + ":" + declLineIndex,
+                            mcpName,
+                            "@return");
+                    for (int param = 0; param < resolved.getNumberOfParams(); param++) {
+                        analyzeType(
+                                resolved.declaringType(),
+                                resolved.getParam(param).getType(),
+                                srgName + ":" + declLineIndex,
+                                mcpName,
+                                Integer.toString(param));
                     }
+                } catch (Exception e) {}
+                return super.visit(decl, arg);
+            }
 
-                    private void analyzeType(
-                            ResolvedTypeDeclaration declaringType,
-                            ResolvedType resolvedType,
-                            String srgName,
-                            String mcpName,
-                            String paramNr) {
-                        if (resolvedType.isReferenceType()) {
-                            final ResolvedReferenceType refType = resolvedType.asReferenceType();
-                            if (!refType.isRawType()) {
-                                return;
-                            }
-                            genLog.println(StringUtils.join(
-                                    new String[] {
-                                        srcEntry.getKey(),
-                                        declaringType.getQualifiedName(),
-                                        '"' + srgName + '"',
-                                        '"' + mcpName + '"',
-                                        paramNr,
-                                        refType.getQualifiedName(),
-                                        ""
-                                    },
+            private void analyzeType(ResolvedTypeDeclaration declaringType, ResolvedType resolvedType, String srgName,
+                    String mcpName, String paramNr) {
+                if (resolvedType.isReferenceType()) {
+                    final ResolvedReferenceType refType = resolvedType.asReferenceType();
+                    if (!refType.isRawType()) {
+                        return;
+                    }
+                    genLog.println(
+                            StringUtils.join(
+                                    new String[] { srcEntry.getKey(), declaringType.getQualifiedName(),
+                                            '"' + srgName + '"', '"' + mcpName + '"', paramNr,
+                                            refType.getQualifiedName(), "" },
                                     ","));
-                        }
-                    }
-                },
-                null);
+                }
+            }
+        }, null);
     }
 
     private void loadMappingCsvs() throws IOException {
-        try (CSVReader methodReader =
-                Utilities.createCsvReader(getMethodCsv().get().getAsFile())) {
+        try (CSVReader methodReader = Utilities.createCsvReader(getMethodCsv().get().getAsFile())) {
             methodMappings.clear();
             for (String[] csvLine : methodReader) {
                 // func_100012_b,setPotionDurationMax,0,Toggle the isPotionDurationMax field.
                 methodMappings.put(csvLine[0], new Mapping(csvLine[1], csvLine[3]));
             }
         }
-        try (CSVReader fieldReader =
-                Utilities.createCsvReader(getFieldCsv().get().getAsFile())) {
+        try (CSVReader fieldReader = Utilities.createCsvReader(getFieldCsv().get().getAsFile())) {
             fieldMappings.clear();
             for (String[] csvLine : fieldReader) {
                 // field_100013_f,isPotionDurationMax,0,"True if potion effect duration is at maximum, false otherwise."
                 fieldMappings.put(csvLine[0], new Mapping(csvLine[1], csvLine[3]));
             }
         }
-        try (CSVReader paramReader =
-                Utilities.createCsvReader(getParamCsv().get().getAsFile())) {
+        try (CSVReader paramReader = Utilities.createCsvReader(getParamCsv().get().getAsFile())) {
             paramMappings.clear();
             for (String[] csvLine : paramReader) {
                 // p_104055_1_,force,1

@@ -3,18 +3,20 @@
  */
 package com.gtnewhorizons.retrofuturagradle;
 
-import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
-import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
-import com.gtnewhorizons.retrofuturagradle.modutils.ModUtils;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.util.GradleVersion;
 
+import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
+import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.modutils.ModUtils;
+
 /**
  * A plugin for modding 1.7.10 Minecraft
  */
 public class UserDevPlugin implements Plugin<Project> {
+
     public void apply(Project project) {
         project.getPluginManager().apply(JavaLibraryPlugin.class);
 

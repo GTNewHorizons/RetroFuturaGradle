@@ -1,22 +1,26 @@
 package com.gtnewhorizons.retrofuturagradle.json;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
 public class MCInjectorStruct {
+
     public EnclosingMethod enclosingMethod = null;
     public ArrayList<InnerClass> innerClasses = null;
 
     public static class EnclosingMethod {
+
         public final String desc;
         public final String name;
         public final String owner;
@@ -29,6 +33,7 @@ public class MCInjectorStruct {
     }
 
     public static class InnerClass {
+
         public String access;
         public final String inner_class;
         public final String inner_name;

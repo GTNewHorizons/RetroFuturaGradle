@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+
 import javax.inject.Inject;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -21,8 +23,10 @@ import org.gradle.api.tasks.TaskAction;
 
 @CacheableTask
 public abstract class InjectTagsTask extends DefaultTask {
+
     /**
-     * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or generating a small Java file with the tag values.
+     * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or
+     * generating a small Java file with the tag values.
      */
     @Input
     @Optional
@@ -55,8 +59,8 @@ public abstract class InjectTagsTask extends DefaultTask {
             final int lastDot = outClass.lastIndexOf('.');
             final String outPackage = (lastDot >= 0) ? outClass.substring(0, lastDot) : null;
             final String outClassName = (lastDot >= 0) ? outClass.substring(lastDot + 1) : outClass;
-            final String outPath =
-                    (outPackage == null ? "" : outPackage.replace('.', '/') + "/") + outClassName + ".java";
+            final String outPath = (outPackage == null ? "" : outPackage.replace('.', '/') + "/") + outClassName
+                    + ".java";
             final File outFile = getOutputDir().get().file(outPath).getAsFile();
             FileUtils.forceMkdirParent(outFile);
             final StringBuilder outWriter = new StringBuilder();

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
  * A simple unit test for the RetroFuturaGradle plugin.
  */
 class UserDevPluginTest {
+
     @Test
     void pluginRegistersTasks() {
         // Create a test project and apply the plugin
@@ -51,7 +52,8 @@ class UserDevPluginTest {
         for (String taskName : project.getTasks().getNames()) {
             project.getLogger().info("Task found: " + taskName);
             Task t = assertDoesNotThrow(
-                    () -> project.getTasks().findByName(taskName), taskName + " could not be created");
+                    () -> project.getTasks().findByName(taskName),
+                    taskName + " could not be created");
         }
     }
 }

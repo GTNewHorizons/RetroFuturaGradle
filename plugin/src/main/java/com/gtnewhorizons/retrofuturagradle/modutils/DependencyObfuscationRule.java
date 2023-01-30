@@ -1,8 +1,9 @@
 package com.gtnewhorizons.retrofuturagradle.modutils;
 
-import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import java.util.Locale;
+
 import javax.inject.Inject;
+
 import org.gradle.api.artifacts.CacheableRule;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.ComponentMetadataRule;
@@ -10,8 +11,11 @@ import org.gradle.api.artifacts.VariantMetadata;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.model.ObjectFactory;
 
+import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
+
 @CacheableRule
 public abstract class DependencyObfuscationRule implements ComponentMetadataRule {
+
     final String obfuscation;
 
     @Inject

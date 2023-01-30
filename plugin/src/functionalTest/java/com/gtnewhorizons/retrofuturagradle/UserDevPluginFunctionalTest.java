@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.BuildTask;
 import org.gradle.testkit.runner.GradleRunner;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
  * A simple functional test for the 'retrofuturagradle.greeting' plugin.
  */
 class UserDevPluginFunctionalTest {
+
     public static final String SIMPLE_BUILDSCRIPT = "plugins {\n" + "  id('com.gtnewhorizons.retrofuturagradle')\n"
             + "}\n"
             + "\n"
@@ -51,7 +53,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     @Test
@@ -68,7 +71,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     @Test
@@ -85,7 +89,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     @Test
@@ -102,7 +107,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     @Test
@@ -119,7 +125,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     @Test
@@ -136,7 +143,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     @Test
@@ -153,7 +161,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]), new BuildTask[] {});
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
     }
 
     private void writeString(File file, String string) throws IOException {

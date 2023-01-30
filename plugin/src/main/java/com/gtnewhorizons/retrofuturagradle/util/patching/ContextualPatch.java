@@ -1,47 +1,25 @@
 /*
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
- *
- * Copyright 1997-2007 Sun Microsystems, Inc. All rights reserved.
- *
- * The contents of this file are subject to the terms of either the GNU
- * General Public License Version 2 only ("GPL") or the Common
- * Development and Distribution License("CDDL") (collectively, the
- * "License"). You may not use this file except in compliance with the
- * License. You can obtain a copy of the License at
- * http://www.netbeans.org/cddl-gplv2.html
- * or nbbuild/licenses/CDDL-GPL-2-CP. See the License for the
- * specific language governing permissions and limitations under the
- * License.  When distributing the software, include this License Header
- * Notice in each file and include the License file at
- * nbbuild/licenses/CDDL-GPL-2-CP.  Sun designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Sun in the GPL Version 2 section of the License file that
- * accompanied this code. If applicable, add the following below the
- * License Header, with the fields enclosed by brackets [] replaced by
- * your own identifying information:
- * "Portions Copyrighted [year] [name of copyright owner]"
- *
- * Contributor(s):
- *
- * The Original Software is NetBeans. The Initial Developer of the Original
- * Software is Sun Microsystems, Inc. Portions Copyright 1997-2007 Sun
- * Microsystems, Inc. All Rights Reserved.
- *
- * If you wish your version of this file to be governed by only the CDDL
- * or only the GPL Version 2, indicate your decision by adding
- * "[Contributor] elects to include this software in this distribution
- * under the [CDDL or GPL Version 2] license." If you do not indicate a
- * single choice of license, a recipient has the option to distribute
- * your version of this file under either the CDDL, the GPL Version 2 or
- * to extend the choice of license to its licensees as provided above.
- * However, if you add GPL Version 2 code and therefore, elected the GPL
- * Version 2 license, then the option applies only if the new code is
- * made subject to such option by the copyright holder.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER. Copyright 1997-2007 Sun Microsystems, Inc. All rights
+ * reserved. The contents of this file are subject to the terms of either the GNU General Public License Version 2 only
+ * ("GPL") or the Common Development and Distribution License("CDDL") (collectively, the "License"). You may not use
+ * this file except in compliance with the License. You can obtain a copy of the License at
+ * http://www.netbeans.org/cddl-gplv2.html or nbbuild/licenses/CDDL-GPL-2-CP. See the License for the specific language
+ * governing permissions and limitations under the License. When distributing the software, include this License Header
+ * Notice in each file and include the License file at nbbuild/licenses/CDDL-GPL-2-CP. Sun designates this particular
+ * file as subject to the "Classpath" exception as provided by Sun in the GPL Version 2 section of the License file that
+ * accompanied this code. If applicable, add the following below the License Header, with the fields enclosed by
+ * brackets [] replaced by your own identifying information: "Portions Copyrighted [year] [name of copyright owner]"
+ * Contributor(s): The Original Software is NetBeans. The Initial Developer of the Original Software is Sun
+ * Microsystems, Inc. Portions Copyright 1997-2007 Sun Microsystems, Inc. All Rights Reserved. If you wish your version
+ * of this file to be governed by only the CDDL or only the GPL Version 2, indicate your decision by adding
+ * "[Contributor] elects to include this software in this distribution under the [CDDL or GPL Version 2] license." If
+ * you do not indicate a single choice of license, a recipient has the option to distribute your version of this file
+ * under either the CDDL, the GPL Version 2 or to extend the choice of license to its licensees as provided above.
+ * However, if you add GPL Version 2 code and therefore, elected the GPL Version 2 license, then the option applies only
+ * if the new code is made subject to such option by the copyright holder.
  */
 package com.gtnewhorizons.retrofuturagradle.util.patching;
 
-import com.cloudbees.diff.Hunk;
-import com.cloudbees.diff.PatchException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -60,7 +38,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.apache.commons.io.IOUtils;
+
+import com.cloudbees.diff.Hunk;
+import com.cloudbees.diff.PatchException;
 
 /**
  * STOLEN FROM diff4j v1.1
@@ -144,7 +126,7 @@ public final class ContextualPatch {
         try {
             patchLine = patchReader.readLine();
             List<SinglePatch> patches = new ArrayList<SinglePatch>();
-            for (; ; ) {
+            for (;;) {
                 SinglePatch patch = getNextPatch();
                 if (patch == null) {
                     break;
@@ -158,8 +140,13 @@ public final class ContextualPatch {
                     // report.add(new PatchReport(patch.targetFile, computeBackup(patch.targetFile), patch.binary,
                     // PatchStatus.Patched, null));
                 } catch (Exception e) {
-                    report.add(new PatchReport(
-                            patch.targetPath, patch.binary, PatchStatus.Failure, e, new ArrayList<HunkReport>()));
+                    report.add(
+                            new PatchReport(
+                                    patch.targetPath,
+                                    patch.binary,
+                                    PatchStatus.Failure,
+                                    e,
+                                    new ArrayList<HunkReport>()));
                 }
             }
             return report;
@@ -167,8 +154,7 @@ public final class ContextualPatch {
             if (patchReader != null) {
                 try {
                     patchReader.close();
-                } catch (IOException e) {
-                }
+                } catch (IOException e) {}
             }
         }
     }
@@ -208,8 +194,8 @@ public final class ContextualPatch {
             List<String> target = contextProvider.getData(patch.targetPath);
 
             if (target != null && !patch.binary) {
-                if (patchCreatesNewFileThatAlreadyExists(
-                        patch, target)) { // Check if the patch doesn't need to be applied...
+                if (patchCreatesNewFileThatAlreadyExists(patch, target)) { // Check if the patch doesn't need to be
+                                                                           // applied...
                     for (int x = 0; x < patch.hunks.length; x++) {
                         ret.add(new HunkReport(PatchStatus.Skipped, null, 0, 0, x));
                     }
@@ -243,8 +229,8 @@ public final class ContextualPatch {
             patch.targetFile = computeTargetFile(patch);
             if (patch.targetFile.exists() && !patch.binary) {
                 target = readFile(patch.targetFile);
-                if (patchCreatesNewFileThatAlreadyExists(
-                        patch, target)) { // Check if the patch doesn't need to be applied...
+                if (patchCreatesNewFileThatAlreadyExists(patch, target)) { // Check if the patch doesn't need to be
+                                                                           // applied...
                     for (int x = 0; x < patch.hunks.length; x++) {
                         ret.add(new HunkReport(PatchStatus.Skipped, null, 0, 0, x));
                     }
@@ -288,8 +274,7 @@ public final class ContextualPatch {
             return false;
         }
         Hunk hunk = patch.hunks[0];
-        if (hunk.baseStart != 0
-                || hunk.baseCount != 0
+        if (hunk.baseStart != 0 || hunk.baseCount != 0
                 || hunk.modifiedStart != 1
                 || hunk.modifiedCount != originalFile.size()) {
             return false;
@@ -371,8 +356,7 @@ public final class ContextualPatch {
 
     private int findHunkIndex(List<String> target, Hunk hunk, int fuzz, int hunkID) throws PatchException {
         int idx = hunk.modifiedStart; // first guess from the hunk range specification
-        if (idx >= lastPatchedLine
-                && applyHunk(target, hunk, idx, true, fuzz, hunkID).getStatus().isSuccess()) {
+        if (idx >= lastPatchedLine && applyHunk(target, hunk, idx, true, fuzz, hunkID).getStatus().isSuccess()) {
             return idx;
         } else {
             // try to search for the context
@@ -468,7 +452,7 @@ public final class ContextualPatch {
 
     private SinglePatch getNextPatch() throws IOException, PatchException {
         SinglePatch patch = new SinglePatch();
-        for (; ; ) {
+        for (;;) {
             String line = readPatchLine();
             if (line == null) {
                 return null;
@@ -498,8 +482,7 @@ public final class ContextualPatch {
     }
 
     private boolean isNormalDiffRange(String line) {
-        return normalAddRangePattern.matcher(line).matches()
-                || normalChangeRangePattern.matcher(line).matches()
+        return normalAddRangePattern.matcher(line).matches() || normalChangeRangePattern.matcher(line).matches()
                 || normalDeleteRangePattern.matcher(line).matches();
     }
 
@@ -509,7 +492,7 @@ public final class ContextualPatch {
     private void readBinaryPatchContent(SinglePatch patch) throws PatchException, IOException {
         List<Hunk> hunks = new ArrayList<Hunk>();
         Hunk hunk = new Hunk();
-        for (; ; ) {
+        for (;;) {
             String line = readPatchLine();
             if (line == null || line.startsWith("Index:") || line.length() == 0) {
                 unreadPatchLine();
@@ -539,7 +522,7 @@ public final class ContextualPatch {
         List<Hunk> hunks = new ArrayList<Hunk>();
         Hunk hunk = null;
         Matcher m;
-        for (; ; ) {
+        for (;;) {
             String line = readPatchLine();
             if (line == null || line.startsWith("Index:")) {
                 unreadPatchLine();
@@ -611,7 +594,7 @@ public final class ContextualPatch {
         Hunk hunk = null;
 
         int lineCount = -1;
-        for (; ; ) {
+        for (;;) {
             String line = readPatchLine();
             if (line == null || line.length() == 0 || line.startsWith("Index:")) {
                 unreadPatchLine();
@@ -669,7 +652,7 @@ public final class ContextualPatch {
         int baseIdx = 0;
         int modifiedIdx = split + 1;
         List<String> unifiedLines = new ArrayList<String>(hunk.lines.size());
-        for (; baseIdx < split || modifiedIdx < hunk.lines.size(); ) {
+        for (; baseIdx < split || modifiedIdx < hunk.lines.size();) {
             String baseLine = baseIdx < split ? hunk.lines.get(baseIdx) : "~";
             String modifiedLine = modifiedIdx < hunk.lines.size() ? hunk.lines.get(modifiedIdx) : "~";
             if (baseLine.startsWith("- ")) {
@@ -731,7 +714,7 @@ public final class ContextualPatch {
         List<Hunk> hunks = new ArrayList<Hunk>();
         Hunk hunk = null;
 
-        for (; ; ) {
+        for (;;) {
             String line = readPatchLine();
             if (line == null || line.length() == 0 || line.startsWith("Index:")) {
                 unreadPatchLine();
@@ -814,8 +797,7 @@ public final class ContextualPatch {
                 throw new PatchException("Invalid context diff range: " + range);
             }
             hunk.modifiedStart = Integer.parseInt(m.group(1));
-            hunk.modifiedCount =
-                    m.group(2) != null ? Integer.parseInt(m.group(2).substring(1)) : 1;
+            hunk.modifiedCount = m.group(2) != null ? Integer.parseInt(m.group(2).substring(1)) : 1;
             hunk.modifiedCount -= hunk.modifiedStart - 1;
         }
     }
@@ -868,10 +850,11 @@ public final class ContextualPatch {
     }
 
     private static class SinglePatch {
+
         // String targetIndex;
         String targetPath;
         Hunk[] hunks;
-        // boolean targetMustExist = true;     // == false if the patch contains one hunk with just additions ('+'
+        // boolean targetMustExist = true; // == false if the patch contains one hunk with just additions ('+'
         // lines)
         File targetFile; // computed later
         boolean noEndingNewline; // resulting file should not end with a newline
@@ -895,6 +878,7 @@ public final class ContextualPatch {
     }
 
     public static enum PatchStatus {
+
         Patched(true),
         Missing(false),
         Failure(false),
@@ -950,12 +934,14 @@ public final class ContextualPatch {
     }
 
     public static interface IContextProvider {
+
         public List<String> getData(String target);
 
         public void setData(String target, List<String> data);
     }
 
     public static class HunkReport {
+
         private PatchStatus status;
         private Throwable failure;
         private int index;
@@ -1026,13 +1012,12 @@ public final class ContextualPatch {
     }
 
     private boolean isAccess(String data) {
-        return data.equalsIgnoreCase("public")
-                || data.equalsIgnoreCase("private")
+        return data.equalsIgnoreCase("public") || data.equalsIgnoreCase("private")
                 || data.equalsIgnoreCase("protected");
     }
 
     private boolean isLabel(String data) // Damn FernFlower
-            {
+    {
         return data.startsWith("label");
     }
 }

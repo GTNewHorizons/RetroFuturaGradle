@@ -6,13 +6,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.inject.Inject;
+
 import net.md_5.specialsource.Jar;
 import net.md_5.specialsource.JarMapping;
 import net.md_5.specialsource.JarRemapper;
 import net.md_5.specialsource.RemapperProcessor;
 import net.md_5.specialsource.provider.JarProvider;
 import net.md_5.specialsource.provider.JointProvider;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.artifacts.transform.CacheableTransform;
@@ -35,7 +38,9 @@ import org.gradle.api.tasks.PathSensitivity;
 @CacheableTransform
 public abstract class DependencyDeobfuscationTransform
         implements TransformAction<DependencyDeobfuscationTransform.Parameters> {
+
     interface Parameters extends TransformParameters {
+
         @InputFile
         @PathSensitive(PathSensitivity.NONE)
         public abstract RegularFileProperty getSrgFile();
@@ -70,8 +75,7 @@ public abstract class DependencyDeobfuscationTransform
             runTransform(outputs);
         } catch (Exception e) {
             throw new VariantTransformConfigurationException(
-                    "Error encountered when deobfuscating "
-                            + getInputArtifact().get().getAsFile(),
+                    "Error encountered when deobfuscating " + getInputArtifact().get().getAsFile(),
                     e);
         }
     }
@@ -96,7 +100,7 @@ public abstract class DependencyDeobfuscationTransform
         final JarMapping mapping = new JarMapping();
         mapping.loadMappings(srgFile);
         final Map<String, String> renames = new HashMap<>();
-        for (File f : new File[] {fieldsCsv, methodsCsv}) {
+        for (File f : new File[] { fieldsCsv, methodsCsv }) {
             if (f == null) {
                 continue;
             }
@@ -111,8 +115,7 @@ public abstract class DependencyDeobfuscationTransform
         RemapperProcessor srgProcessor = new RemapperProcessor(null, mapping, null);
         JarRemapper remapper = new JarRemapper(srgProcessor, mapping, null);
 
-        try (final Jar mc = Jar.init(tempFile);
-                final Jar input = Jar.init(tempFile)) {
+        try (final Jar mc = Jar.init(tempFile); final Jar input = Jar.init(tempFile)) {
             final List<Jar> depJars = new ArrayList<>();
             JointProvider inheritanceProviders = new JointProvider();
             inheritanceProviders.add(new JarProvider(mc));

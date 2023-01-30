@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle.util;
 import org.gradle.api.artifacts.DependencyArtifact;
 
 public class ReclassifiedDependencyArtifact implements DependencyArtifact {
+
     public final DependencyArtifact delegate;
     public String newClassifier;
 

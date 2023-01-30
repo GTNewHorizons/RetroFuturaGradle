@@ -1,5 +1,17 @@
 package com.gtnewhorizons.retrofuturagradle.patchdev;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.commons.io.FileUtils;
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.TaskProvider;
+
 import com.gtnewhorizons.retrofuturagradle.RfgPatchdevExtension;
 import com.gtnewhorizons.retrofuturagradle.mcp.CleanupDecompiledJarTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.DecompileTask;
@@ -11,16 +23,6 @@ import com.gtnewhorizons.retrofuturagradle.mcp.RemapSourceJarTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.SharedMCPTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-import org.apache.commons.io.FileUtils;
-import org.gradle.api.Project;
-import org.gradle.api.artifacts.ConfigurationContainer;
-import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.tasks.Copy;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.TaskProvider;
 
 public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
 
@@ -29,8 +31,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
 
         project.afterEvaluate(this::afterEvaluate);
 
-        final File mergedVanillaJarLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
+        final File mergedVanillaJarLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
         final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -59,10 +61,10 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getAccessTransformerFiles().setFrom(mcExt.getAccessTransformers());
                 });
 
-        final File decompiledSrgLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
-        final File rawDecompiledSrgLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources-rawff.jar");
+        final File decompiledSrgLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
+        final File rawDecompiledSrgLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources-rawff.jar");
         final TaskProvider<DecompileTask> taskDecompileSrgJar = project.getTasks()
                 .register("decompileSrgJar", DecompileTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -82,8 +84,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
                 });
 
-        final File patchedSourcesLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_patched_minecraft-sources.jar");
+        final File patchedSourcesLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "srg_patched_minecraft-sources.jar");
         final TaskProvider<PatchSourcesTask> taskPatchDecompiledJar = project.getTasks()
                 .register("patchDecompiledJar", PatchSourcesTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -94,8 +96,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getMaxFuzziness().set(2);
                 });
 
-        final File remappedUnpatchedSourcesLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "mcp_unpatched_minecraft-sources.jar");
+        final File remappedUnpatchedSourcesLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "mcp_unpatched_minecraft-sources.jar");
         final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar = project.getTasks()
                 .register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -108,8 +110,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getAddJavadocs().set(false);
                 });
 
-        final File remappedPatchedSourcesLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
+        final File remappedPatchedSourcesLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
         final TaskProvider<RemapSourceJarTask> taskRemapPatchedJar = project.getTasks()
                 .register("remapPatchedJar", RemapSourceJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -129,22 +131,18 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         final SourceSet cleanSources = javaExt.getSourceSets().create("clean", (SourceSet sources) -> {
             sources.getResources().srcDir(new File(cleanSrcDir, "resources"));
             sources.getJava().srcDir(new File(cleanSrcDir, "java"));
-            configurations
-                    .getByName(sources.getCompileClasspathConfigurationName())
+            configurations.getByName(sources.getCompileClasspathConfigurationName())
                     .extendsFrom(configurations.getByName("compileClasspath"));
-            configurations
-                    .getByName(sources.getRuntimeClasspathConfigurationName())
+            configurations.getByName(sources.getRuntimeClasspathConfigurationName())
                     .extendsFrom(configurations.getByName("runtimeClasspath"));
         });
         final File patchedSrcDir = FileUtils.getFile(project.getProjectDir(), "src", "patched");
         final SourceSet patchedSources = javaExt.getSourceSets().create("patched", (SourceSet sources) -> {
             sources.getResources().srcDir(new File(patchedSrcDir, "resources"));
             sources.getJava().srcDir(new File(patchedSrcDir, "java"));
-            configurations
-                    .getByName(sources.getCompileClasspathConfigurationName())
+            configurations.getByName(sources.getCompileClasspathConfigurationName())
                     .extendsFrom(configurations.getByName("compileClasspath"));
-            configurations
-                    .getByName(sources.getRuntimeClasspathConfigurationName())
+            configurations.getByName(sources.getRuntimeClasspathConfigurationName())
                     .extendsFrom(configurations.getByName("runtimeClasspath"));
         });
 
@@ -158,12 +156,12 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.from(project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)));
                     task.into(cleanSrcDir);
 
-                    task.filesMatching(javaFilePatterns, fcd -> {
-                        fcd.setRelativePath(fcd.getRelativePath().prepend("java"));
-                    });
-                    task.filesNotMatching(javaFilePatterns, fcd -> {
-                        fcd.setRelativePath(fcd.getRelativePath().prepend("resources"));
-                    });
+                    task.filesMatching(
+                            javaFilePatterns,
+                            fcd -> { fcd.setRelativePath(fcd.getRelativePath().prepend("java")); });
+                    task.filesNotMatching(
+                            javaFilePatterns,
+                            fcd -> { fcd.setRelativePath(fcd.getRelativePath().prepend("resources")); });
                 });
 
         final TaskProvider<Copy> extractPatchedSources = project.getTasks()
@@ -175,12 +173,12 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.into(patchedSrcDir);
                     task.onlyIf(ignored -> !patchedSrcDir.exists());
 
-                    task.filesMatching(javaFilePatterns, fcd -> {
-                        fcd.setRelativePath(fcd.getRelativePath().prepend("java"));
-                    });
-                    task.filesNotMatching(javaFilePatterns, fcd -> {
-                        fcd.setRelativePath(fcd.getRelativePath().prepend("resources"));
-                    });
+                    task.filesMatching(
+                            javaFilePatterns,
+                            fcd -> { fcd.setRelativePath(fcd.getRelativePath().prepend("java")); });
+                    task.filesNotMatching(
+                            javaFilePatterns,
+                            fcd -> { fcd.setRelativePath(fcd.getRelativePath().prepend("resources")); });
                 });
     }
 

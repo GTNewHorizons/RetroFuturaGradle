@@ -1,11 +1,11 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
@@ -23,8 +23,11 @@ import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
 import org.gradle.work.DisableCachingByDefault;
 
+import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+
 @DisableCachingByDefault(because = "Uses an internal caching mechanism")
 public abstract class DecompileTask extends DefaultTask {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputJar();
@@ -44,19 +47,18 @@ public abstract class DecompileTask extends DefaultTask {
         final File taskTempDir = getTemporaryDir();
 
         final DigestUtils digests = new DigestUtils(DigestUtils.getSha256Digest());
-        final String fernflowerChecksum =
-                digests.digestAsHex(getFernflower().get().getAsFile());
+        final String fernflowerChecksum = digests.digestAsHex(getFernflower().get().getAsFile());
         final String inputFileChecksum = digests.digestAsHex(getInputJar().get().getAsFile());
-        final File cachedOutputFile =
-                new File(getCacheDir().get().getAsFile(), fernflowerChecksum + "-" + inputFileChecksum + ".jar");
+        final File cachedOutputFile = new File(
+                getCacheDir().get().getAsFile(),
+                fernflowerChecksum + "-" + inputFileChecksum + ".jar");
         if (cachedOutputFile.exists()) {
             getLogger().lifecycle("Using cached decompiled jar from " + cachedOutputFile.getPath());
             FileUtils.copyFile(cachedOutputFile, getOutputJar().get().getAsFile());
             return;
         } else {
-            getLogger()
-                    .lifecycle("Didn't find cached decompiled jar, decompiling and saving to "
-                            + cachedOutputFile.getPath());
+            getLogger().lifecycle(
+                    "Didn't find cached decompiled jar, decompiling and saving to " + cachedOutputFile.getPath());
         }
 
         getLogger().lifecycle("Decompiling the srg jar with fernflower");
@@ -69,35 +71,29 @@ public abstract class DecompileTask extends DefaultTask {
         final File ffoutfile = new File(ffoutdir, "mc.jar");
         FileUtils.copyFile(getInputJar().get().getAsFile(), ffinpcopy);
         project.javaexec(exec -> {
-                    exec.classpath(getFernflower().get());
-                    MinecraftExtension mcExt = project.getExtensions().findByType(MinecraftExtension.class);
-                    List<String> args = new ArrayList<>(Objects.requireNonNull(mcExt)
-                            .getFernflowerArguments()
-                            .get());
-                    args.add(ffinpcopy.getAbsolutePath());
-                    args.add(ffoutdir.getAbsolutePath());
-                    exec.args(args);
-                    exec.setWorkingDir(getFernflower().get().getAsFile().getParentFile());
-                    try {
-                        exec.setStandardOutput(FileUtils.openOutputStream(
+            exec.classpath(getFernflower().get());
+            MinecraftExtension mcExt = project.getExtensions().findByType(MinecraftExtension.class);
+            List<String> args = new ArrayList<>(Objects.requireNonNull(mcExt).getFernflowerArguments().get());
+            args.add(ffinpcopy.getAbsolutePath());
+            args.add(ffoutdir.getAbsolutePath());
+            exec.args(args);
+            exec.setWorkingDir(getFernflower().get().getAsFile().getParentFile());
+            try {
+                exec.setStandardOutput(
+                        FileUtils.openOutputStream(
                                 FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "fernflower_log.log")));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    exec.setMinHeapSize("768M");
-                    exec.setMaxHeapSize("768M");
-                    JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
-                    final String javaExe = jts.launcherFor(toolchain -> {
-                                toolchain.getLanguageVersion().set(JavaLanguageVersion.of(17));
-                                toolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
-                            })
-                            .get()
-                            .getExecutablePath()
-                            .getAsFile()
-                            .getAbsolutePath();
-                    exec.executable(javaExe);
-                })
-                .assertNormalExitValue();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            exec.setMinHeapSize("768M");
+            exec.setMaxHeapSize("768M");
+            JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
+            final String javaExe = jts.launcherFor(toolchain -> {
+                toolchain.getLanguageVersion().set(JavaLanguageVersion.of(17));
+                toolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
+            }).get().getExecutablePath().getAsFile().getAbsolutePath();
+            exec.executable(javaExe);
+        }).assertNormalExitValue();
         FileUtils.delete(ffinpcopy);
 
         FileUtils.forceMkdirParent(cachedOutputFile);

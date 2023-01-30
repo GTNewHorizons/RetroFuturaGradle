@@ -1,10 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.fgpatchers;
 
-import com.google.common.base.Joiner;
-import com.google.common.io.Resources;
-import com.google.gson.reflect.TypeToken;
-import com.gtnewhorizons.retrofuturagradle.json.GLConstantGroup;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
@@ -12,24 +7,20 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Joiner;
+import com.google.common.io.Resources;
+import com.google.gson.reflect.TypeToken;
+import com.gtnewhorizons.retrofuturagradle.json.GLConstantGroup;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
 public class GLConstantFixer {
-    private static final String[] PACKAGES = {
-        "GL11",
-        "GL12",
-        "GL13",
-        "GL14",
-        "GL15",
-        "GL20",
-        "GL21",
-        "ARBMultitexture",
-        "ARBOcclusionQuery",
-        "ARBVertexBufferObject",
-        "ARBShaderObjects"
-    };
+
+    private static final String[] PACKAGES = { "GL11", "GL12", "GL13", "GL14", "GL15", "GL20", "GL21",
+            "ARBMultitexture", "ARBOcclusionQuery", "ARBVertexBufferObject", "ARBShaderObjects" };
 
     private final List<GLConstantGroup> json;
-    public static final Pattern CALL_REGEX =
-            Pattern.compile("(" + Joiner.on("|").join(PACKAGES) + ")\\.([\\w]+)\\(.+\\)");
+    public static final Pattern CALL_REGEX = Pattern
+            .compile("(" + Joiner.on("|").join(PACKAGES) + ")\\.([\\w]+)\\(.+\\)");
     public static final Pattern CONSTANT_REGEX = Pattern.compile("(?<![-.\\w])\\d+(?![.\\w])");
     private static final String ADD_AFTER = "org.lwjgl.opengl.GL11";
     private static final String CHECK = "org.lwjgl.opengl.";
@@ -37,8 +28,8 @@ public class GLConstantFixer {
     private static final String IMPORT_REPLACE = "import " + ADD_AFTER + ";";
 
     public GLConstantFixer() throws IOException {
-        String text = Resources.toString(
-                Resources.getResource(GLConstantFixer.class, "gl_constants.json"), Charset.defaultCharset());
+        String text = Resources
+                .toString(Resources.getResource(GLConstantFixer.class, "gl_constants.json"), Charset.defaultCharset());
         json = Utilities.GSON.fromJson(text, new TypeToken<List<GLConstantGroup>>() {}.getType());
     }
 
@@ -85,8 +76,7 @@ public class GLConstantFixer {
                 for (GLConstantGroup group : json) {
 
                     // ensure that the package and method are defined
-                    if (group.functions.containsKey(pack)
-                            && group.functions.get(pack).contains(method)) {
+                    if (group.functions.containsKey(pack) && group.functions.get(pack).contains(method)) {
                         // itterrate through the map.
                         for (Map.Entry<String, Map<String, String>> entry : group.constants.entrySet()) {
                             // find the actual constant for the number from the regex

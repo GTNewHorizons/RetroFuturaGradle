@@ -1,14 +1,10 @@
 package com.gtnewhorizons.retrofuturagradle.minecraft;
 
-import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import cpw.mods.fml.relauncher.Side;
-import de.undercouch.gradle.tasks.download.Download;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
@@ -24,10 +20,18 @@ import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
+import cpw.mods.fml.relauncher.Side;
+import de.undercouch.gradle.tasks.download.Download;
+
 /**
  * Registers vanilla Minecraft-related gradle tasks
  */
 public final class MinecraftTasks {
+
     public static final String MC_DOWNLOAD_PATH = "mc-vanilla";
     private static final String TASK_GROUP_INTERNAL = "Internal Vanilla Minecraft";
     private static final String TASK_GROUP_USER = "Vanilla Minecraft";
@@ -70,8 +74,8 @@ public final class MinecraftTasks {
     public MinecraftTasks(Project project, IMinecraftyExtension mcExt) {
         this.project = project;
         this.mcExt = mcExt;
-        allVersionsManifestLocation =
-                FileUtils.getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "all_versions_manifest.json");
+        allVersionsManifestLocation = FileUtils
+                .getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "all_versions_manifest.json");
         taskDownloadLauncherAllVersionsManifest = project.getTasks()
                 .register("downloadLauncherAllVersionsManifest", Download.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -83,8 +87,8 @@ public final class MinecraftTasks {
                     task.dest(allVersionsManifestLocation);
                 });
 
-        versionManifestLocation =
-                FileUtils.getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "mc_version_manifest.json");
+        versionManifestLocation = FileUtils
+                .getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "mc_version_manifest.json");
         taskDownloadLauncherVersionManifest = project.getTasks()
                 .register("downloadLauncherVersionManifest", Download.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -93,8 +97,8 @@ public final class MinecraftTasks {
                         final String mcVersion = mcExt.getMcVersion().get();
                         final String allVersionsManifestJson;
                         try {
-                            allVersionsManifestJson =
-                                    FileUtils.readFileToString(allVersionsManifestLocation, StandardCharsets.UTF_8);
+                            allVersionsManifestJson = FileUtils
+                                    .readFileToString(allVersionsManifestLocation, StandardCharsets.UTF_8);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -108,16 +112,16 @@ public final class MinecraftTasks {
                     task.doLast("parseLauncherManifestJson", (_t) -> {
                         final String versionManifestJson;
                         try {
-                            versionManifestJson =
-                                    FileUtils.readFileToString(versionManifestLocation, StandardCharsets.UTF_8);
+                            versionManifestJson = FileUtils
+                                    .readFileToString(versionManifestLocation, StandardCharsets.UTF_8);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
                     });
                 });
 
-        assetManifestLocation = Utilities.getCacheDir(
-                project, "assets", "indexes", mcExt.getMcVersion().get() + ".json");
+        assetManifestLocation = Utilities
+                .getCacheDir(project, "assets", "indexes", mcExt.getMcVersion().get() + ".json");
         taskDownloadAssetManifest = project.getTasks().register("downloadAssetManifest", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDownloadLauncherVersionManifest);
@@ -146,19 +150,17 @@ public final class MinecraftTasks {
             });
         });
 
-        vanillaClientLocation = Utilities.getCacheDir(
-                project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "client.jar");
-        vanillaServerLocation = Utilities.getCacheDir(
-                project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "server.jar");
+        vanillaClientLocation = Utilities
+                .getCacheDir(project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "client.jar");
+        vanillaServerLocation = Utilities
+                .getCacheDir(project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "server.jar");
         taskDownloadVanillaJars = project.getTasks().register("downloadVanillaJars", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDownloadLauncherVersionManifest);
-            task.doFirst((_t) -> {
-                vanillaClientLocation.getParentFile().mkdirs();
-            });
+            task.doFirst((_t) -> { vanillaClientLocation.getParentFile().mkdirs(); });
             task.src(project.getProviders().provider(() -> {
                 final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
-                return new String[] {manifest.getClientUrl(), manifest.getServerUrl()};
+                return new String[] { manifest.getClientUrl(), manifest.getServerUrl() };
             }));
             task.onlyIf(t -> !vanillaClientLocation.exists() || !vanillaServerLocation.exists());
             task.overwrite(false);
@@ -229,11 +231,10 @@ public final class MinecraftTasks {
                 } else {
                     twitchNatives = "natives-linux"; // don't actually exist
                 }
-                final FileCollection lwjglZips = lwjglModConfiguration.filter(
-                        f -> f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives));
+                final FileCollection lwjglZips = lwjglModConfiguration
+                        .filter(f -> f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives));
                 final FileCollection twitchZips = getVanillaMcConfiguration()
-                        .filter(f ->
-                                f.getName().contains("twitch") && f.getName().contains(twitchNatives));
+                        .filter(f -> f.getName().contains("twitch") && f.getName().contains(twitchNatives));
                 final FileCollection zips = lwjglZips.plus(twitchZips);
                 final ArrayList<FileTree> trees = new ArrayList<>();
                 for (File zip : zips) {
@@ -298,9 +299,7 @@ public final class MinecraftTasks {
         repos.maven(mvn -> {
             mvn.setName("sponge");
             mvn.setUrl(Constants.URL_SPONGEPOWERED_MAVEN);
-            mvn.mavenContent(content -> {
-                content.includeGroup("lzma");
-            });
+            mvn.mavenContent(content -> { content.includeGroup("lzma"); });
             // Allow pom-less artifacts (e.g. MCP data zips)
             mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
         });
@@ -333,8 +332,7 @@ public final class MinecraftTasks {
             }
         } else if (os.isLinux() || os.isUnix()) {
             if (osArch.startsWith("arm") || osArch.startsWith("aarch64")) {
-                lwjgl3Natives = (osArch.contains("64") || osArch.startsWith("armv8"))
-                        ? "natives-linux-arm64"
+                lwjgl3Natives = (osArch.contains("64") || osArch.startsWith("armv8")) ? "natives-linux-arm64"
                         : "natives-linux-arm32";
             } else {
                 lwjgl3Natives = "natives-linux";

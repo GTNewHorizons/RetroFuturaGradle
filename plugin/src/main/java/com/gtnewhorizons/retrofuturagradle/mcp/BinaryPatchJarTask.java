@@ -1,7 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.google.common.collect.ImmutableMap;
-import com.nothome.delta.GDiffPatcher;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -20,9 +18,9 @@ import java.util.zip.Adler32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+
 import javax.inject.Inject;
-import lzma.sdk.lzma.Decoder;
-import lzma.streams.LzmaInputStream;
+
 import org.apache.commons.collections4.iterators.EnumerationIterator;
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.commons.compress.java.util.jar.Pack200;
@@ -41,8 +39,15 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
+import com.google.common.collect.ImmutableMap;
+import com.nothome.delta.GDiffPatcher;
+
+import lzma.sdk.lzma.Decoder;
+import lzma.streams.LzmaInputStream;
+
 @CacheableTask
 public abstract class BinaryPatchJarTask extends DefaultTask {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputJar();
@@ -67,8 +72,7 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
 
     @TaskAction
     public void patchJar() throws IOException {
-        final Map<String, ClassPatch> patches =
-                loadPatches(getPatchesLzma().get().getAsFile());
+        final Map<String, ClassPatch> patches = loadPatches(getPatchesLzma().get().getAsFile());
         final GDiffPatcher patcher = new GDiffPatcher();
 
         final File inputJar = getInputJar().get().getAsFile();
@@ -103,9 +107,12 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
                         hasher.update(data, 0, data.length);
                         final int hash = (int) hasher.getValue();
                         if (hash != patch.inputChecksum) {
-                            throw new RuntimeException(String.format(
-                                    "Mismatched checksum for class %s: expected %d, got %d",
-                                    e.getName(), patch.inputChecksum, hash));
+                            throw new RuntimeException(
+                                    String.format(
+                                            "Mismatched checksum for class %s: expected %d, got %d",
+                                            e.getName(),
+                                            patch.inputChecksum,
+                                            hash));
                         }
                         patcher.patch(data, patch.patch);
                     }
@@ -116,8 +123,7 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
             }
             // Copy extra classes
             {
-                final FileTree tree = getFileOperations()
-                        .zipTree(getExtraClassesJar().getAsFile().get());
+                final FileTree tree = getFileOperations().zipTree(getExtraClassesJar().getAsFile().get());
                 tree.visit(fvd -> {
                     if (fvd.isDirectory()) {
                         return;
@@ -165,13 +171,14 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
     private static Map<String, ClassPatch> loadPatches(File patchesLzmaFile) throws IOException {
         final byte[] patchesJarBytes;
         final byte[] decompressedPatchesLzma;
-        try (LzmaInputStream decompressed =
-                new LzmaInputStream(FileUtils.openInputStream(patchesLzmaFile), new Decoder())) {
+        try (LzmaInputStream decompressed = new LzmaInputStream(
+                FileUtils.openInputStream(patchesLzmaFile),
+                new Decoder())) {
             decompressedPatchesLzma = IOUtils.toByteArray(decompressed);
         }
         try (ByteArrayInputStream decompressed = new ByteArrayInputStream(decompressedPatchesLzma);
                 ByteArrayOutputStream jarBytes = new ByteArrayOutputStream();
-                JarOutputStream jarOut = new JarOutputStream(jarBytes); ) {
+                JarOutputStream jarOut = new JarOutputStream(jarBytes);) {
             Pack200.newUnpacker().unpack(decompressed, jarOut);
             jarOut.flush();
             patchesJarBytes = jarBytes.toByteArray();
@@ -216,6 +223,7 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
     }
 
     private static class ClassPatch {
+
         public final String name;
         public final String sourceClassName;
         public final String targetClassName;
@@ -223,13 +231,8 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
         public final byte[] patch;
         public final int inputChecksum;
 
-        public ClassPatch(
-                String name,
-                String sourceClassName,
-                String targetClassName,
-                boolean existsAtTarget,
-                int inputChecksum,
-                byte[] patch) {
+        public ClassPatch(String name, String sourceClassName, String targetClassName, boolean existsAtTarget,
+                int inputChecksum, byte[] patch) {
             this.name = name;
             this.sourceClassName = sourceClassName;
             this.targetClassName = targetClassName;
@@ -241,7 +244,12 @@ public abstract class BinaryPatchJarTask extends DefaultTask {
         @Override
         public String toString() {
             return String.format(
-                    "%s : %s => %s (%b) size %d", name, sourceClassName, targetClassName, existsAtTarget, patch.length);
+                    "%s : %s => %s (%b) size %d",
+                    name,
+                    sourceClassName,
+                    targetClassName,
+                    existsAtTarget,
+                    patch.length);
         }
     }
 }

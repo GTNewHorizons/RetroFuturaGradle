@@ -5,18 +5,6 @@ import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
 import static org.objectweb.asm.Opcodes.ACC_PROTECTED;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 
-import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
-import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import com.gtnewhorizons.specialsource174.Jar;
-import com.gtnewhorizons.specialsource174.JarMapping;
-import com.gtnewhorizons.specialsource174.JarRemapper;
-import com.gtnewhorizons.specialsource174.RemapperProcessor;
-import com.gtnewhorizons.specialsource174.provider.JarProvider;
-import com.gtnewhorizons.specialsource174.provider.JointProvider;
-import de.oceanlabs.mcp.mcinjector.MCInjectorImpl;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -34,7 +22,9 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+
 import javax.inject.Inject;
+
 import org.apache.commons.collections4.iterators.EnumerationIterator;
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.commons.io.FileUtils;
@@ -59,8 +49,23 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
+import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+import com.gtnewhorizons.specialsource174.Jar;
+import com.gtnewhorizons.specialsource174.JarMapping;
+import com.gtnewhorizons.specialsource174.JarRemapper;
+import com.gtnewhorizons.specialsource174.RemapperProcessor;
+import com.gtnewhorizons.specialsource174.provider.JarProvider;
+import com.gtnewhorizons.specialsource174.provider.JointProvider;
+
+import de.oceanlabs.mcp.mcinjector.MCInjectorImpl;
+
 @CacheableTask
 public abstract class DeobfuscateTask extends DefaultTask {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputJar();
@@ -117,9 +122,7 @@ public abstract class DeobfuscateTask extends DefaultTask {
         final File exceptedJar = new File(taskTempDir, "excepted.jar");
 
         getLogger().lifecycle("Applying SpecialSource");
-        final Set<File> atFiles = new ImmutableSet.Builder<File>()
-                .addAll(getAccessTransformerFiles())
-                .build();
+        final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
         applySpecialSource(deobfedJar, atFiles);
 
         getLogger().lifecycle("Applying Exceptor");
@@ -145,9 +148,7 @@ public abstract class DeobfuscateTask extends DefaultTask {
         final JarMapping mapping = new JarMapping();
         mapping.loadMappings(getSrgFile().get().getAsFile());
         final Map<String, String> renames = new HashMap<>();
-        for (File f : new File[] {
-            getFieldCsv().getAsFile().getOrNull(), getMethodCsv().getAsFile().getOrNull()
-        }) {
+        for (File f : new File[] { getFieldCsv().getAsFile().getOrNull(), getMethodCsv().getAsFile().getOrNull() }) {
             if (f == null) {
                 continue;
             }
@@ -208,7 +209,8 @@ public abstract class DeobfuscateTask extends DefaultTask {
                         String[] s = line.split(" ");
                         if (s.length == 2 && s[1].indexOf('$') > 0) {
                             String parent = s[1].substring(0, s[1].indexOf('$'));
-                            for (MCInjectorStruct cls : new MCInjectorStruct[] {struct.get(parent), struct.get(s[1])}) {
+                            for (MCInjectorStruct cls : new MCInjectorStruct[] { struct.get(parent),
+                                    struct.get(s[1]) }) {
                                 if (cls != null && cls.innerClasses != null) {
                                     for (MCInjectorStruct.InnerClass inner : cls.innerClasses) {
                                         if (inner.inner_class.equals(s[1])) {
@@ -240,22 +242,18 @@ public abstract class DeobfuscateTask extends DefaultTask {
     }
 
     /**
-     * Copied from Gradle ZipCopyAction internals.
-     * Note that setting the January 1st 1980 (or even worse, "0", as time) won't work due
-     * to Java 8 doing some interesting time processing: It checks if this date is before January 1st 1980
-     * and if it is it starts setting some extra fields in the zip. Java 7 does not do that - but in the
-     * zip not the milliseconds are saved but values for each of the date fields - but no time zone. And
-     * 1980 is the first year which can be saved.
-     * If you use January 1st 1980 then it is treated as a special flag in Java 8.
-     * Moreover, only even seconds can be stored in the zip file. Java 8 uses the upper half of
-     * some other long to store the remaining millis while Java 7 doesn't do that. So make sure
-     * that your seconds are even.
-     * Moreover, parsing happens via `new Date(millis)` in java.util.zip.ZipUtils#javaToDosTime() so we
-     * must use default timezone and locale.
-     * The date is 1980 February 1st CET.
+     * Copied from Gradle ZipCopyAction internals. Note that setting the January 1st 1980 (or even worse, "0", as time)
+     * won't work due to Java 8 doing some interesting time processing: It checks if this date is before January 1st
+     * 1980 and if it is it starts setting some extra fields in the zip. Java 7 does not do that - but in the zip not
+     * the milliseconds are saved but values for each of the date fields - but no time zone. And 1980 is the first year
+     * which can be saved. If you use January 1st 1980 then it is treated as a special flag in Java 8. Moreover, only
+     * even seconds can be stored in the zip file. Java 8 uses the upper half of some other long to store the remaining
+     * millis while Java 7 doesn't do that. So make sure that your seconds are even. Moreover, parsing happens via `new
+     * Date(millis)` in java.util.zip.ZipUtils#javaToDosTime() so we must use default timezone and locale. The date is
+     * 1980 February 1st CET.
      */
-    public static final long CONSTANT_TIME_FOR_ZIP_ENTRIES =
-            new GregorianCalendar(1980, Calendar.FEBRUARY, 1, 0, 0, 0).getTimeInMillis();
+    public static final long CONSTANT_TIME_FOR_ZIP_ENTRIES = new GregorianCalendar(1980, Calendar.FEBRUARY, 1, 0, 0, 0)
+            .getTimeInMillis();
 
     private void cleanupJar(File inputJar, File outputJar, boolean stripSynthetics) throws IOException {
         try (final ZipFile inZip = new ZipFile(inputJar);
@@ -294,8 +292,7 @@ public abstract class DeobfuscateTask extends DefaultTask {
     }
 
     private void stripClassSynthetics(ClassNode node) {
-        if ((node.access & Opcodes.ACC_ENUM) == 0
-                && !node.superName.equals("java/lang/Enum")
+        if ((node.access & Opcodes.ACC_ENUM) == 0 && !node.superName.equals("java/lang/Enum")
                 && (node.access & Opcodes.ACC_SYNTHETIC) == 0) {
             // ^^ is for ignoring enums.
 

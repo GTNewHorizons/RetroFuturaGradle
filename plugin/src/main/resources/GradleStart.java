@@ -1,14 +1,3 @@
-import com.google.common.base.Strings;
-import com.google.common.base.Throwables;
-import com.google.common.io.Files;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonIOException;
-import com.google.gson.JsonSyntaxException;
-import com.mojang.authlib.Agent;
-import com.mojang.authlib.exceptions.AuthenticationException;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-import com.mojang.authlib.yggdrasil.YggdrasilUserAuthentication;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
@@ -20,9 +9,23 @@ import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import net.minecraftforge.gradle.GradleStartCommon;
 
+import com.google.common.base.Strings;
+import com.google.common.base.Throwables;
+import com.google.common.io.Files;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonSyntaxException;
+import com.mojang.authlib.Agent;
+import com.mojang.authlib.exceptions.AuthenticationException;
+import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
+import com.mojang.authlib.yggdrasil.YggdrasilUserAuthentication;
+
 public class GradleStart extends GradleStartCommon {
+
     private static final Gson GSON;
 
     static {
@@ -71,8 +74,9 @@ public class GradleStart extends GradleStartCommon {
     }
 
     private void attemptLogin(Map<String, String> argMap) {
-        YggdrasilUserAuthentication auth = (YggdrasilUserAuthentication)
-                new YggdrasilAuthenticationService(Proxy.NO_PROXY, "1").createUserAuthentication(Agent.MINECRAFT);
+        YggdrasilUserAuthentication auth = (YggdrasilUserAuthentication) new YggdrasilAuthenticationService(
+                Proxy.NO_PROXY,
+                "1").createUserAuthentication(Agent.MINECRAFT);
         auth.setUsername(argMap.get("username"));
         auth.setPassword(argMap.get("password"));
         argMap.put("password", null);
@@ -154,10 +158,12 @@ public class GradleStart extends GradleStartCommon {
     }
 
     private static class AssetIndex {
+
         public boolean virtual = false; // sane default
         public Map<String, AssetEntry> objects;
 
         public static class AssetEntry {
+
             public String hash;
         }
     }
@@ -177,12 +183,10 @@ public class GradleStart extends GradleStartCommon {
             if (input != null) {
                 try {
                     input.close();
-                } catch (Exception e) {
-                }
+                } catch (Exception e) {}
             }
         }
-        return String.format(
-                "%1$040x", new BigInteger(1, input.getMessageDigest().digest()));
+        return String.format("%1$040x", new BigInteger(1, input.getMessageDigest().digest()));
     }
 
     private Map<String, String> gatherFiles(File base) {

@@ -1,12 +1,14 @@
 package com.gtnewhorizons.retrofuturagradle.fgpatchers;
 
-import com.google.common.base.Splitter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.google.common.base.Splitter;
+
 public final class JavadocAdder {
+
     private JavadocAdder() {
         /* no constructing */
     }

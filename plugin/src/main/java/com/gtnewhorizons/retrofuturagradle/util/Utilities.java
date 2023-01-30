@@ -1,14 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.util;
 
-import com.google.common.base.Joiner;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
-import com.opencsv.CSVParser;
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -31,6 +22,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
@@ -38,7 +30,18 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
+import com.google.common.base.Joiner;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+
 public final class Utilities {
+
     public static final Gson GSON;
 
     static {
@@ -57,26 +60,17 @@ public final class Utilities {
     }
 
     public static CSVReader createCsvReader(URL url) throws IOException {
-        final CSVParser csvParser = new CSVParserBuilder()
-                .withEscapeChar(CSVParser.NULL_CHARACTER)
-                .withStrictQuotes(false)
-                .build();
+        final CSVParser csvParser = new CSVParserBuilder().withEscapeChar(CSVParser.NULL_CHARACTER)
+                .withStrictQuotes(false).build();
         final String content = IOUtils.toString(url, StandardCharsets.UTF_8);
-        return new CSVReaderBuilder(new StringReader(content))
-                .withSkipLines(1)
-                .withCSVParser(csvParser)
-                .build();
+        return new CSVReaderBuilder(new StringReader(content)).withSkipLines(1).withCSVParser(csvParser).build();
     }
 
     public static CSVReader createCsvReader(File file) throws IOException {
-        final CSVParser csvParser = new CSVParserBuilder()
-                .withEscapeChar(CSVParser.NULL_CHARACTER)
-                .withStrictQuotes(false)
-                .build();
-        return new CSVReaderBuilder(Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
-                .withSkipLines(1)
-                .withCSVParser(csvParser)
-                .build();
+        final CSVParser csvParser = new CSVParserBuilder().withEscapeChar(CSVParser.NULL_CHARACTER)
+                .withStrictQuotes(false).build();
+        return new CSVReaderBuilder(Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)).withSkipLines(1)
+                .withCSVParser(csvParser).build();
     }
 
     public static byte[] readZipEntry(ZipFile jar, ZipEntry entry) throws IOException {
@@ -91,7 +85,8 @@ public final class Utilities {
             return IOUtils.toByteArray(cis);
         } catch (IOException exc) {
             throw new RuntimeException(
-                    "IO Exception caught when trying to get the class bytes for " + klass.getName(), exc);
+                    "IO Exception caught when trying to get the class bytes for " + klass.getName(),
+                    exc);
         }
     }
 
@@ -127,9 +122,10 @@ public final class Utilities {
 
     /**
      * Load a JAR file into in-memory hashmaps
-     * @param jar The JAR to load
+     * 
+     * @param jar             The JAR to load
      * @param loadedResources The map to populate with non-java file contents
-     * @param loadedSources The map to populate with java file contents
+     * @param loadedSources   The map to populate with java file contents
      * @throws IOException Forwarded IO errors from the JAR reading process
      */
     public static void loadMemoryJar(File jar, Map<String, byte[]> loadedResources, Map<String, String> loadedSources)
@@ -152,9 +148,8 @@ public final class Utilities {
         }
     }
 
-    public static File saveMemoryJar(
-            Map<String, byte[]> loadedResources, Map<String, String> loadedSources, File target, boolean isTemporary)
-            throws IOException {
+    public static File saveMemoryJar(Map<String, byte[]> loadedResources, Map<String, String> loadedSources,
+            File target, boolean isTemporary) throws IOException {
         if (isTemporary && !Constants.DEBUG_NO_TMP_CLEANUP) {
             return null;
         }
@@ -192,6 +187,7 @@ public final class Utilities {
      * Provides patching context from an in-memory jar
      */
     public static class InMemoryJarContextProvider implements ContextualPatch.IContextProvider {
+
         private Map<String, String> fileMap;
 
         private final int stripFrontComponents;

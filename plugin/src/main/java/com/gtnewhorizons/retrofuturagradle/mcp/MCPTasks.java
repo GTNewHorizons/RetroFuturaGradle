@@ -1,14 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.google.common.collect.ImmutableMap;
-import com.gtnewhorizons.retrofuturagradle.BuildConfig;
-import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
-import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
-import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
-import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import cpw.mods.fml.relauncher.Side;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
@@ -64,6 +56,17 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.scala.ScalaCompile;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.base.plugins.LifecycleBasePlugin;
+
+import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.retrofuturagradle.BuildConfig;
+import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
+import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
+import cpw.mods.fml.relauncher.Side;
 
 /**
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
@@ -162,8 +165,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 });
 
         decompiledSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
-        final File rawDecompiledSrgLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources-rawff.jar");
+        final File rawDecompiledSrgLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources-rawff.jar");
         taskDecompileSrgJar = project.getTasks().register("decompileSrgJar", DecompileTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDeobfuscateMergedJarToSrg, taskDownloadFernflower);
@@ -191,8 +194,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getMaxFuzziness().set(1);
         });
 
-        remappedSourcesLocation =
-                FileUtils.getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
+        remappedSourcesLocation = FileUtils
+                .getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskPatchDecompiledJar, taskExtractForgeUserdev, taskExtractMcpData);
@@ -219,18 +222,16 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.dependsOn(taskRemapDecompiledJar);
                     task.from(
                             project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)),
-                            subset -> {
-                                subset.include("**/*.java");
-                            });
+                            subset -> { subset.include("**/*.java"); });
                     task.from(
                             project.zipTree(taskRemapDecompiledJar.flatMap(RemapSourceJarTask::getOutputJar)),
-                            subset -> {
-                                subset.exclude("**/*.java");
+                            subset -> { subset.exclude("**/*.java"); });
+                    task.eachFile(
+                            fcd -> {
+                                fcd.setRelativePath(
+                                        fcd.getRelativePath()
+                                                .prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
                             });
-                    task.eachFile(fcd -> {
-                        fcd.setRelativePath(
-                                fcd.getRelativePath().prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
-                    });
                     task.into(decompressedSourcesLocation);
                 });
 
@@ -239,12 +240,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         this.patchedConfiguration.setDescription("Dependencies needed to run modded minecraft");
         this.patchedConfiguration.setCanBeConsumed(false);
         // Workaround https://github.com/gradle/gradle/issues/10861 to avoid publishing these dependencies
-        for (String configName : new String[] {
-            JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME
-        }) {
+        for (String configName : new String[] { JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME }) {
             project.getConfigurations().getByName(configName).extendsFrom(this.patchedConfiguration);
             project.getConfigurations().getByName(configName).extendsFrom(mcTasks.getLwjglModConfiguration());
         }
@@ -255,27 +253,28 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
             sourceSet.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjglCompileMcConfiguration()));
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet.java(java -> java.setSrcDirs(project.files(new File(decompressedSourcesLocation, "java"))
-                    .builtBy(taskDecompressDecompiledSources)));
+            sourceSet.java(
+                    java -> java.setSrcDirs(
+                            project.files(new File(decompressedSourcesLocation, "java"))
+                                    .builtBy(taskDecompressDecompiledSources)));
             sourceSet.resources(
-                    java -> java.setSrcDirs(project.files(new File(decompressedSourcesLocation, "resources"))
-                            .builtBy(taskDecompressDecompiledSources)));
+                    java -> java.setSrcDirs(
+                            project.files(new File(decompressedSourcesLocation, "resources"))
+                                    .builtBy(taskDecompressDecompiledSources)));
         });
         javaExt.getSourceSets().add(patchedMcSources);
 
         final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         final SourceSet testSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
         final SourceSet apiSet = javaExt.getSourceSets().create("api", set -> {
-            set.setCompileClasspath(patchedConfiguration
-                    .plus(mcTasks.getLwjglModConfiguration())
-                    .plus(patchedMcSources.getOutput()));
+            set.setCompileClasspath(
+                    patchedConfiguration.plus(mcTasks.getLwjglModConfiguration()).plus(patchedMcSources.getOutput()));
             set.setRuntimeClasspath(patchedConfiguration);
         });
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
         testSet.setCompileClasspath(testSet.getCompileClasspath().plus(apiSet.getOutput()));
 
-        project.getConfigurations()
-                .getByName(apiSet.getCompileClasspathConfigurationName())
+        project.getConfigurations().getByName(apiSet.getCompileClasspathConfigurationName())
                 .extendsFrom(project.getConfigurations().getByName(mainSet.getCompileClasspathConfigurationName()));
 
         taskBuildPatchedMc = project.getTasks()
@@ -284,8 +283,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.dependsOn(taskDecompressDecompiledSources);
                     configureMcJavaCompilation(task);
                 });
-        project.getTasks()
-                .named(patchedMcSources.getProcessResourcesTaskName())
+        project.getTasks().named(patchedMcSources.getProcessResourcesTaskName())
                 .configure(task -> task.dependsOn(taskDecompressDecompiledSources));
 
         packagedMcLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "recompiled_minecraft.jar");
@@ -315,45 +313,32 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     MapProperty<String, String> replacements = task.getReplacementTokens();
                     replacements.put("@@MCVERSION@@", mcExt.getMcVersion());
                     replacements.put("@@ASSETINDEX@@", mcExt.getMcVersion());
-                    replacements.put(
-                            "@@ASSETSDIR@@", mcTasks.getVanillaAssetsLocation().getPath());
-                    replacements.put(
-                            "@@NATIVESDIR@@", mcTasks.getNativesDirectory().getPath());
+                    replacements.put("@@ASSETSDIR@@", mcTasks.getVanillaAssetsLocation().getPath());
+                    replacements.put("@@NATIVESDIR@@", mcTasks.getNativesDirectory().getPath());
                     replacements.put("@@SRGDIR@@", forgeSrgLocation.getPath());
                     replacements.put(
                             "@@SRG_NOTCH_SRG@@",
-                            taskGenerateForgeSrgMappings
-                                    .flatMap(GenSrgMappingsTask::getNotchToSrg)
-                                    .map(RegularFile::getAsFile)
-                                    .map(File::getPath));
+                            taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg)
+                                    .map(RegularFile::getAsFile).map(File::getPath));
                     replacements.put(
                             "@@SRG_NOTCH_MCP@@",
-                            taskGenerateForgeSrgMappings
-                                    .flatMap(GenSrgMappingsTask::getNotchToMcp)
-                                    .map(RegularFile::getAsFile)
-                                    .map(File::getPath));
+                            taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToMcp)
+                                    .map(RegularFile::getAsFile).map(File::getPath));
                     replacements.put(
                             "@@SRG_SRG_MCP@@",
-                            taskGenerateForgeSrgMappings
-                                    .flatMap(GenSrgMappingsTask::getSrgToMcp)
-                                    .map(RegularFile::getAsFile)
-                                    .map(File::getPath));
+                            taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgToMcp)
+                                    .map(RegularFile::getAsFile).map(File::getPath));
                     replacements.put(
                             "@@SRG_MCP_SRG@@",
-                            taskGenerateForgeSrgMappings
-                                    .flatMap(GenSrgMappingsTask::getMcpToSrg)
-                                    .map(RegularFile::getAsFile)
-                                    .map(File::getPath));
+                            taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMcpToSrg)
+                                    .map(RegularFile::getAsFile).map(File::getPath));
                     replacements.put(
                             "@@SRG_MCP_NOTCH@@",
-                            taskGenerateForgeSrgMappings
-                                    .flatMap(GenSrgMappingsTask::getMcpToNotch)
-                                    .map(RegularFile::getAsFile)
-                                    .map(File::getPath));
+                            taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMcpToNotch)
+                                    .map(RegularFile::getAsFile).map(File::getPath));
                     replacements.put(
                             "@@CSVDIR@@",
-                            taskGenerateForgeSrgMappings
-                                    .flatMap(GenSrgMappingsTask::getFieldsCsv)
+                            taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv)
                                     .map(f -> f.getAsFile().getParentFile().getPath()));
                     replacements.put("@@CLIENTTWEAKER@@", "cpw.mods.fml.common.launcher.FMLTweaker");
                     replacements.put("@@SERVERTWEAKER@@", "cpw.mods.fml.common.launcher.FMLServerTweaker");
@@ -364,9 +349,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         launcherSources = sourceSets.create(SOURCE_SET_LAUNCHER, sourceSet -> {
             sourceSet.setCompileClasspath(patchedConfiguration);
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet
-                    .getJava()
-                    .setSrcDirs(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles));
+            sourceSet.getJava().setSrcDirs(project.files(launcherSourcesLocation).builtBy(taskCreateLauncherFiles));
         });
         javaExt.getSourceSets().add(launcherSources);
         project.getTasks().named("compileMcLauncherJava", JavaCompile.class, task -> {
@@ -393,16 +376,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getOutputDir().set(injectedSourcesLocation);
             task.getTags().set(mcExt.getInjectedTags());
         });
-        injectedSourceSet = sourceSets.create("injectedTags", set -> {
-            set.getJava().setSrcDirs(project.files(injectedSourcesLocation).builtBy(taskInjectTags));
-        });
-        project.getTasks()
-                .named(injectedSourceSet.getCompileJavaTaskName())
+        injectedSourceSet = sourceSets.create(
+                "injectedTags",
+                set -> { set.getJava().setSrcDirs(project.files(injectedSourcesLocation).builtBy(taskInjectTags)); });
+        project.getTasks().named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
         mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()));
-        project.getTasks()
-                .named("jar", Jar.class)
+        project.getTasks().named("jar", Jar.class)
                 .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
 
         taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Side.CLIENT);
@@ -440,23 +421,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         });
 
         // The default jar is deobfuscated, specify the correct classifier for it
-        project.getTasks().named("jar", Jar.class).configure(task -> {
-            task.getArchiveClassifier().set("dev");
-        });
-        for (final String name : new String[] {
-            JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME,
-            JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME,
-            JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-            JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME
-        }) {
-            project.getConfigurations()
-                    .getByName(name)
-                    .getAttributes()
-                    .attribute(
-                            ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
-                            ObfuscationAttribute.getMcp(project.getObjects()));
+        project.getTasks().named("jar", Jar.class).configure(task -> { task.getArchiveClassifier().set("dev"); });
+        for (final String name : new String[] { JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME,
+                JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME }) {
+            project.getConfigurations().getByName(name).getAttributes().attribute(
+                    ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
+                    ObfuscationAttribute.getMcp(project.getObjects()));
         }
 
         // Add a reobfuscation task rule
@@ -490,9 +462,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                 task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                 task.getRecompMcJar().set(taskPackagePatchedMc.flatMap(Jar::getArchiveFile));
-                task.getReferenceClasspath()
-                        .from(project.getConfigurations()
-                                .getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME)
+                task.getReferenceClasspath().from(
+                        project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME)
                                 .fileCollection(Specs.SATISFIES_ALL));
                 final ConfigurableFileCollection refCp = task.getReferenceClasspath();
                 refCp.from(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
@@ -506,8 +477,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         // Initialize a reobf task for the default jar
         final TaskProvider<ReobfuscatedJar> taskReobfJar = project.getTasks().named("reobfJar", ReobfuscatedJar.class);
         if (project.getTasks().getNames().contains(LifecycleBasePlugin.ASSEMBLE_TASK_NAME)) {
-            project.getTasks()
-                    .named(LifecycleBasePlugin.ASSEMBLE_TASK_NAME)
+            project.getTasks().named(LifecycleBasePlugin.ASSEMBLE_TASK_NAME)
                     .configure(task -> task.dependsOn(taskReobfJar));
         }
         reobfJarConfiguration = project.getConfigurations().create("reobfJarConfiguration");
@@ -520,34 +490,31 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
             project.afterEvaluate(p -> {
                 final DependencyHandler deps = project.getDependencies();
-                final Configuration parentUnresolved =
-                        project.getConfigurations().getByName(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME);
+                final Configuration parentUnresolved = project.getConfigurations()
+                        .getByName(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME);
                 final Configuration parentResolved = project.getConfigurations()
-                        .detachedConfiguration(
-                                parentUnresolved.getAllDependencies().toArray(new Dependency[0]));
+                        .detachedConfiguration(parentUnresolved.getAllDependencies().toArray(new Dependency[0]));
                 final AttributeContainer parentAttrs = parentResolved.getAttributes();
                 parentAttrs.attribute(
-                        ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getMcp(objectFactory));
+                        ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
+                        ObfuscationAttribute.getMcp(objectFactory));
                 parentAttrs.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
-                parentAttrs.attribute(
-                        Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
-                parentAttrs.attribute(
-                        Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                parentAttrs
+                        .attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                parentAttrs
+                        .attribute(Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
 
                 reobfJarConfiguration.withDependencies(depset -> {
                     parentResolved.setCanBeConsumed(false);
                     parentResolved.setCanBeResolved(true);
                     parentResolved.resolve();
-                    final Set<String> excludedGroups =
-                            mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
+                    final Set<String> excludedGroups = mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
                     final HashSet<ResolvedDependency> visited = new HashSet<>();
                     final Deque<ResolvedDependency> toVisit = new ArrayDeque<>(64);
                     toVisit.addAll(parentResolved.getResolvedConfiguration().getFirstLevelModuleDependencies());
                     while (!toVisit.isEmpty()) {
                         final ResolvedDependency dep = toVisit.removeFirst();
-                        if (!visited.add(dep)
-                                || dep.getModuleGroup() == null
-                                || dep.getModuleGroup().isEmpty()) {
+                        if (!visited.add(dep) || dep.getModuleGroup() == null || dep.getModuleGroup().isEmpty()) {
                             continue;
                         }
                         if (excludedGroups.contains(dep.getModuleGroup())) {
@@ -555,13 +522,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                         }
                         toVisit.addAll(dep.getChildren());
 
-                        ModuleDependency mDep = (ModuleDependency) deps.create(ImmutableMap.of(
-                                "group",
-                                dep.getModuleGroup(),
-                                "name",
-                                dep.getModuleName(),
-                                "version",
-                                dep.getModuleVersion()));
+                        ModuleDependency mDep = (ModuleDependency) deps.create(
+                                ImmutableMap.of(
+                                        "group",
+                                        dep.getModuleGroup(),
+                                        "name",
+                                        dep.getModuleName(),
+                                        "version",
+                                        dep.getModuleVersion()));
                         // The artifacts only exist for dependencies with a classifier (eg :dev)
                         LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
                         for (ResolvedArtifact artifact : dep.getModuleArtifacts()) {
@@ -572,8 +540,13 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             if ("api".equalsIgnoreCase(classifier)) {
                                 continue;
                             }
-                            newArtifacts.add(new DefaultDependencyArtifact(
-                                    artifact.getName(), artifact.getType(), artifact.getExtension(), classifier, null));
+                            newArtifacts.add(
+                                    new DefaultDependencyArtifact(
+                                            artifact.getName(),
+                                            artifact.getType(),
+                                            artifact.getExtension(),
+                                            classifier,
+                                            null));
                         }
                         mDep.setTransitive(false);
                         mDep.getArtifacts().clear();
@@ -586,25 +559,25 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
             attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-            project.afterEvaluate(p -> {
-                attributes.attribute(
-                        TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
-                        mcExt.getJavaCompatibilityVersion().get());
-            });
+            project.afterEvaluate(
+                    p -> {
+                        attributes.attribute(
+                                TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                                mcExt.getJavaCompatibilityVersion().get());
+                    });
             attributes.attribute(
                     LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
                     objectFactory.named(LibraryElements.class, LibraryElements.JAR));
-            attributes.attribute(
-                    ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(objectFactory));
+            attributes
+                    .attribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(objectFactory));
             project.getArtifacts().add(reobfJarConfiguration.getName(), taskReobfJar);
 
             final Configuration reobfElements = project.getConfigurations().create("reobfElements");
             reobfElements.setCanBeResolved(false);
             reobfElements.setCanBeConsumed(true);
             reobfElements.getOutgoing().artifact(taskReobfJar);
-            attributes.keySet().forEach(attr -> reobfElements
-                    .getAttributes()
-                    .attribute((Attribute) attr, attributes.getAttribute(attr)));
+            attributes.keySet().forEach(
+                    attr -> reobfElements.getAttributes().attribute((Attribute) attr, attributes.getAttribute(attr)));
 
             SoftwareComponent javaComponent = project.getComponents().getByName("java");
             if (javaComponent instanceof AdhocComponentWithVariants) {
@@ -647,10 +620,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         obfRuntimeClasspathConfiguration = project.getConfigurations().create("obfuscatedRuntimeClasspath");
         obfRuntimeClasspathConfiguration.setCanBeConsumed(false);
         obfRuntimeClasspathConfiguration.extendsFrom(reobfJarConfiguration);
-        obfRuntimeClasspathConfiguration
-                .getAttributes()
-                .attribute(
-                        ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getSrg(project.getObjects()));
+        obfRuntimeClasspathConfiguration.getAttributes().attribute(
+                ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
+                ObfuscationAttribute.getSrg(project.getObjects()));
 
         final File obfRunFolder = new File(mcTasks.getRunDirectory(), "obfuscated/");
         final TaskProvider<Copy> taskPrepareObfMods = project.getTasks()
@@ -745,28 +717,24 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                         "name",
                         "mcp_" + mcExt.getMcpMappingChannel().get(),
                         "version",
-                        mcExt.getMcpMappingVersion().get() + "-"
-                                + mcExt.getMcVersion().get(),
+                        mcExt.getMcpMappingVersion().get() + "-" + mcExt.getMcVersion().get(),
                         "ext",
                         "zip"));
 
         if (mcExt.getSkipSlowTasks().get()) {
-            taskDeobfuscateMergedJarToSrg.configure(t -> t.onlyIf(
-                    "skipping slow task",
-                    p -> !t.getOutputJar().get().getAsFile().exists()));
-            taskDecompileSrgJar.configure(t -> t.onlyIf(
-                    "skipping slow task",
-                    p -> !t.getOutputJar().get().getAsFile().exists()));
-            taskPatchDecompiledJar.configure(t -> t.onlyIf(
-                    "skipping slow task",
-                    p -> !t.getOutputJar().get().getAsFile().exists()));
+            taskDeobfuscateMergedJarToSrg
+                    .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
+            taskDecompileSrgJar
+                    .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
+            taskPatchDecompiledJar
+                    .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
         }
 
         deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
         deps.add(
-                forgeUniversalConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:universal");
-        if (mcExt.getTagReplacementFiles().isPresent()
-                && !mcExt.getTagReplacementFiles().get().isEmpty()) {
+                forgeUniversalConfiguration.getName(),
+                "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:universal");
+        if (mcExt.getTagReplacementFiles().isPresent() && !mcExt.getTagReplacementFiles().get().isEmpty()) {
             final File replacementPropFile = new File(injectedSourcesLocation.getParentFile(), "injectTags.resources");
             taskInjectTags.configure(task -> {
                 task.getOutputs().file(replacementPropFile);
@@ -777,9 +745,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                         props.setProperty("files." + i, pattern);
                     }
                     for (Map.Entry<String, Object> value : task.getTags().get().entrySet()) {
-                        props.setProperty(
-                                "replacements." + value.getKey(),
-                                value.getValue().toString());
+                        props.setProperty("replacements." + value.getKey(), value.getValue().toString());
                     }
                     try (FileOutputStream fos = new FileOutputStream(replacementPropFile);
                             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
@@ -800,8 +766,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             project.getConfigurations().getByName("annotationProcessor").extendsFrom(rfgJavacCfg);
             final URI replacementsUri = replacementPropFile.toURI();
             project.getTasks().named("compileJava", JavaCompile.class).configure(task -> {
-                task.getOptions()
-                        .getCompilerArgs()
+                task.getOptions().getCompilerArgs()
                         .add("-Xplugin:RetrofuturagradleTokenReplacement " + replacementsUri.toASCIIString());
                 task.getOptions().setFork(true);
                 if (javaExt.getToolchain().getLanguageVersion().get().asInt() > 8) {
@@ -833,11 +798,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     if (task.getScalaCompileOptions().getAdditionalParameters() == null) {
                         task.getScalaCompileOptions().setAdditionalParameters(new ArrayList<>());
                     }
-                    final String scParam =
-                            "-P:RetrofuturagradleScalaTokenReplacement:" + replacementsUri.toASCIIString();
+                    final String scParam = "-P:RetrofuturagradleScalaTokenReplacement:"
+                            + replacementsUri.toASCIIString();
                     // It can be an immutable list
-                    final List<String> scArgs =
-                            new ArrayList<>(task.getScalaCompileOptions().getAdditionalParameters());
+                    final List<String> scArgs = new ArrayList<>(
+                            task.getScalaCompileOptions().getAdditionalParameters());
                     scArgs.add(scParam);
                     task.getScalaCompileOptions().setAdditionalParameters(scArgs);
                     task.getOptions().setFork(true);
@@ -877,9 +842,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             if (mcExt.getUsesForge().get()) {
                 deobfuscationATs.from(userdevDir(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER));
 
-                taskPatchDecompiledJar.configure(task -> {
-                    task.getPatches().from(userdevDir("forgepatches.zip"));
-                });
+                taskPatchDecompiledJar.configure(task -> { task.getPatches().from(userdevDir("forgepatches.zip")); });
 
                 final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
                 final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);

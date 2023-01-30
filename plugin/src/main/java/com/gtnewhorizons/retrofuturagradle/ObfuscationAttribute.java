@@ -8,8 +8,9 @@ import org.gradle.api.attributes.CompatibilityCheckDetails;
 import org.gradle.api.model.ObjectFactory;
 
 public interface ObfuscationAttribute extends Named {
-    Attribute<ObfuscationAttribute> OBFUSCATION_ATTRIBUTE =
-            Attribute.of("com.gtnewhorizons.retrofuturagradle.obfuscation", ObfuscationAttribute.class);
+
+    Attribute<ObfuscationAttribute> OBFUSCATION_ATTRIBUTE = Attribute
+            .of("com.gtnewhorizons.retrofuturagradle.obfuscation", ObfuscationAttribute.class);
 
     /**
      * Obfuscation doesn't matter for artifacts without a Minecraft dependency
@@ -27,10 +28,10 @@ public interface ObfuscationAttribute extends Named {
     String SRG = "srg";
 
     final class CompatRules implements AttributeCompatibilityRule<ObfuscationAttribute> {
+
         @Override
         public void execute(CompatibilityCheckDetails<ObfuscationAttribute> details) {
-            if (details.getProducerValue().equals(NO_MINECRAFT)
-                    || details.getConsumerValue().equals(NO_MINECRAFT)
+            if (details.getProducerValue().equals(NO_MINECRAFT) || details.getConsumerValue().equals(NO_MINECRAFT)
                     || details.getProducerValue().equals(details.getConsumerValue())) {
                 details.compatible();
             } else {
@@ -52,10 +53,10 @@ public interface ObfuscationAttribute extends Named {
     }
 
     static void configureProject(Project project) {
-        project.getDependencies().getAttributesSchema().attribute(OBFUSCATION_ATTRIBUTE, attrib -> {
-            attrib.getCompatibilityRules().add(CompatRules.class);
-        });
-        project.getConfigurations().all(cfg -> cfg.getAttributes()
-                .attribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, getNoMinecraft(project.getObjects())));
+        project.getDependencies().getAttributesSchema()
+                .attribute(OBFUSCATION_ATTRIBUTE, attrib -> { attrib.getCompatibilityRules().add(CompatRules.class); });
+        project.getConfigurations().all(
+                cfg -> cfg.getAttributes()
+                        .attribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, getNoMinecraft(project.getObjects())));
     }
 }

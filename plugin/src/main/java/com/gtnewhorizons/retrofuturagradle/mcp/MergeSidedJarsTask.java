@@ -1,9 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -23,6 +19,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.iterators.EnumerationIterator;
 import org.apache.commons.collections4.iterators.IteratorIterable;
@@ -47,8 +44,15 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
 @CacheableTask
 public abstract class MergeSidedJarsTask extends DefaultTask {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getMergeConfigFile();
@@ -72,8 +76,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         final MergeConfig config = new MergeConfig(getMergeConfigFile().get().getAsFile());
         try (final ZipFile clientJar = new ZipFile(getClientJar().get().getAsFile());
                 final ZipFile serverJar = new ZipFile(getServerJar().get().getAsFile());
-                final FileOutputStream outFOS =
-                        new FileOutputStream(getMergedJar().get().getAsFile());
+                final FileOutputStream outFOS = new FileOutputStream(getMergedJar().get().getAsFile());
                 final BufferedOutputStream outBOS = new BufferedOutputStream(outFOS);
                 final ZipOutputStream outJar = new ZipOutputStream(outBOS)) {
             final Set<String> resources = new HashSet<>();
@@ -82,14 +85,13 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
             final Set<String> processedClasses = new HashSet<>();
 
             // Find classes and merge resources
-            for (Pair<Map<String, ZipEntry>, ZipFile> pair :
-                    ImmutableList.of(Pair.of(clientClasses, clientJar), Pair.of(serverClasses, serverJar))) {
+            for (Pair<Map<String, ZipEntry>, ZipFile> pair : ImmutableList
+                    .of(Pair.of(clientClasses, clientJar), Pair.of(serverClasses, serverJar))) {
                 final ZipFile jar = pair.getRight();
                 final Map<String, ZipEntry> classes = pair.getLeft();
                 for (ZipEntry entry : new IteratorIterable<>(new EnumerationIterator<>(jar.entries()))) {
                     final String entryName = entry.getName();
-                    if (entry.isDirectory()
-                            || "META-INF/MANIFEST.MF".equals(entryName)
+                    if (entry.isDirectory() || "META-INF/MANIFEST.MF".equals(entryName)
                             || config.dontProcess.stream().anyMatch(entryName::startsWith)) {
                         continue;
                     }
@@ -144,6 +146,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
     }
 
     private static class MergeConfig {
+
         public MergeConfig(File f) throws IOException {
             final HashSet<String> copyToServer = new HashSet<>();
             final HashSet<String> copyToClient = new HashSet<>();
@@ -189,9 +192,8 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         final Set<String> dontProcess;
     }
 
-    private void copySidedClass(
-            MergeConfig config, ZipFile inputJar, ZipEntry entry, ZipOutputStream outputJar, boolean isClientOnly)
-            throws IOException {
+    private void copySidedClass(MergeConfig config, ZipFile inputJar, ZipEntry entry, ZipOutputStream outputJar,
+            boolean isClientOnly) throws IOException {
         ClassNode classNode = Utilities.parseClassBytes(Utilities.readZipEntry(inputJar, entry), entry.getName());
 
         // Annotate with @SideOnly(Side.SIDE)
@@ -216,8 +218,9 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         // clientClass is also the output class
         // maintain insertion order via a LinkedHashSet for reliable method ordering
         LinkedHashSet<String> entryKeys = new LinkedHashSet<>(clientClass.methods.size() + clientClass.fields.size());
-        MultiValuedMap<String, FieldOrMethod> sidedEntries =
-                new ArrayListValuedHashMap<>(clientClass.methods.size() + clientClass.fields.size(), 2);
+        MultiValuedMap<String, FieldOrMethod> sidedEntries = new ArrayListValuedHashMap<>(
+                clientClass.methods.size() + clientClass.fields.size(),
+                2);
 
         // Process and add fields in the same order as ForgeGradle
         {
@@ -230,11 +233,10 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
                     entryKeys.add(sFom.getKey());
                     sidedEntries.put(sFom.getKey(), sFom);
                     if (!cNode.name.equals(sNode.name)) {
-                        final boolean foundServerField =
-                                serverClass.fields.stream().skip(sPos + 1).anyMatch(sf -> sf.name.equals(cNode.name));
+                        final boolean foundServerField = serverClass.fields.stream().skip(sPos + 1)
+                                .anyMatch(sf -> sf.name.equals(cNode.name));
                         if (foundServerField) {
-                            final boolean foundClientField = clientClass.fields.stream()
-                                    .skip(cPos + 1)
+                            final boolean foundClientField = clientClass.fields.stream().skip(cPos + 1)
                                     .anyMatch(cf -> cf.name.equals(sNode.name));
                             if (!foundClientField) {
                                 clientClass.fields.add(cPos, sNode);
@@ -305,11 +307,12 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
         an.values = new ArrayList<>(2);
         an.values.add("value");
         Side side = isClientOnly ? Side.CLIENT : Side.SERVER;
-        an.values.add(new String[] {Type.getDescriptor(side.getClass()), side.toString()});
+        an.values.add(new String[] { Type.getDescriptor(side.getClass()), side.toString() });
         return an;
     }
 
     private static class FieldOrMethod {
+
         public final Side side;
         private final FieldNode field;
         private final MethodNode method;

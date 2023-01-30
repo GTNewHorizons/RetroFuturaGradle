@@ -1,7 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.fgpatchers;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,11 +7,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.apache.commons.lang3.RegExUtils;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
+
 public class FFPatcher {
-    static final String MODIFIERS =
-            "public|protected|private|static|abstract|final|native|synchronized|transient|volatile|strictfp";
+
+    static final String MODIFIERS = "public|protected|private|static|abstract|final|native|synchronized|transient|volatile|strictfp";
 
     private static final Pattern SYNTHETICS = Pattern.compile(
             "(?m)(\\s*// \\$FF: (synthetic|bridge) method(\\r\\n|\\n|\\r)){1,2}\\s*(?<modifiers>(?:(?:" + MODIFIERS
@@ -39,13 +41,11 @@ public class FFPatcher {
     private static final Pattern CLASS_REGEX = Pattern.compile(
             "(?<modifiers>(?:(?:" + MODIFIERS
                     + ") )*)(?<type>enum|class|interface) (?<name>[\\w$]+)(?: (extends|implements) (?:[\\w$.]+(?:, [\\w$.]+)*))* \\{");
-    private static final String ENUM_ENTRY_REGEX =
-            ("(?<name>[\\w$]+)\\(\"(?:[\\w$]+)\", [0-9]+(?:, (?<body>.*?))?\\)(?<end> *(?:;|,|\\{)$)");
+    private static final String ENUM_ENTRY_REGEX = ("(?<name>[\\w$]+)\\(\"(?:[\\w$]+)\", [0-9]+(?:, (?<body>.*?))?\\)(?<end> *(?:;|,|\\{)$)");
     private static final String CONSTRUCTOR_REGEX = ("(?<modifiers>(?:(?:" + MODIFIERS
             + ") )*)%s\\((?<parameters>.*?)\\)(?<end>(?: throws (?<throws>[\\w$.]+(?:, [\\w$.]+)*))? *(?:\\{\\}| \\{))");
     private static final String CONSTRUCTOR_CALL_REGEX = ("(?<name>this|super)\\((?<body>.*?)\\)(?<end>;)");
-    private static final String VALUE_FIELD_REGEX =
-            ("private static final %s\\[\\] [$\\w\\d]+ = new %s\\[\\]\\{.*?\\};");
+    private static final String VALUE_FIELD_REGEX = ("private static final %s\\[\\] [$\\w\\d]+ = new %s\\[\\]\\{.*?\\};");
 
     private static final Pattern NEWLINE_PATTERN = Pattern.compile("\r?\n|\r");
 
@@ -84,8 +84,8 @@ public class FFPatcher {
         return text;
     }
 
-    private static int processClass(
-            List<String> lines, String indent, int startIndex, String qualifiedName, String simpleName) {
+    private static int processClass(List<String> lines, String indent, int startIndex, String qualifiedName,
+            String simpleName) {
         Pattern classPattern = Pattern.compile(indent + CLASS_REGEX);
 
         for (int i = startIndex; i < lines.size(); i++) {
@@ -125,8 +125,8 @@ public class FFPatcher {
         return 0;
     }
 
-    private static void processEnum(
-            List<String> lines, String indent, int startIndex, String qualifiedName, String simpleName) {
+    private static void processEnum(List<String> lines, String indent, int startIndex, String qualifiedName,
+            String simpleName) {
         String newIndent = indent + "   ";
         Pattern enumEntry = Pattern.compile("^" + newIndent + ENUM_ENTRY_REGEX);
         Pattern constructor = Pattern.compile("^" + newIndent + String.format(CONSTRUCTOR_REGEX, simpleName));
@@ -159,23 +159,15 @@ public class FFPatcher {
                 }
 
                 if (Strings.isNullOrEmpty(body)) newLine += matcher.group("end");
-                else
-                    newLine = new StringBuilder(newLine)
-                            .append("(")
-                            .append(body)
-                            .append(")")
-                            .append(matcher.group("end"))
-                            .toString();
+                else newLine = new StringBuilder(newLine).append("(").append(body).append(")")
+                        .append(matcher.group("end")).toString();
             }
 
             // find and replace constructor
             matcher = constructor.matcher(line);
             if (matcher.find()) {
                 StringBuilder tmp = new StringBuilder();
-                tmp.append(newIndent)
-                        .append(matcher.group("modifiers"))
-                        .append(simpleName)
-                        .append("(");
+                tmp.append(newIndent).append(matcher.group("modifiers")).append(simpleName).append("(");
 
                 String[] args = matcher.group("parameters").split(", ");
                 for (int x = 2; x < args.length; x++) tmp.append(args[x]).append(x < args.length - 1 ? ", " : "");
@@ -198,15 +190,8 @@ public class FFPatcher {
                     body = Joiner.on(", ").join(args);
                 }
 
-                newLine = new StringBuilder()
-                        .append(newIndent)
-                        .append("   ")
-                        .append(matcher.group("name"))
-                        .append("(")
-                        .append(body)
-                        .append(")")
-                        .append(matcher.group("end"))
-                        .toString();
+                newLine = new StringBuilder().append(newIndent).append("   ").append(matcher.group("name")).append("(")
+                        .append(body).append(")").append(matcher.group("end")).toString();
             }
 
             if (prevSynthetic) {
@@ -271,12 +256,7 @@ public class FFPatcher {
                 p[0] = p[0] + " " + p[1];
                 p[1] = p[2];
             }
-            fixed.append(p[0])
-                    .append(" p_")
-                    .append(number)
-                    .append('_')
-                    .append(p[1].substring(3))
-                    .append('_');
+            fixed.append(p[0]).append(" p_").append(number).append('_').append(p[1].substring(3)).append('_');
             if (x != args.length - 1) fixed.append(", ");
         }
 

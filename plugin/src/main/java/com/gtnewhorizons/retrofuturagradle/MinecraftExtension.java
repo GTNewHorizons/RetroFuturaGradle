@@ -1,7 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle;
 
-import com.google.common.collect.Lists;
 import java.util.Objects;
+
 import org.gradle.api.Project;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
@@ -13,10 +13,13 @@ import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 
+import com.google.common.collect.Lists;
+
 /**
  * Parameter block for the `minecraft {...}` Gradle script extension
  */
 public abstract class MinecraftExtension implements IMinecraftyExtension {
+
     private final Project project;
 
     public MinecraftExtension(Project project) {
@@ -33,7 +36,8 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
     // Internal configs
 
     /**
-     * Skips slow-running tasks (decompilation, jar merging, etc.) if the artifacts already exist, useful for development of the plugin.
+     * Skips slow-running tasks (decompilation, jar merging, etc.) if the artifacts already exist, useful for
+     * development of the plugin.
      */
     public abstract Property<Boolean> getSkipSlowTasks();
 
@@ -100,30 +104,32 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
     public abstract ListProperty<String> getExtraRunJvmArguments();
 
     /**
-     * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or generating a small Java file with the tag values.
+     * A key-value map of tags to inject into the project either by way of token substitution (hacky, deprecated) or
+     * generating a small Java file with the tag values.
      */
     public abstract MapProperty<String, Object> getInjectedTags();
 
     /**
-     * Glob patterns on which to run tag replacement, deprecated as the implementation is very hacky, implemented for compat with FG buildscripts
+     * Glob patterns on which to run tag replacement, deprecated as the implementation is very hacky, implemented for
+     * compat with FG buildscripts
      */
     public abstract ListProperty<String> getTagReplacementFiles();
 
     /**
-     * Dependency groups to exclude from automatic remapping from dev to reobf jars.
-     * Add reobfed dependencies manually to reobfJarConfiguration as needed
+     * Dependency groups to exclude from automatic remapping from dev to reobf jars. Add reobfed dependencies manually
+     * to reobfJarConfiguration as needed
      */
     public abstract SetProperty<String> getGroupsToExcludeFromAutoReobfMapping();
 
     public Provider<JavaLauncher> getToolchainLauncher() {
-        JavaToolchainService jts =
-                Objects.requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        JavaToolchainService jts = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
         return getJavaToolchain().flatMap(jts::launcherFor);
     }
 
     public Provider<JavaCompiler> getToolchainCompiler() {
-        JavaToolchainService jts =
-                Objects.requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        JavaToolchainService jts = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
         return getJavaToolchain().flatMap(jts::compilerFor);
     }
 

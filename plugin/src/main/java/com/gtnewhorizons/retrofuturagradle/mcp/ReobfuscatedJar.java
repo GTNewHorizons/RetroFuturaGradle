@@ -1,17 +1,16 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.gtnewhorizons.retrofuturagradle.Constants;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.ReobfExceptor;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import java.io.File;
 import java.io.IOException;
 import java.net.URLClassLoader;
 import java.util.Set;
+
 import net.md_5.specialsource.JarMapping;
 import net.md_5.specialsource.JarRemapper;
 import net.md_5.specialsource.provider.ClassLoaderProvider;
 import net.md_5.specialsource.provider.JarProvider;
 import net.md_5.specialsource.provider.JointProvider;
+
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -28,8 +27,13 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.tasks.Jar;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.ReobfExceptor;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
 @CacheableTask
 public abstract class ReobfuscatedJar extends Jar {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputJar();
@@ -69,7 +73,8 @@ public abstract class ReobfuscatedJar extends Jar {
     public abstract ConfigurableFileCollection getReferenceClasspath();
 
     /**
-     * Sets the inputJar property to the output of the given Jar task, and copies all jar attributes (base name, appendix, version, extension) except the classifier as default values for the output jar properties.
+     * Sets the inputJar property to the output of the given Jar task, and copies all jar attributes (base name,
+     * appendix, version, extension) except the classifier as default values for the output jar properties.
      */
     public void setInputJarFromTask(TaskProvider<Jar> task) {
         this.getInputJar().set(task.flatMap(Jar::getArchiveFile));
@@ -115,8 +120,8 @@ public abstract class ReobfuscatedJar extends Jar {
             inheritanceProviders.add(new JarProvider(inputJar));
             Set<File> cpFiles = getReferenceClasspath().getFiles();
             if (!cpFiles.isEmpty()) {
-                inheritanceProviders.add(
-                        new ClassLoaderProvider(new URLClassLoader(Utilities.filesToURLArray(cpFiles))));
+                inheritanceProviders
+                        .add(new ClassLoaderProvider(new URLClassLoader(Utilities.filesToURLArray(cpFiles))));
             }
             mapping.setFallbackInheritanceProvider(inheritanceProviders);
 

@@ -1,8 +1,5 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import com.cloudbees.diff.PatchException;
-import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,7 +11,9 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.inject.Inject;
+
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,8 +32,13 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
+import com.cloudbees.diff.PatchException;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
+
 @CacheableTask
 public abstract class PatchSourcesTask extends DefaultTask {
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getInputJar();
@@ -72,18 +76,16 @@ public abstract class PatchSourcesTask extends DefaultTask {
         loadedResources.clear();
         loadedSources.clear();
         Utilities.loadMemoryJar(getInputJar().get().getAsFile(), loadedResources, loadedSources);
-        getLogger()
-                .lifecycle(
-                        "Patching sources: {} patch archives, {} injection directories",
-                        getPatches().getFiles().size(),
-                        getInjectionDirectories().getFiles().size());
+        getLogger().lifecycle(
+                "Patching sources: {} patch archives, {} injection directories",
+                getPatches().getFiles().size(),
+                getInjectionDirectories().getFiles().size());
 
         injectFiles();
 
         patchFiles();
 
-        Utilities.saveMemoryJar(
-                loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
+        Utilities.saveMemoryJar(loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private void injectFiles() throws IOException {
@@ -103,8 +105,9 @@ public abstract class PatchSourcesTask extends DefaultTask {
     }
 
     private void patchFiles() throws IOException, PatchException {
-        final Utilities.InMemoryJarContextProvider contextProvider =
-                new Utilities.InMemoryJarContextProvider(loadedSources, 3);
+        final Utilities.InMemoryJarContextProvider contextProvider = new Utilities.InMemoryJarContextProvider(
+                loadedSources,
+                3);
         final File logFile = new File(getTemporaryDir(), "patching.log");
         Throwable failure = null;
         int patchCount = 0;
@@ -115,8 +118,7 @@ public abstract class PatchSourcesTask extends DefaultTask {
                 final FileCollection patchFiles;
                 if (patchSpec.isDirectory()) {
                     patchFiles = getFileOperations().fileTree(patchSpec);
-                } else if (patchSpec.getName().endsWith(".zip")
-                        || patchSpec.getName().endsWith(".jar")) {
+                } else if (patchSpec.getName().endsWith(".zip") || patchSpec.getName().endsWith(".jar")) {
                     patchFiles = getFileOperations().zipTree(patchSpec);
                 } else {
                     patchFiles = getFileOperations().immutableFiles(patchSpec);
@@ -124,8 +126,8 @@ public abstract class PatchSourcesTask extends DefaultTask {
                 for (File patchFile : patchFiles) {
                     logStream.printf("Applying patch %s from bundle %s%n", patchFile.getPath(), patchSpec.getPath());
                     patchCount++;
-                    final ContextualPatch patch = ContextualPatch.create(
-                            FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8), contextProvider);
+                    final ContextualPatch patch = ContextualPatch
+                            .create(FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8), contextProvider);
                     patch.setAccessC14N(true);
                     patch.setMaxFuzz(getMaxFuzziness().get());
                     final List<ContextualPatch.PatchReport> reports = patch.patch(false);
@@ -139,8 +141,7 @@ public abstract class PatchSourcesTask extends DefaultTask {
                             for (ContextualPatch.HunkReport hunk : report.getHunks()) {
                                 if (hunk.getStatus() == ContextualPatch.PatchStatus.Fuzzed) {
                                     logStream.printf(" - Hunk %d fuzzed %d%n", hunk.getHunkID(), hunk.getFuzz());
-                                } else if (!hunk.getStatus().isSuccess()
-                                        && getLogger().isErrorEnabled()) {
+                                } else if (!hunk.getStatus().isSuccess() && getLogger().isErrorEnabled()) {
                                     logStream.printf(
                                             " - Hunk %d failed (%d+%d -> %d+%d): %n %s%n",
                                             hunk.getHunkID(),

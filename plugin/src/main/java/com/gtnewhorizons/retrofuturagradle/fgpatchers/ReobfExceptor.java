@@ -10,13 +10,6 @@ import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.objectweb.asm.Opcodes.PUTFIELD;
 import static org.objectweb.asm.Opcodes.PUTSTATIC;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.io.ByteStreams;
-import com.google.common.io.Files;
-import com.google.common.io.LineProcessor;
-import de.oceanlabs.mcp.mcinjector.StringUtil;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,13 +26,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.io.ByteStreams;
+import com.google.common.io.Files;
+import com.google.common.io.LineProcessor;
+
+import de.oceanlabs.mcp.mcinjector.StringUtil;
+
 public class ReobfExceptor {
+
     // info supplied.
     public File toReobfJar;
     public File deobfJar;
@@ -58,14 +62,13 @@ public class ReobfExceptor {
         if (outSrg.isFile()) outSrg.delete();
 
         // rewrite it.
-        String fixed =
-                Files.asCharSource(inSrg, Charset.defaultCharset()).readLines(new SrgLineProcessor(clsMap, access));
+        String fixed = Files.asCharSource(inSrg, Charset.defaultCharset())
+                .readLines(new SrgLineProcessor(clsMap, access));
         Files.write(fixed.getBytes(), outSrg);
     }
 
     /**
-     * reads the Old jar, the EXC, and the CSVS
-     * Hopefully, these things wont change.
+     * reads the Old jar, the EXC, and the CSVS Hopefully, these things wont change.
      *
      * @throws IOException because it reads the srg and jar files
      */
@@ -83,12 +86,13 @@ public class ReobfExceptor {
 
     private Map<String, String> readCSVs() throws IOException {
         final Map<String, String> csvData = Maps.newHashMap();
-        File[] csvs = new File[] {fieldCSV == null ? null : fieldCSV, methodCSV == null ? null : methodCSV};
+        File[] csvs = new File[] { fieldCSV == null ? null : fieldCSV, methodCSV == null ? null : methodCSV };
 
         for (File f : csvs) {
             if (f == null) continue;
 
             Files.readLines(f, Charset.defaultCharset(), new LineProcessor<Object>() {
+
                 @Override
                 public boolean processLine(String line) throws IOException {
                     String[] s = line.split(",");
@@ -138,16 +142,16 @@ public class ReobfExceptor {
             if (zip != null) {
                 try {
                     zip.close();
-                } catch (IOException e) {
-                }
+                } catch (IOException e) {}
             }
         }
     }
 
     private Map<String, String> createClassMap(Map<String, String> markerMap, final List<String> interfaces)
             throws IOException {
-        Map<String, String> excMap =
-                Files.readLines(excConfig, Charset.defaultCharset(), new LineProcessor<Map<String, String>>() {
+        Map<String, String> excMap = Files
+                .readLines(excConfig, Charset.defaultCharset(), new LineProcessor<Map<String, String>>() {
+
                     Map<String, String> tmp = Maps.newHashMap();
 
                     @Override
@@ -185,7 +189,7 @@ public class ReobfExceptor {
             String key = e.getKey();
             AccessInfo n = new_data.get(key);
             if (n != null && e.getValue().targetEquals(n)) {
-                // System.out.println("  " + n.toString());
+                // System.out.println(" " + n.toString());
                 itr.remove();
                 new_data.remove(key);
             }
@@ -202,7 +206,7 @@ public class ReobfExceptor {
                 Entry<String, AccessInfo> e2 = itr2.next();
                 AccessInfo _new = e2.getValue();
                 if (_old.targetEquals(_new) && _old.owner.equals(_new.owner) && _old.desc.equals(_new.desc)) {
-                    // System.out.println("  " + _old.name + " -> " + _new.name + " " + _old.toString());
+                    // System.out.println(" " + _old.name + " -> " + _new.name + " " + _old.toString());
                     matched.put(_old.owner + "/" + _old.name, _new.owner + "/" + _new.name);
                     itr.remove();
                     itr2.remove();
@@ -215,6 +219,7 @@ public class ReobfExceptor {
     }
 
     private static class SrgLineProcessor implements LineProcessor<String> {
+
         Map<String, String> map;
         Map<String, String> access;
         StringBuilder out = new StringBuilder();
@@ -232,7 +237,7 @@ public class ReobfExceptor {
 
         private String[] rsplit(String value, String delim) {
             int idx = value.lastIndexOf(delim);
-            return new String[] {value.substring(0, idx), value.substring(idx + 1)};
+            return new String[] { value.substring(0, idx), value.substring(idx + 1) };
         }
 
         @Override
@@ -270,6 +275,7 @@ public class ReobfExceptor {
     }
 
     private static class JarInfo extends ClassVisitor {
+
         private final Map<String, String> map = Maps.newHashMap();
         private final List<String> interfaces = Lists.newArrayList();
         private final Map<String, AccessInfo> access = Maps.newHashMap();
@@ -283,11 +289,10 @@ public class ReobfExceptor {
         @Override
         public void visit(int version, int access, String name, String signature, String superName, String[] ints) {
             // System.out.println("Class: " + name);
-            this.className = name;
-            ;
+            this.className = name;;
             if ((access & ACC_INTERFACE) == ACC_INTERFACE) {
                 interfaces.add(className);
-                // System.out.println("  Interface: True");
+                // System.out.println(" Interface: True");
             }
         }
 
@@ -300,7 +305,7 @@ public class ReobfExceptor {
                                     + className);
                 }
                 map.put(String.valueOf(value) + "_", className);
-                // System.out.println("  Marker:    " + String.valueOf(value));
+                // System.out.println(" Marker: " + String.valueOf(value));
             }
             return null;
         }
@@ -314,6 +319,7 @@ public class ReobfExceptor {
                 access.put(path, info);
 
                 return new MethodVisitor(Opcodes.ASM9) {
+
                     // GETSTATIC, PUTSTATIC, GETFIELD or PUTFIELD.
                     @Override
                     public void visitFieldInsn(int opcode, String owner, String name, String desc) {
@@ -333,6 +339,7 @@ public class ReobfExceptor {
 
     @SuppressWarnings("unused")
     private static class AccessInfo {
+
         public String owner;
         public String name;
         public String desc;
@@ -367,6 +374,7 @@ public class ReobfExceptor {
     }
 
     private static class Insn {
+
         public int opcode;
         public String owner;
         public String name;
