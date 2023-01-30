@@ -57,8 +57,6 @@ group = "testmod"
 version = "1.0"
 
 minecraft {
-    mcVersion.set("1.7.10")
-    applyMcDependencies.set(true)
     skipSlowTasks.set(true)
     injectedTags.put("TAG_VERSION", version)
     tagReplacementFiles.add("TestMod.java")
