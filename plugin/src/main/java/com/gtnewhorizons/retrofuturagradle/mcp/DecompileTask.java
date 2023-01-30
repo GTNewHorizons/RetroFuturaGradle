@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
@@ -102,5 +103,9 @@ public abstract class DecompileTask extends DefaultTask {
 
         final long postDecompileMs = System.currentTimeMillis();
         getLogger().lifecycle("  Decompiling took " + (postDecompileMs - preDecompileMs) + " ms");
+
+        if (!Constants.DEBUG_NO_TMP_CLEANUP) {
+            FileUtils.deleteQuietly(ffoutfile);
+        }
     }
 }
