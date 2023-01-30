@@ -180,11 +180,15 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         RemapperProcessor atProcessor = new RemapperProcessor(null, null, accessMap);
         JarRemapper remapper = new JarRemapper(srgProcessor, mapping, atProcessor);
 
-        final Jar input = Jar.init(inputFile);
+        Jar input = Jar.init(inputFile);
         JointProvider inheritanceProviders = new JointProvider();
         inheritanceProviders.add(new JarProvider(input));
         mapping.setFallbackInheritanceProvider(inheritanceProviders);
         remapper.remapJar(input, tempDeobfJar);
+        input = null;
+
+        // Attempt to close the open file handles for the input jar.
+        System.gc();
 
         // Clean up temporary files
         if (!Constants.DEBUG_NO_TMP_CLEANUP) {

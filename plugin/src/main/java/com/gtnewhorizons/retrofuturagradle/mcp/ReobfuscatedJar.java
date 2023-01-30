@@ -115,17 +115,19 @@ public abstract class ReobfuscatedJar extends Jar {
                 mapping.loadMappings(file);
             }
             final JarRemapper remapper = new JarRemapper(null, mapping);
-            net.md_5.specialsource.Jar inputJar = net.md_5.specialsource.Jar.init(tmpObfedJar);
-            JointProvider inheritanceProviders = new JointProvider();
-            inheritanceProviders.add(new JarProvider(inputJar));
-            Set<File> cpFiles = getReferenceClasspath().getFiles();
-            if (!cpFiles.isEmpty()) {
-                inheritanceProviders
-                        .add(new ClassLoaderProvider(new URLClassLoader(Utilities.filesToURLArray(cpFiles))));
-            }
-            mapping.setFallbackInheritanceProvider(inheritanceProviders);
 
-            remapper.remapJar(inputJar, tmpInjectedJar);
+            try (net.md_5.specialsource.Jar inputJar = net.md_5.specialsource.Jar.init(tmpObfedJar)) {
+                JointProvider inheritanceProviders = new JointProvider();
+                inheritanceProviders.add(new JarProvider(inputJar));
+                Set<File> cpFiles = getReferenceClasspath().getFiles();
+                if (!cpFiles.isEmpty()) {
+                    inheritanceProviders
+                            .add(new ClassLoaderProvider(new URLClassLoader(Utilities.filesToURLArray(cpFiles))));
+                }
+                mapping.setFallbackInheritanceProvider(inheritanceProviders);
+
+                remapper.remapJar(inputJar, tmpInjectedJar);
+            }
 
             final File outputJar = super.getArchiveFile().get().getAsFile();
             FileUtils.copyFile(tmpInjectedJar, outputJar);
