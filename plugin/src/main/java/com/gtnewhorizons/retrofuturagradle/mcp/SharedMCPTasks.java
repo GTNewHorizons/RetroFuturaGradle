@@ -22,6 +22,7 @@ import org.gradle.api.tasks.TaskProvider;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.util.MkdirAction;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 import de.undercouch.gradle.tasks.download.Download;
@@ -102,6 +103,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                             () -> project.zipTree(
                                     mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
             task.into(mcpExtractRoot);
+            task.doFirst(new MkdirAction(mcpExtractRoot));
         });
 
         final File userdevRoot = Utilities.getRawCacheDir(project, "minecraft", "net", "minecraftforge", "forge");
@@ -120,6 +122,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                             () -> project.zipTree(
                                     forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
             task.into(userdevExtractRoot);
+            task.doFirst(new MkdirAction(userdevExtractRoot));
         });
 
         forgeSrgLocation = userdevRootProvider.map(root -> root.dir("srgs"));
@@ -146,6 +149,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     task.getMcpToNotch().set(srgFile("mcp-notch.srg"));
                     task.getSrgExc().set(srgFile("srg.exc"));
                     task.getMcpExc().set(srgFile("mcp.exc"));
+                    task.doFirst(new MkdirAction(forgeSrgLocation));
                 });
     }
 
