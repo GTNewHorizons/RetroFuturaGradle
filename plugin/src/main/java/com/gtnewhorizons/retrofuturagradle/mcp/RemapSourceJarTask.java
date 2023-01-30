@@ -94,7 +94,6 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
 
     @Override
     public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getBinaryJar());
         HashUtils.addPropertyToHash(digest, getFieldCsv());
         HashUtils.addPropertyToHash(digest, getMethodCsv());
         HashUtils.addPropertyToHash(digest, getParamCsv());

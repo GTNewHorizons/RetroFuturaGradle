@@ -91,7 +91,10 @@ public class JarChain {
             lastUpToDateCheck = System.currentTimeMillis();
             wasUpToDate = isUpToDate;
 
-            System.err.println("Up to date: " + isUpToDate + " ; file,current:\n" + savedInputsDigest + "\n" + hexDigest);
+            if (HashUtils.DEBUG_LOG) {
+                System.err.println(
+                        "Up to date: " + isUpToDate + " ; file,current:\n" + savedInputsDigest + "\n" + hexDigest);
+            }
 
             return isUpToDate;
         } catch (IOException e) {
@@ -120,7 +123,17 @@ public class JarChain {
     }
 
     private String calculateInputsDigest() {
+        if (HashUtils.DEBUG_LOG) {
+            System.err.println("*** Recalculating inputs digest");
+            new Throwable().printStackTrace(System.err);
+        }
         final MessageDigest inputsHasher = DigestUtils.getSha256Digest();
+        for (TaskProvider<? extends IJarOutputTask> t : taskChain) {
+            if (HashUtils.DEBUG_LOG) {
+                System.err.println(" * task hash: " + t.getName());
+            }
+            t.get().hashInputs(inputsHasher);
+        }
         taskChain.forEach(t -> t.get().hashInputs(inputsHasher));
         final byte[] digest = inputsHasher.digest();
         return Hex.encodeHexString(digest).trim();
