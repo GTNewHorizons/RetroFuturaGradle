@@ -22,6 +22,7 @@ import com.gtnewhorizons.retrofuturagradle.mcp.PatchSourcesTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.RemapSourceJarTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.SharedMCPTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
+import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
@@ -40,7 +41,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.onlyIf(t -> !mergedVanillaJarLocation.exists());
                     task.getClientJar().set(mcTasks.getVanillaClientLocation());
                     task.getServerJar().set(mcTasks.getVanillaServerLocation());
-                    task.getMergedJar().set(mergedVanillaJarLocation);
+                    task.getOutputJar().set(mergedVanillaJarLocation);
                     task.getMergeConfigFile().set(project.file("mcp_merge.cfg"));
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
@@ -53,7 +54,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getSrgFile().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg));
                     task.getExceptorJson().set(userdevFile("conf/exceptor.json"));
                     task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
-                    task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(MergeSidedJarsTask::getMergedJar));
+                    task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(IJarOutputTask::getOutputJar));
                     task.getOutputJar().set(srgMergedJarLocation);
                     // No fields or methods CSV - passing them in causes ATs to not successfully apply
                     task.getIsApplyingMarkers().set(true);

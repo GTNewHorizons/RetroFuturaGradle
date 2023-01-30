@@ -34,30 +34,23 @@ import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.nothome.delta.GDiffPatcher;
 
 import lzma.sdk.lzma.Decoder;
 import lzma.streams.LzmaInputStream;
 
 @CacheableTask
-public abstract class BinaryPatchJarTask extends DefaultTask {
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getInputJar();
+public abstract class BinaryPatchJarTask extends DefaultTask implements IJarTransformTask {
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getPatchesLzma();
-
-    @OutputFile
-    public abstract RegularFileProperty getOutputJar();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)

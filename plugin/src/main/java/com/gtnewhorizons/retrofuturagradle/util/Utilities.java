@@ -51,8 +51,16 @@ public final class Utilities {
         GSON = builder.create();
     }
 
+    public static File getRawCacheRoot(Project project) {
+        return FileUtils.getFile(project.getGradle().getGradleUserHomeDir(), "caches");
+    }
+
     public static File getCacheRoot(Project project) {
-        return FileUtils.getFile(project.getGradle().getGradleUserHomeDir(), "caches", "retro_futura_gradle");
+        return FileUtils.getFile(getRawCacheRoot(project), "retro_futura_gradle");
+    }
+
+    public static File getRawCacheDir(Project project, String... paths) {
+        return FileUtils.getFile(getRawCacheRoot(project), paths);
     }
 
     public static File getCacheDir(Project project, String... paths) {

@@ -69,19 +69,28 @@ public interface IMinecraftyExtension {
 
     default void applyMinecraftyConventions(ObjectFactory objects) {
         getMcVersion().convention("1.7.10");
+        getMcVersion().finalizeValueOnRead();
         getApplyMcDependencies().convention(Boolean.TRUE);
+        getApplyMcDependencies().finalizeValueOnRead();
         getLwjglVersion().convention("2.9.4-nightly-20150209");
+        getLwjglVersion().finalizeValueOnRead();;
         getJavaCompatibilityVersion().convention(8);
+        getJavaCompatibilityVersion().finalizeValueOnRead();
         {
             final JavaToolchainSpec defaultToolchain = new DefaultToolchainSpec(objects);
             defaultToolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
             defaultToolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
             getJavaToolchain().convention(defaultToolchain);
+            getJavaToolchain().finalizeValueOnRead();
         }
 
         getMcpMappingChannel().convention("stable");
+        getMcpMappingChannel().finalizeValueOnRead();
         getMcpMappingVersion().convention("12");
+        getMcpMappingVersion().finalizeValueOnRead();
         getUseForgeEmbeddedMappings().convention(true);
+        getUseForgeEmbeddedMappings().finalizeValueOnRead();
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
+        getFernflowerArguments().finalizeValueOnRead();
     }
 }

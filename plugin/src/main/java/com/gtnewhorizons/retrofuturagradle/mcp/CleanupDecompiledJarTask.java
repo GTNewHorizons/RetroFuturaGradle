@@ -22,7 +22,6 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -36,17 +35,11 @@ import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
+import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 
-public abstract class CleanupDecompiledJarTask extends DefaultTask {
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getInputJar();
-
-    @OutputFile
-    public abstract RegularFileProperty getOutputJar();
+public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJarTransformTask {
 
     private Map<String, byte[]> loadedResources = new HashMap<>();
     private Map<String, String> loadedSources = new HashMap<>();

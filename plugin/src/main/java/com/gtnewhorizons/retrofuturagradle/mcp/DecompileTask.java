@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.gtnewhorizons.retrofuturagradle.Constants;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
@@ -15,7 +14,6 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputDirectory;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -24,17 +22,12 @@ import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
 import org.gradle.work.DisableCachingByDefault;
 
+import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 
 @DisableCachingByDefault(because = "Uses an internal caching mechanism")
-public abstract class DecompileTask extends DefaultTask {
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getInputJar();
-
-    @OutputFile
-    public abstract RegularFileProperty getOutputJar();
+public abstract class DecompileTask extends DefaultTask implements IJarTransformTask {
 
     @OutputDirectory
     public abstract DirectoryProperty getCacheDir();

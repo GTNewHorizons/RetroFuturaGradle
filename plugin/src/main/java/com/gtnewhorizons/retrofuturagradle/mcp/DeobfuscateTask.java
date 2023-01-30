@@ -40,7 +40,6 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -52,6 +51,7 @@ import org.objectweb.asm.tree.MethodNode;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
+import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.gtnewhorizons.specialsource174.Jar;
@@ -64,11 +64,7 @@ import com.gtnewhorizons.specialsource174.provider.JointProvider;
 import de.oceanlabs.mcp.mcinjector.MCInjectorImpl;
 
 @CacheableTask
-public abstract class DeobfuscateTask extends DefaultTask {
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getInputJar();
+public abstract class DeobfuscateTask extends DefaultTask implements IJarTransformTask {
 
     @InputFiles
     @PathSensitive(PathSensitivity.NONE)
@@ -102,9 +98,6 @@ public abstract class DeobfuscateTask extends DefaultTask {
     @Input
     @Optional
     public abstract Property<Boolean> getIsStrippingSynthetics();
-
-    @OutputFile
-    public abstract RegularFileProperty getOutputJar();
 
     private File taskTempDir;
 

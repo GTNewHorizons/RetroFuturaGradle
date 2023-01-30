@@ -42,12 +42,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
     protected final Configuration mcpMappingDataConfiguration;
     protected final Configuration forgeUserdevConfiguration;
 
-    protected final File mcpDataLocation;
     protected final TaskProvider<Copy> taskExtractMcpData;
 
-    protected final File forgeUserdevLocation;
     protected final TaskProvider<Copy> taskExtractForgeUserdev;
-    protected final File forgeSrgLocation;
+    protected final Provider<Directory> forgeSrgLocation;
     protected final TaskProvider<GenSrgMappingsTask> taskGenerateForgeSrgMappings;
 
     protected final File fernflowerLocation;
@@ -92,27 +90,39 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             task.getOutputs().file(fernflowerLocation);
         });
 
-        mcpDataLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "data");
+        final File mcpRoot = Utilities.getRawCacheDir(project, "minecraft", "de", "oceanlabs", "mcp");
+        final Provider<Directory> mcpExtractRoot = project.getLayout().dir(
+                mcExt.getMcpMappingChannel().zip(
+                        mcExt.getMcpMappingVersion(),
+                        (chan, ver) -> FileUtils.getFile(mcpRoot, "mcp_" + chan, ver)));
         taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
                     project.provider(
                             () -> project.zipTree(
                                     mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
-            task.into(mcpDataLocation);
+            task.into(mcpExtractRoot);
         });
 
-        forgeUserdevLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "userdev");
+        final File userdevRoot = Utilities.getRawCacheDir(project, "minecraft", "net", "minecraftforge", "forge");
+        final Provider<Directory> userdevRootProvider = project.getLayout().dir(mcExt.getMcVersion().map(mcVer -> {
+            if (mcVer.equals("1.7.10")) {
+                return FileUtils.getFile(userdevRoot, "1.7.10-10.13.4.1614-1.7.10");
+            } else {
+                throw new UnsupportedOperationException("Currently only minecraft 1.7.10 is supported.");
+            }
+        }));
+        final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
                     project.provider(
                             () -> project.zipTree(
                                     forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
-            task.into(forgeUserdevLocation);
+            task.into(userdevExtractRoot);
         });
 
-        forgeSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "forge_srg");
+        forgeSrgLocation = userdevRootProvider.map(root -> root.dir("srgs"));
         taskGenerateForgeSrgMappings = project.getTasks()
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -129,13 +139,13 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                                     useForge -> useForge.booleanValue() ? userdevFile("conf/methods.csv")
                                             : mcpFile("methods.csv")));
                     // outputs
-                    task.getNotchToSrg().set(FileUtils.getFile(forgeSrgLocation, "notch-srg.srg"));
-                    task.getNotchToMcp().set(FileUtils.getFile(forgeSrgLocation, "notch-mcp.srg"));
-                    task.getSrgToMcp().set(FileUtils.getFile(forgeSrgLocation, "srg-mcp.srg"));
-                    task.getMcpToSrg().set(FileUtils.getFile(forgeSrgLocation, "mcp-srg.srg"));
-                    task.getMcpToNotch().set(FileUtils.getFile(forgeSrgLocation, "mcp-notch.srg"));
-                    task.getSrgExc().set(FileUtils.getFile(forgeSrgLocation, "srg.exc"));
-                    task.getMcpExc().set(FileUtils.getFile(forgeSrgLocation, "mcp.exc"));
+                    task.getNotchToSrg().set(srgFile("notch-srg.srg"));
+                    task.getNotchToMcp().set(srgFile("notch-mcp.srg"));
+                    task.getSrgToMcp().set(srgFile("srg-mcp.srg"));
+                    task.getMcpToSrg().set(srgFile("mcp-srg.srg"));
+                    task.getMcpToNotch().set(srgFile("mcp-notch.srg"));
+                    task.getSrgExc().set(srgFile("srg.exc"));
+                    task.getMcpExc().set(srgFile("mcp.exc"));
                 });
     }
 
@@ -153,6 +163,14 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 .dir(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
+    public Provider<RegularFile> srgFile(String path) {
+        return forgeSrgLocation.map(d -> d.file(path));
+    }
+
+    public Provider<Directory> getSrgLocation() {
+        return forgeSrgLocation;
+    }
+
     public Configuration getMcpMappingDataConfiguration() {
         return mcpMappingDataConfiguration;
     }
@@ -163,10 +181,6 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
 
     public TaskProvider<Download> getTaskDownloadFernflower() {
         return taskDownloadFernflower;
-    }
-
-    public File getMcpDataLocation() {
-        return mcpDataLocation;
     }
 
     public TaskProvider<Copy> getTaskExtractMcpData() {

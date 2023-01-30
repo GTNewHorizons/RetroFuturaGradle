@@ -33,7 +33,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -45,13 +44,14 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 @CacheableTask
-public abstract class MergeSidedJarsTask extends DefaultTask {
+public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutputTask {
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -68,15 +68,12 @@ public abstract class MergeSidedJarsTask extends DefaultTask {
     @Input
     public abstract Property<String> getMcVersion();
 
-    @OutputFile
-    public abstract RegularFileProperty getMergedJar();
-
     @TaskAction
     void mergeJars() throws IOException {
         final MergeConfig config = new MergeConfig(getMergeConfigFile().get().getAsFile());
         try (final ZipFile clientJar = new ZipFile(getClientJar().get().getAsFile());
                 final ZipFile serverJar = new ZipFile(getServerJar().get().getAsFile());
-                final FileOutputStream outFOS = new FileOutputStream(getMergedJar().get().getAsFile());
+                final FileOutputStream outFOS = new FileOutputStream(getOutputJar().get().getAsFile());
                 final BufferedOutputStream outBOS = new BufferedOutputStream(outFOS);
                 final ZipOutputStream outJar = new ZipOutputStream(outBOS)) {
             final Set<String> resources = new HashSet<>();

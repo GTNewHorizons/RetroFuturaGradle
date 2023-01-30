@@ -26,7 +26,6 @@ import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Optional;
-import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -56,24 +55,18 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.JavadocAdder;
+import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.opencsv.CSVReader;
 
 @CacheableTask
-public abstract class RemapSourceJarTask extends DefaultTask {
+public abstract class RemapSourceJarTask extends DefaultTask implements IJarTransformTask {
 
     private static final boolean DEBUG_PRINT_ALL_GENERICS = false;
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getBinaryJar();
-
-    @InputFile
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract RegularFileProperty getInputJar();
-
-    @OutputFile
-    public abstract RegularFileProperty getOutputJar();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
