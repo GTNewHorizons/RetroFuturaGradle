@@ -2,6 +2,7 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +25,7 @@ import org.gradle.work.DisableCachingByDefault;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 
 @DisableCachingByDefault(because = "Uses an internal caching mechanism")
@@ -35,6 +37,11 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getFernflower();
+
+    @Override
+    public void hashInputs(MessageDigest digest) {
+        HashUtils.addPropertyToHash(digest, getFernflower());
+    }
 
     @TaskAction
     public void decompileAndCleanup() throws IOException {

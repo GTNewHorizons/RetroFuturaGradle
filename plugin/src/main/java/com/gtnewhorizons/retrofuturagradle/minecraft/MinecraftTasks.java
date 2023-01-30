@@ -74,8 +74,7 @@ public final class MinecraftTasks {
     public MinecraftTasks(Project project, IMinecraftyExtension mcExt) {
         this.project = project;
         this.mcExt = mcExt;
-        allVersionsManifestLocation = FileUtils
-                .getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "all_versions_manifest.json");
+        allVersionsManifestLocation = Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, "all_versions_manifest.json");
         taskDownloadLauncherAllVersionsManifest = project.getTasks()
                 .register("downloadLauncherAllVersionsManifest", Download.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);

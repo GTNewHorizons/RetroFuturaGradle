@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,6 +45,7 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
@@ -67,6 +69,14 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
 
     @Input
     public abstract Property<String> getMcVersion();
+
+    @Override
+    public void hashInputs(MessageDigest digest) {
+        HashUtils.addPropertyToHash(digest, getMergeConfigFile());
+        HashUtils.addPropertyToHash(digest, getClientJar());
+        HashUtils.addPropertyToHash(digest, getServerJar());
+        HashUtils.addPropertyToHash(digest, getMcVersion());
+    }
 
     @TaskAction
     void mergeJars() throws IOException {

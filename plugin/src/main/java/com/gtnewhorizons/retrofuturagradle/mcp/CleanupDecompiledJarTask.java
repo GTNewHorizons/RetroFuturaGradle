@@ -6,6 +6,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
+import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
@@ -51,6 +53,12 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getAstyleConfig();
+
+    @Override
+    public void hashInputs(MessageDigest digest) {
+        HashUtils.addPropertyToHash(digest, getPatches());
+        HashUtils.addPropertyToHash(digest, getAstyleConfig());
+    }
 
     private File taskTempDir;
 

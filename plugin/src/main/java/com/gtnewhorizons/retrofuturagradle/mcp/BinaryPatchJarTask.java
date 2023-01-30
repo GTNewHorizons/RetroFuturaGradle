@@ -7,6 +7,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +40,7 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.nothome.delta.GDiffPatcher;
 
@@ -62,6 +64,13 @@ public abstract class BinaryPatchJarTask extends DefaultTask implements IJarTran
 
     @Inject
     protected abstract FileOperations getFileOperations();
+
+    @Override
+    public void hashInputs(MessageDigest digest) {
+        HashUtils.addPropertyToHash(digest, getPatchesLzma());
+        HashUtils.addPropertyToHash(digest, getExtraClassesJar());
+        HashUtils.addPropertyToHash(digest, getExtraResourcesTree());
+    }
 
     @TaskAction
     public void patchJar() throws IOException {

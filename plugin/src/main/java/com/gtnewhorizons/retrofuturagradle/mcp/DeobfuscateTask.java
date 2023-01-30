@@ -12,6 +12,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -51,6 +52,7 @@ import org.objectweb.asm.tree.MethodNode;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
+import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -98,6 +100,18 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
     @Input
     @Optional
     public abstract Property<Boolean> getIsStrippingSynthetics();
+
+    @Override
+    public void hashInputs(MessageDigest digest) {
+        HashUtils.addPropertyToHash(digest, getAccessTransformerFiles());
+        HashUtils.addPropertyToHash(digest, getSrgFile());
+        HashUtils.addPropertyToHash(digest, getFieldCsv());
+        HashUtils.addPropertyToHash(digest, getMethodCsv());
+        HashUtils.addPropertyToHash(digest, getExceptorCfg());
+        HashUtils.addPropertyToHash(digest, getExceptorJson());
+        HashUtils.addPropertyToHash(digest, getIsApplyingMarkers());
+        HashUtils.addPropertyToHash(digest, getIsStrippingSynthetics());
+    }
 
     private File taskTempDir;
 
@@ -221,6 +235,9 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
             json = tmpJsonFile.getCanonicalPath();
             FileUtils.write(tmpJsonFile, Utilities.GSON.toJson(struct), StandardCharsets.UTF_8);
         }
+
+        // Silence MCI logs
+        java.util.logging.Logger.getLogger("MCInjector").setLevel(java.util.logging.Level.WARNING);
 
         MCInjectorImpl.process(
                 deobfJar.getCanonicalPath(),

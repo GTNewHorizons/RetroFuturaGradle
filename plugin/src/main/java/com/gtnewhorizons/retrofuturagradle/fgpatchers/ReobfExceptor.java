@@ -301,8 +301,7 @@ public class ReobfExceptor {
             if (name.equals("__OBFID")) {
                 if (!className.startsWith("net/minecraft/")) {
                     throw new RuntimeException(
-                            "Modder stupidity detected, DO NOT USE __OBFID, Copy pasting code you don't understand is bad: "
-                                    + className);
+                            "DO NOT USE __OBFID, it's for internal reobfuscator use. Found usage in " + className);
                 }
                 map.put(String.valueOf(value) + "_", className);
                 // System.out.println(" Marker: " + String.valueOf(value));

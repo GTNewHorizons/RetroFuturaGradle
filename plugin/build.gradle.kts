@@ -189,7 +189,7 @@ val taskRelocateShadowJar =
     }
 
 tasks.shadowJar.configure {
-  dependsOn(taskRelocateShadowJar)
+  // dependsOn(taskRelocateShadowJar)
   archiveClassifier.set("")
 }
 

@@ -66,6 +66,7 @@ import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
+import com.gtnewhorizons.retrofuturagradle.util.JarChain;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 import cpw.mods.fml.relauncher.Side;
@@ -77,6 +78,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
     private final Configuration forgeUniversalConfiguration;
 
+    private final JarChain decompiledMcChain;
     private final File mergedVanillaJarLocation;
     private final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars;
     /**
@@ -137,6 +139,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         deobfuscationATs = project.getObjects().fileCollection();
 
+        decompiledMcChain = new JarChain();
+
         mergedVanillaJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
         taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
@@ -149,6 +153,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getMergeConfigFile().set(userdevFile("conf/mcp_merge.cfg"));
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
+        decompiledMcChain.addTask(taskMergeVanillaSidedJars);
 
         srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft.jar");
         taskDeobfuscateMergedJarToSrg = project.getTasks()
@@ -165,6 +170,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
                 });
+        decompiledMcChain.addTask(taskDeobfuscateMergedJarToSrg);
 
         decompiledSrgLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
         final File rawDecompiledSrgLocation = FileUtils
@@ -177,6 +183,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getCacheDir().set(Utilities.getCacheDir(project, "fernflower-cache"));
             task.getFernflower().set(fernflowerLocation);
         });
+        decompiledMcChain.addTask(taskDecompileSrgJar);
         taskCleanupDecompSrgJar = project.getTasks()
                 .register("cleanupDecompSrgJar", CleanupDecompiledJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -186,6 +193,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getPatches().set(userdevDir("conf/minecraft_ff"));
                     task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
                 });
+        decompiledMcChain.addTask(taskCleanupDecompSrgJar);
 
         patchedSourcesLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_patched_minecraft-sources.jar");
         taskPatchDecompiledJar = project.getTasks().register("patchDecompiledJar", PatchSourcesTask.class, task -> {
@@ -195,6 +203,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getOutputJar().set(patchedSourcesLocation);
             task.getMaxFuzziness().set(1);
         });
+        decompiledMcChain.addTask(taskPatchDecompiledJar);
 
         remappedSourcesLocation = FileUtils
                 .getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
@@ -216,6 +225,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             }));
             task.getAddJavadocs().set(true);
         });
+        decompiledMcChain.addTask(taskRemapDecompiledJar);
+        decompiledMcChain.finish();
 
         decompressedSourcesLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "minecraft-src");
         taskDecompressDecompiledSources = project.getTasks()
