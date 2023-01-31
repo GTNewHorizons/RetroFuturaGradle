@@ -8,6 +8,7 @@ import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -694,6 +695,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
             task.getMainClass().set("cpw.mods.fml.relauncher.ServerLaunchWrapper");
+            task.getTweakClasses().set(Collections.emptyList());
         });
 
         // Mostly for compat with FG
