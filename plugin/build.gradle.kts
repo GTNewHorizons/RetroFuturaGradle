@@ -60,6 +60,10 @@ version = gitVersion().removeSuffix(".dirty")
 dependencies {
   shadow(localGroovy())
   shadow(gradleApi())
+
+  annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
+  compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0") { isTransitive = false }
+
   // Apache Commons utilities
   implementation("org.apache.commons:commons-lang3:3.12.0")
   implementation("commons-io:commons-io:2.11.0")
@@ -126,6 +130,15 @@ java {
     languageVersion.set(JavaLanguageVersion.of(8))
     vendor.set(JvmVendorSpec.ADOPTIUM)
   }
+}
+
+tasks.named<JavaCompile>("compileJava") {
+  sourceCompatibility = "17" // for the IDE support
+  options.release.set(8)
+
+  javaCompiler.set(javaToolchains.compilerFor {
+    languageVersion.set(JavaLanguageVersion.of(17))
+  })
 }
 
 tasks.named<org.gradle.jvm.tasks.Jar>("jar").configure { from("LICENSE", "docs") }
