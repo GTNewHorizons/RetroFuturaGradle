@@ -97,6 +97,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                         mcExt.getMcpMappingVersion(),
                         (chan, ver) -> FileUtils.getFile(mcpRoot, "mcp_" + chan, ver)));
         taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
+            task.getOutputs().upToDateWhen(t -> {
+                File root = mcpExtractRoot.get().getAsFile();
+                return root.isDirectory() && new File(root, "methods.csv").isFile();
+            });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
                     project.provider(
@@ -116,6 +120,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         }));
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
+            task.getOutputs().upToDateWhen(t -> {
+                File root = userdevExtractRoot.get().getAsFile();
+                return root.isDirectory() && new File(root, "dev.json").isFile();
+            });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
                     project.provider(
