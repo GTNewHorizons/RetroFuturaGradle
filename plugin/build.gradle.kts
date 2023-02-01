@@ -138,6 +138,14 @@ tasks.named<JavaCompile>("compileJava") {
 
   javaCompiler.set(javaToolchains.compilerFor {
     languageVersion.set(JavaLanguageVersion.of(17))
+    vendor.set(JvmVendorSpec.ADOPTIUM)
+  })
+}
+
+tasks.withType<Javadoc>().configureEach {
+  this.javadocTool.set(javaToolchains.javadocToolFor {
+    languageVersion.set(JavaLanguageVersion.of(17))
+    vendor.set(JvmVendorSpec.ADOPTIUM)
   })
 }
 

@@ -436,14 +436,12 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         // The default jar is deobfuscated, specify the correct classifier for it
         project.getTasks().named("jar", Jar.class).configure(task -> { task.getArchiveClassifier().set("dev"); });
-        for (final String name : new String[] { JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME,
-                JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME }) {
-            project.getConfigurations().getByName(name).getAttributes().attribute(
+        project.getConfigurations().configureEach(cfg -> {
+            // Use MCP by default for every configuration
+            cfg.getAttributes().attribute(
                     ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
                     ObfuscationAttribute.getMcp(project.getObjects()));
-        }
+        });
 
         // Add a reobfuscation task rule
         project.getTasks().addRule("Pattern: reobf<JarTaskName>: Reobfuscate a modded jar", taskName -> {
@@ -498,8 +496,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         {
             // Based on org.gradle.api.plugins.internal.JvmPluginsHelper.configureDocumentationVariantWithArtifact
             reobfJarConfiguration.setVisible(true);
-            reobfJarConfiguration.setCanBeConsumed(true);
-            reobfJarConfiguration.setCanBeResolved(false);
+            reobfJarConfiguration.setCanBeConsumed(false);
+            reobfJarConfiguration.setCanBeResolved(true);
             reobfJarConfiguration.setDescription("Reobfuscated jar");
 
             project.afterEvaluate(p -> {
