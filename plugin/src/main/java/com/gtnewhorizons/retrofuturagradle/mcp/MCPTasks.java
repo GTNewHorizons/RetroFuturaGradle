@@ -724,17 +724,18 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private void afterEvaluate() {
         final DependencyHandler deps = project.getDependencies();
 
-        deps.add(
+        deps.addProvider(
                 mcpMappingDataConfiguration.getName(),
-                ImmutableMap.of(
-                        "group",
-                        "de.oceanlabs.mcp",
-                        "name",
-                        "mcp_" + mcExt.getMcpMappingChannel().get(),
-                        "version",
-                        mcExt.getMcpMappingVersion().get() + "-" + mcExt.getMcVersion().get(),
-                        "ext",
-                        "zip"));
+                mcExt.mapMcpVersions(
+                        (mcVer, mcpChan, mcpVer) -> ImmutableMap.of(
+                                "group",
+                                "de.oceanlabs.mcp",
+                                "name",
+                                "mcp_" + mcpChan,
+                                "version",
+                                mcpVer + "-" + mcVer,
+                                "ext",
+                                "zip")));
 
         if (mcExt.getSkipSlowTasks().get()) {
             taskDeobfuscateMergedJarToSrg
@@ -745,10 +746,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
         }
 
-        deps.add(forgeUserdevConfiguration.getName(), "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev");
-        deps.add(
+        deps.addProvider(
+                forgeUserdevConfiguration.getName(),
+                mcExt.getForgeVersion()
+                        .map(forgeVer -> String.format("net.minecraftforge:forge:%s:userdev", forgeVer)));
+        deps.addProvider(
                 forgeUniversalConfiguration.getName(),
-                "net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:universal");
+                mcExt.getForgeVersion()
+                        .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
         if (mcExt.getTagReplacementFiles().isPresent() && !mcExt.getTagReplacementFiles().get().isEmpty()) {
             final File replacementPropFile = new File(injectedSourcesLocation.getParentFile(), "injectTags.resources");
             taskInjectTags.configure(task -> {

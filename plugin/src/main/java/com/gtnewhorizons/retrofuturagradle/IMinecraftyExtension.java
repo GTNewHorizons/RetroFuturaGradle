@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
@@ -92,5 +93,25 @@ public interface IMinecraftyExtension {
         getUseForgeEmbeddedMappings().finalizeValueOnRead();
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
         getFernflowerArguments().finalizeValueOnRead();
+    }
+
+    @FunctionalInterface
+    interface IMcVersionFunction<R> {
+
+        R apply(String mcVersion, String mcpChannel, String mcpVersion);
+    }
+
+    default <R> Provider<R> mapMcpVersions(IMcVersionFunction<R> mapper) {
+        return getMcVersion().flatMap(
+                mcVer -> getMcpMappingChannel()
+                        .zip(getMcpMappingVersion(), (mcpChan, mcpVer) -> mapper.apply(mcVer, mcpChan, mcpVer)));
+    }
+
+    default Provider<String> getForgeVersion() {
+        return getMcVersion().map(mcVer -> switch (mcVer) {
+            case "1.7.10" -> "1.7.10-10.13.4.1614-1.7.10";
+            case "1.12.2" -> "1.12.2-14.23.5.2847";
+            default -> throw new UnsupportedOperationException();
+        });
     }
 }
