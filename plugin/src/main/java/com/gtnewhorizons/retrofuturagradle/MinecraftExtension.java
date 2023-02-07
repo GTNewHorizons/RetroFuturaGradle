@@ -134,8 +134,24 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
     }
 
     // FG compatibility shims for changes that can cause confusing behaviour
+    /** @deprecated Use {@link MinecraftExtension#getMcVersion()} instead */
     @Deprecated
     public void setVersion(String version) {
-        throw new UnsupportedOperationException("RFG no longer has a version field in the minecraft {} block");
+        getMcVersion().set(version);
+    }
+
+    /** @deprecated Use {@link MinecraftExtension#getMcVersion()} instead */
+    @Deprecated
+    public String getVersion() {
+        return getMcVersion().get();
+    }
+
+    /**
+     * @deprecated Use {@link MinecraftExtension#getMcpMappingVersion()} and
+     *             {@link MinecraftExtension#getMcpMappingChannel()} instead
+     */
+    @Deprecated
+    public String getMappings() {
+        return getMcpMappingChannel().get() + "-" + getMcpMappingVersion().get();
     }
 }
