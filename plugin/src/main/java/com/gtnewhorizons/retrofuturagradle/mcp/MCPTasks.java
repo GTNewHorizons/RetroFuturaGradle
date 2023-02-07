@@ -253,19 +253,12 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
         this.patchedConfiguration.setDescription("Dependencies needed to run modded minecraft");
         this.patchedConfiguration.setCanBeConsumed(false);
-        // Workaround https://github.com/gradle/gradle/issues/10861 to avoid publishing these dependencies
-        for (String configName : new String[] { JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME }) {
-            project.getConfigurations().getByName(configName).extendsFrom(this.patchedConfiguration);
-            project.getConfigurations().getByName(configName).extendsFrom(mcTasks.getLwjglModConfiguration());
-        }
 
         final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
 
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
-            sourceSet.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjglCompileMcConfiguration()));
+            sourceSet.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
             sourceSet.setRuntimeClasspath(patchedConfiguration);
             sourceSet.java(
                     java -> java.setSrcDirs(
@@ -281,8 +274,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         final SourceSet testSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
         final SourceSet apiSet = javaExt.getSourceSets().create("api", set -> {
-            set.setCompileClasspath(
-                    patchedConfiguration.plus(mcTasks.getLwjglModConfiguration()).plus(patchedMcSources.getOutput()));
+            set.setCompileClasspath(patchedConfiguration.plus(patchedMcSources.getOutput()));
             set.setRuntimeClasspath(patchedConfiguration);
         });
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
@@ -314,7 +306,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskCreateLauncherFiles = project.getTasks()
                 .register("createMcLauncherFiles", CreateLauncherFiles.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev, mcTasks.getTaskExtractNatives());
+                    task.dependsOn(
+                            taskExtractMcpData,
+                            taskExtractForgeUserdev,
+                            mcTasks.getTaskExtractNatives(mcExt.getMainLwjglVersion()));
                     task.getOutputDir().set(launcherSourcesLocation);
                     final ProviderFactory providers = project.getProviders();
                     task.addResource(providers, "GradleStart.java");
@@ -396,7 +391,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         project.getTasks().named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
-        mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()));
+        mainSet.setRuntimeClasspath(
+                mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()).plus(launcherSources.getOutput()));
+        testSet.setCompileClasspath(testSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
+        testSet.setRuntimeClasspath(
+                testSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()).plus(launcherSources.getOutput()));
         project.getTasks().named("jar", Jar.class)
                 .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
 
@@ -673,7 +672,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.systemProperty("retrofuturagradle.reobfDev", true);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaClientLocation());
-            task.classpath(mcTasks.getLwjglModConfiguration());
             task.classpath(patchedConfiguration);
             task.getMainClass().set("net.minecraft.launchwrapper.Launch");
             task.getTweakClasses().add("cpw.mods.fml.common.launcher.FMLTweaker");
@@ -752,6 +750,19 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 forgeUniversalConfiguration.getName(),
                 mcExt.getForgeVersion()
                         .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
+
+        // Workaround https://github.com/gradle/gradle/issues/10861 to avoid publishing these dependencies
+        for (String configName : new String[] { JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME }) {
+            project.getConfigurations().getByName(configName).extendsFrom(this.patchedConfiguration);
+        }
+        for (String configName : new String[] { JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME }) {
+            project.getConfigurations().getByName(configName)
+                    .extendsFrom(mcTasks.getLwjglConfiguration(mcExt.getMainLwjglVersion()).get());
+        }
+
         if (mcExt.getTagReplacementFiles().isPresent() && !mcExt.getTagReplacementFiles().get().isEmpty()) {
             final File replacementPropFile = new File(injectedSourcesLocation.getParentFile(), "injectTags.resources");
             taskInjectTags.configure(task -> {

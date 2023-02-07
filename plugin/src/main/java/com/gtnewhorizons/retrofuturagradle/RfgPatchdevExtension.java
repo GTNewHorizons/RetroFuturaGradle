@@ -37,7 +37,7 @@ public abstract class RfgPatchdevExtension implements IMinecraftyExtension {
 
     /** {@inheritDoc} */
     @Override
-    public abstract Property<String> getLwjglVersion();
+    public abstract Property<String> getLwjgl2Version();
 
     /** {@inheritDoc} */
     @Override

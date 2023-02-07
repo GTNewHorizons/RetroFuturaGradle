@@ -24,10 +24,20 @@ public interface IMinecraftyExtension {
      */
     public abstract Property<Boolean> getApplyMcDependencies();
 
+    @Deprecated
+    default Property<String> getLwjglVersion() {
+        return getLwjgl2Version();
+    }
+
     /**
-     * LWJGL version to use. Default is 2.9.4-nightly-20150209
+     * LWJGL 2 version to use. Default is 2.9.4-nightly-20150209
      */
-    public abstract Property<String> getLwjglVersion();
+    public abstract Property<String> getLwjgl2Version();
+
+    /**
+     * LWJGL 3 version to use. Default is 3.3.1
+     */
+    public abstract Property<String> getLwjgl3Version();
 
     /**
      * Java version to provide source/target compatibility for. Default is 8.
@@ -68,13 +78,20 @@ public interface IMinecraftyExtension {
      */
     public abstract ListProperty<String> getFernflowerArguments();
 
+    /**
+     * @return The major version of LWJGL (2 or 3) used by the main and test source sets. Default: 2
+     */
+    public abstract Property<Integer> getMainLwjglVersion();
+
     default void applyMinecraftyConventions(ObjectFactory objects) {
         getMcVersion().convention("1.7.10");
         getMcVersion().finalizeValueOnRead();
         getApplyMcDependencies().convention(Boolean.TRUE);
         getApplyMcDependencies().finalizeValueOnRead();
-        getLwjglVersion().convention("2.9.4-nightly-20150209");
-        getLwjglVersion().finalizeValueOnRead();;
+        getLwjgl2Version().convention("2.9.4-nightly-20150209");
+        getLwjgl2Version().finalizeValueOnRead();
+        getLwjgl3Version().convention("3.3.1");
+        getLwjgl2Version().finalizeValueOnRead();
         getJavaCompatibilityVersion().convention(8);
         getJavaCompatibilityVersion().finalizeValueOnRead();
         {
@@ -93,6 +110,8 @@ public interface IMinecraftyExtension {
         getUseForgeEmbeddedMappings().finalizeValueOnRead();
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
         getFernflowerArguments().finalizeValueOnRead();
+        getMainLwjglVersion().convention(2);
+        getMainLwjglVersion().finalizeValueOnRead();
     }
 
     @FunctionalInterface

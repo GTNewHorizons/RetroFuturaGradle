@@ -20,12 +20,14 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.work.DisableCachingByDefault;
 
 import com.google.common.base.Strings;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.util.ProviderToStringWrapper;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -52,6 +54,9 @@ public abstract class RunMinecraftTask extends JavaExec {
     @Input
     public abstract ListProperty<String> getExtraArgs();
 
+    @Input
+    public abstract Property<Integer> getLwjglVersion();
+
     private final Side side;
 
     @Inject
@@ -62,6 +67,7 @@ public abstract class RunMinecraftTask extends JavaExec {
         getAccessToken().convention("0");
         getExtraArgs().convention((side == Side.SERVER) ? Collections.singletonList("nogui") : Collections.emptyList());
         getExtraJvmArgs().convention(Collections.emptyList());
+        getLwjglVersion().convention(2);
 
         // Forward stdio
         setStandardInput(System.in);
@@ -77,14 +83,28 @@ public abstract class RunMinecraftTask extends JavaExec {
         MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
         getTweakClasses().convention(mcExt.getExtraTweakClasses());
         setWorkingDir(mcTasks.getRunDirectory());
+        getLwjglVersion().convention(mcExt.getMainLwjglVersion());
 
         systemProperty("fml.ignoreInvalidMinecraftCertificates", true);
         getJavaLauncher().convention(mcExt.getToolchainLauncher());
         if (side == Side.CLIENT) {
-            dependsOn(mcTasks.getTaskExtractNatives());
-            final String libraryPath = mcTasks.getNativesDirectory().getAbsolutePath() + File.pathSeparator
-                    + System.getProperty("java.library.path");
-            systemProperty("java.library.path", libraryPath);
+            dependsOn(mcTasks.getTaskExtractNatives(getLwjglVersion()));
+
+            final String JAVA_LIB_PATH = "java.library.path";
+            final Provider<String> libraryPath = getLwjglVersion().map(ver -> {
+                if (ver == 2) {
+                    return mcTasks.getLwjgl2NativesDirectory();
+                } else if (ver == 3) {
+                    return mcTasks.getLwjgl3NativesDirectory();
+                } else {
+                    throw new IllegalArgumentException("Lwjgl major version " + ver + " not supported");
+                }
+            }).map(
+                    lwjglNatives -> lwjglNatives.getAbsolutePath() + File.pathSeparator
+                            + System.getProperty(JAVA_LIB_PATH));
+            systemProperty(JAVA_LIB_PATH, new ProviderToStringWrapper(libraryPath));
+
+            classpath(mcTasks.getLwjglConfiguration(getLwjglVersion()));
 
             setMinHeapSize("1G");
             setMaxHeapSize("6G");
@@ -165,4 +185,5 @@ public abstract class RunMinecraftTask extends JavaExec {
             throw new RuntimeException(e);
         }
     }
+
 }

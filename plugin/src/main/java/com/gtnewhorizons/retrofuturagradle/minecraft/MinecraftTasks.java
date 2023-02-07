@@ -3,7 +3,6 @@ package com.gtnewhorizons.retrofuturagradle.minecraft;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -14,9 +13,7 @@ import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
-import org.gradle.api.file.FileCollection;
-import org.gradle.api.file.FileTree;
-import org.gradle.api.tasks.Copy;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
 
@@ -59,17 +56,15 @@ public final class MinecraftTasks {
 
     private final TaskProvider<DefaultTask> taskCleanVanillaAssets;
 
-    private final TaskProvider<Copy> taskExtractNatives;
+    private final TaskProvider<ExtractNativesTask> taskExtractNatives2, taskExtractNatives3;
     private final TaskProvider<RunMinecraftTask> taskRunVanillaClient;
     private final TaskProvider<RunMinecraftTask> taskRunVanillaServer;
 
     private final File runDirectory;
-    private final File nativesDirectory;
+    private final File natives2Directory, natives3Directory;
     private final Configuration vanillaMcConfiguration;
-    // LWJGL to compile minecraft with
-    private final Configuration lwjglCompileMcConfiguration;
-    // LWJGL to run the mod with, used for hacking in lwjgl3 via asm transformers
-    private final Configuration lwjglModConfiguration;
+    private final Configuration lwjgl2Configuration;
+    private final Configuration lwjgl3Configuration;
 
     public MinecraftTasks(Project project, IMinecraftyExtension mcExt) {
         this.project = project;
@@ -209,40 +204,23 @@ public final class MinecraftTasks {
         });
 
         runDirectory = new File(project.getProjectDir(), "run");
-        nativesDirectory = new File(runDirectory, "natives");
+        natives2Directory = FileUtils.getFile(runDirectory, "natives", "lwjgl2");
+        natives3Directory = FileUtils.getFile(runDirectory, "natives", "lwjgl3");
 
         this.vanillaMcConfiguration = project.getConfigurations().create("vanilla_minecraft");
         this.vanillaMcConfiguration.setCanBeConsumed(false);
-        this.lwjglCompileMcConfiguration = project.getConfigurations().create("lwjglMcCompileClasspath");
-        this.lwjglModConfiguration = project.getConfigurations().create("lwjglModClasspath");
+        this.lwjgl2Configuration = project.getConfigurations().create("lwjgl2Classpath");
+        this.lwjgl3Configuration = project.getConfigurations().create("lwjgl3Classpath");
         applyMcDependencies();
 
-        taskExtractNatives = project.getTasks().register("extractNatives", Copy.class, task -> {
+        taskExtractNatives2 = project.getTasks().register("extractNatives2", ExtractNativesTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.from(project.provider(() -> {
-                final OperatingSystem os = OperatingSystem.current();
-                final String twitchNatives;
-                final String lwjglNatives = (String) project.getExtensions().getByName("lwjglNatives");
-                if (os.isWindows()) {
-                    twitchNatives = "natives-windows-64";
-                } else if (os.isMacOsX()) {
-                    twitchNatives = "natives-osx";
-                } else {
-                    twitchNatives = "natives-linux"; // don't actually exist
-                }
-                final FileCollection lwjglZips = lwjglModConfiguration
-                        .filter(f -> f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives));
-                final FileCollection twitchZips = getVanillaMcConfiguration()
-                        .filter(f -> f.getName().contains("twitch") && f.getName().contains(twitchNatives));
-                final FileCollection zips = lwjglZips.plus(twitchZips);
-                final ArrayList<FileTree> trees = new ArrayList<>();
-                for (File zip : zips) {
-                    trees.add(project.zipTree(zip));
-                }
-                return trees;
-            }));
-            task.exclude("META-INF/**", "META-INF");
-            task.into(nativesDirectory);
+            task.configureMe(project, natives2Directory, lwjgl2Configuration, vanillaMcConfiguration);
+        });
+
+        taskExtractNatives3 = project.getTasks().register("extractNatives3", ExtractNativesTask.class, task -> {
+            task.setGroup(TASK_GROUP_INTERNAL);
+            task.configureMe(project, natives3Directory, lwjgl3Configuration, vanillaMcConfiguration);
         });
 
         taskRunVanillaClient = project.getTasks().register("runVanillaClient", RunMinecraftTask.class, Side.CLIENT);
@@ -252,9 +230,10 @@ public final class MinecraftTasks {
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
 
+            task.getLwjglVersion().set(2);
             task.classpath(vanillaClientLocation);
             task.classpath(vanillaMcConfiguration);
-            task.classpath(lwjglCompileMcConfiguration);
+            task.classpath(lwjgl2Configuration);
             task.getMainClass().set("net.minecraft.client.main.Main");
         });
         taskRunVanillaServer = project.getTasks().register("runVanillaServer", RunMinecraftTask.class, Side.SERVER);
@@ -264,6 +243,7 @@ public final class MinecraftTasks {
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars);
 
+            task.getLwjglVersion().set(2);
             task.classpath(vanillaServerLocation);
             task.getMainClass().set("net.minecraft.server.MinecraftServer");
         });
@@ -342,11 +322,16 @@ public final class MinecraftTasks {
 
         project.afterEvaluate(_p -> {
             if (mcExt.getApplyMcDependencies().get()) {
-                final String lwjglVersion = mcExt.getLwjglVersion().get();
-                final boolean lwjglIs2 = lwjglVersion.startsWith("2.");
-                final String lwjgl2Version = lwjglIs2 ? lwjglVersion : "2.9.4-nightly-20150209";
+                String lwjgl2Version = mcExt.getLwjgl2Version().get();
+                final String lwjgl3Version = mcExt.getLwjgl3Version().get();
+                if (lwjgl2Version.startsWith("3.")) {
+                    lwjgl2Version = "2.9.4-nightly-20150209";
+                    project.getLogger().warn("LWJGL 3 configuration has been split, update your minecraft block");
+                }
 
-                project.getExtensions().add("lwjglNatives", lwjglIs2 ? lwjgl2Natives : lwjgl3Natives);
+                project.getExtensions().add("lwjglNatives", lwjgl2Natives); // deprecated
+                project.getExtensions().add("lwjgl2Natives", lwjgl2Natives);
+                project.getExtensions().add("lwjgl3Natives", lwjgl3Natives);
 
                 final String VANILLA_MC_CFG = vanillaMcConfiguration.getName();
                 final DependencyHandler deps = project.getDependencies();
@@ -382,30 +367,28 @@ public final class MinecraftTasks {
                 deps.add(VANILLA_MC_CFG, "com.mojang:authlib:1.5.21");
                 deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-api:2.0-beta9");
                 deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-core:2.0-beta9");
-                final String LWJGL_MC_CFG = lwjglCompileMcConfiguration.getName();
-                deps.add(LWJGL_MC_CFG, "org.lwjgl.lwjgl:lwjgl:" + lwjgl2Version);
-                deps.add(LWJGL_MC_CFG, "org.lwjgl.lwjgl:lwjgl_util:" + lwjgl2Version);
-                deps.add(LWJGL_MC_CFG, "org.lwjgl.lwjgl:lwjgl-platform:" + lwjgl2Version + ":" + lwjgl2Natives);
-                if (lwjglIs2) {
-                    lwjglModConfiguration.extendsFrom(lwjglCompileMcConfiguration);
-                } else {
-                    final String LWJGL3_CFG = lwjglModConfiguration.getName();
-                    deps.add(LWJGL3_CFG, deps.platform("org.lwjgl:lwjgl-bom:" + lwjglVersion));
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjglVersion);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjglVersion + ":" + lwjgl3Natives);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjglVersion + ":" + lwjgl3Natives);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjglVersion + ":" + lwjgl3Natives);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjglVersion + ":" + lwjgl3Natives);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjglVersion + ":" + lwjgl3Natives);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjglVersion + ":" + lwjgl3Natives);
-                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjglVersion + ":" + lwjgl3Natives);
-                }
+                final String LWJGL2_CFG = lwjgl2Configuration.getName();
+                deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl:" + lwjgl2Version);
+                deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl_util:" + lwjgl2Version);
+                deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl-platform:" + lwjgl2Version + ":" + lwjgl2Natives);
+
+                final String LWJGL3_CFG = lwjgl3Configuration.getName();
+                deps.add(LWJGL3_CFG, deps.platform("org.lwjgl:lwjgl-bom:" + lwjgl3Version));
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjgl3Version + ":" + lwjgl3Natives);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjgl3Version + ":" + lwjgl3Natives);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjgl3Version + ":" + lwjgl3Natives);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjgl3Version + ":" + lwjgl3Natives);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjgl3Version + ":" + lwjgl3Natives);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjgl3Version + ":" + lwjgl3Natives);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjgl3Version + ":" + lwjgl3Natives);
+
                 deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput-platform:2.0.5:" + lwjgl2Natives);
                 deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");
                 if (os.isWindows()) {
@@ -468,16 +451,46 @@ public final class MinecraftTasks {
         return runDirectory;
     }
 
+    @Deprecated
     public File getNativesDirectory() {
-        return nativesDirectory;
+        return natives2Directory;
+    }
+
+    public File getLwjgl2NativesDirectory() {
+        return natives2Directory;
+    }
+
+    public File getLwjgl3NativesDirectory() {
+        return natives3Directory;
     }
 
     public Configuration getVanillaMcConfiguration() {
         return vanillaMcConfiguration;
     }
 
-    public TaskProvider<Copy> getTaskExtractNatives() {
-        return taskExtractNatives;
+    @Deprecated
+    public TaskProvider<ExtractNativesTask> getTaskExtractNatives() {
+        return taskExtractNatives2;
+    }
+
+    public Provider<ExtractNativesTask> getTaskExtractNatives(Provider<Integer> lwjglVersion) {
+        return lwjglVersion.flatMap(ver -> {
+            if (ver == 2) {
+                return getTaskExtractLwjgl2Natives();
+            } else if (ver == 3) {
+                return getTaskExtractLwjgl3Natives();
+            } else {
+                throw new IllegalArgumentException("Lwjgl major version " + ver + " not supported");
+            }
+        });
+    }
+
+    public TaskProvider<ExtractNativesTask> getTaskExtractLwjgl2Natives() {
+        return taskExtractNatives2;
+    }
+
+    public TaskProvider<ExtractNativesTask> getTaskExtractLwjgl3Natives() {
+        return taskExtractNatives3;
     }
 
     public TaskProvider<RunMinecraftTask> getTaskRunVanillaClient() {
@@ -488,11 +501,33 @@ public final class MinecraftTasks {
         return taskRunVanillaServer;
     }
 
+    @Deprecated
     public Configuration getLwjglCompileMcConfiguration() {
-        return lwjglCompileMcConfiguration;
+        return lwjgl2Configuration;
     }
 
+    @Deprecated
     public Configuration getLwjglModConfiguration() {
-        return lwjglModConfiguration;
+        return lwjgl2Configuration;
+    }
+
+    public Provider<Configuration> getLwjglConfiguration(Provider<Integer> lwjglVersion) {
+        return lwjglVersion.map(ver -> {
+            if (ver == 2) {
+                return lwjgl2Configuration;
+            } else if (ver == 3) {
+                return lwjgl3Configuration;
+            } else {
+                throw new IllegalArgumentException("Lwjgl major version " + ver + " not supported");
+            }
+        });
+    }
+
+    public Configuration getLwjgl2Configuration() {
+        return lwjgl2Configuration;
+    }
+
+    public Configuration getLwjgl3Configuration() {
+        return lwjgl3Configuration;
     }
 }
