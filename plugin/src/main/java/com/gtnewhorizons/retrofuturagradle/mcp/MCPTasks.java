@@ -410,11 +410,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     taskPackagePatchedMc,
                     "jar");
 
-            task.classpath(project.getTasks().named("jar"));
-            task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
+            task.classpath(project.getTasks().named("jar"));
+            task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.getMainClass().set("GradleStart");
         });
 
@@ -425,11 +425,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setDescription("Runs the deobfuscated server with your mod");
             task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
 
-            task.classpath(project.getTasks().named("jar"));
-            task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
+            task.classpath(project.getTasks().named("jar"));
+            task.classpath(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.getMainClass().set("GradleStartServer");
         });
 
@@ -477,11 +477,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                         project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME)
                                 .fileCollection(Specs.SATISFIES_ALL));
                 final ConfigurableFileCollection refCp = task.getReferenceClasspath();
-                refCp.from(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
-                refCp.from(project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
                 refCp.from(taskPackageMcLauncher);
                 refCp.from(taskPackagePatchedMc);
                 refCp.from(patchedConfiguration);
+                refCp.from(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
+                refCp.from(project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
             });
         });
 
