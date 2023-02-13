@@ -13,6 +13,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -26,6 +27,7 @@ import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencyArtifact;
+import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
@@ -65,6 +67,7 @@ import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
+import com.gtnewhorizons.retrofuturagradle.util.FileWithSourcesDependency;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.JarChain;
@@ -269,7 +272,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             project.files(new File(decompressedSourcesLocation, "resources"))
                                     .builtBy(taskDecompressDecompiledSources)));
         });
-        javaExt.getSourceSets().add(patchedMcSources);
 
         final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         final SourceSet testSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
@@ -278,7 +280,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             set.setRuntimeClasspath(patchedConfiguration);
         });
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
+        mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(apiSet.getOutput()));
         testSet.setCompileClasspath(testSet.getCompileClasspath().plus(apiSet.getOutput()));
+        testSet.setRuntimeClasspath(testSet.getRuntimeClasspath().plus(apiSet.getOutput()));
 
         project.getConfigurations().getByName(apiSet.getCompileClasspathConfigurationName())
                 .extendsFrom(project.getConfigurations().getByName(mainSet.getCompileClasspathConfigurationName()));
@@ -398,6 +402,52 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 testSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()).plus(launcherSources.getOutput()));
         project.getTasks().named("jar", Jar.class)
                 .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
+
+        // A dummy source set to satisfy IntelliJ native launch configurations
+        final Configuration cfgBuiltMc = project.getConfigurations().create("builtMinecraft");
+        {
+            cfgBuiltMc.setCanBeResolved(false);
+            cfgBuiltMc.setCanBeConsumed(false);
+            cfgBuiltMc.setVisible(false);
+            DependencySet builtMcDeps = cfgBuiltMc.getDependencies();
+
+            builtMcDeps.addLater(
+                    mcExt.getForgeVersion().map(
+                            forgeVer -> new FileWithSourcesDependency(
+                                    project.files(taskPackagePatchedMc),
+                                    "rfg",
+                                    "forgeBin",
+                                    forgeVer)));
+            builtMcDeps.addLater(
+                    mcExt.getMcVersion().map(
+                            mcVer -> new FileWithSourcesDependency(
+                                    project.files(taskPackageMcLauncher),
+                                    "rfg",
+                                    "gradleStart",
+                                    mcVer)));
+        }
+        final SourceSet ideMainSet = sourceSets.create("ideVirtualMain", sourceSet -> {
+            project.getConfigurations().named(sourceSet.getImplementationConfigurationName()).configure(ideConfig -> {
+                ideConfig.extendsFrom(cfgBuiltMc);
+                ideConfig.extendsFrom(patchedConfiguration);
+                ideConfig.extendsFrom(mcTasks.getLwjgl2Configuration());
+                ideConfig.extendsFrom(
+                        project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
+            });
+
+            final ConfigurableFileCollection classpath = project.files();
+            classpath.from(mainSet.getOutput());
+            classpath.from(apiSet.getOutput());
+
+            sourceSet.setCompileClasspath(classpath.plus(sourceSet.getCompileClasspath()));
+            sourceSet.setRuntimeClasspath(classpath.plus(sourceSet.getRuntimeClasspath()));
+        });
+        project.getTasks().configureEach(task -> {
+            if (task.getName().toLowerCase(Locale.ROOT).contains("idevirtualmain")) {
+                task.setEnabled(false);
+                task.dependsOn(taskPackagePatchedMc, taskPackageMcLauncher);
+            }
+        });
 
         taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Side.CLIENT);
         taskRunClient.configure(task -> {

@@ -511,16 +511,18 @@ public final class MinecraftTasks {
         return lwjgl2Configuration;
     }
 
+    public Configuration getLwjglConfiguration(int lwjglVersion) {
+        if (lwjglVersion == 2) {
+            return lwjgl2Configuration;
+        } else if (lwjglVersion == 3) {
+            return lwjgl3Configuration;
+        } else {
+            throw new IllegalArgumentException("Lwjgl major version " + lwjglVersion + " not supported");
+        }
+    }
+
     public Provider<Configuration> getLwjglConfiguration(Provider<Integer> lwjglVersion) {
-        return lwjglVersion.map(ver -> {
-            if (ver == 2) {
-                return lwjgl2Configuration;
-            } else if (ver == 3) {
-                return lwjgl3Configuration;
-            } else {
-                throw new IllegalArgumentException("Lwjgl major version " + ver + " not supported");
-            }
-        });
+        return lwjglVersion.map(this::getLwjglConfiguration);
     }
 
     public Configuration getLwjgl2Configuration() {

@@ -10,7 +10,6 @@ import java.util.zip.ZipInputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
@@ -160,16 +159,6 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     task.getMcpExc().set(srgFile("mcp.exc"));
                     task.doFirst(new MkdirAction(forgeSrgLocation));
                 });
-
-        // Deprecated, for compatibility with IntelliJ tooling
-        project.getTasks().register("genSrgs", DefaultTask.class, task -> {
-            task.setGroup("deprecated");
-            task.setEnabled(false);
-            task.dependsOn(taskGenerateForgeSrgMappings);
-            for (File f : taskGenerateForgeSrgMappings.get().getOutputs().getFiles()) {
-                task.getOutputs().file(f);
-            }
-        });
     }
 
     public Provider<RegularFile> mcpFile(String path) {
