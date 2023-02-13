@@ -97,9 +97,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                         mcExt.getMcpMappingVersion(),
                         (chan, ver) -> FileUtils.getFile(mcpRoot, "mcp_" + chan, ver)));
         taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
-            task.getOutputs().upToDateWhen(t -> {
+            task.onlyIf(t -> {
                 File root = mcpExtractRoot.get().getAsFile();
-                return root.isDirectory() && new File(root, "methods.csv").isFile();
+                return !(root.isDirectory() && new File(root, "methods.csv").isFile());
             });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
@@ -120,9 +120,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         }));
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
-            task.getOutputs().upToDateWhen(t -> {
+            task.onlyIf(t -> {
                 File root = userdevExtractRoot.get().getAsFile();
-                return root.isDirectory() && new File(root, "dev.json").isFile();
+                return !(root.isDirectory() && new File(root, "dev.json").isFile());
             });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
@@ -138,6 +138,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
+                    task.onlyIf(t -> {
+                        File root = forgeSrgLocation.get().getAsFile();
+                        return !(root.isDirectory() && new File(root, "notch-srg.srg").isFile());
+                    });
                     // inputs
                     task.getInputSrg().set(userdevFile("conf/packaged.srg"));
                     task.getInputExc().set(userdevFile("conf/packaged.exc"));
