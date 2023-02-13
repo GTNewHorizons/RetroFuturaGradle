@@ -16,24 +16,32 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import javax.annotation.Nullable;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Project;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.MultimapBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.mcp.RemapSourceJarTask;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
@@ -229,6 +237,175 @@ public final class Utilities {
         @Override
         public void setData(String target, List<String> data) {
             fileMap.put(strip(target), Joiner.on(System.lineSeparator()).join(data));
+        }
+    }
+
+    public static final class Mapping {
+
+        public final String name;
+        public final String javadoc;
+
+        public Mapping(String name, String javadoc) {
+            if (name == null) {
+                throw new IllegalArgumentException("Null mapping name passed");
+            }
+            if (javadoc == null) {
+                javadoc = "";
+            }
+            this.name = name;
+            this.javadoc = javadoc;
+        }
+    }
+
+    public static final class GenericMapping {
+
+        public final String zipEntry;
+        public final String param;
+        public final String suffix;
+        public final String type;
+        public int uses = 0;
+
+        public GenericMapping(String zipEntry, String param, String suffix, String type) {
+            this.zipEntry = zipEntry;
+            this.param = Objects.requireNonNull(param);
+            this.suffix = Objects.requireNonNull(suffix);
+            this.type = type;
+        }
+
+        @Override
+        public String toString() {
+            return "GenericMapping{" + "zipEntry='"
+                    + zipEntry
+                    + '\''
+                    + ", param='"
+                    + param
+                    + '\''
+                    + ", suffix='"
+                    + suffix
+                    + '\''
+                    + ", type='"
+                    + type
+                    + '\''
+                    + '}';
+        }
+    }
+
+    public static final class GenericPatch {
+
+        public final String zipEntry;
+        public final String containsFilter;
+        public final String toReplace;
+        public final String replaceWith;
+
+        public GenericPatch(String zipEntry, String containsFilter, String toReplace, String replaceWith) {
+            this.zipEntry = zipEntry;
+            this.containsFilter = containsFilter;
+            this.toReplace = toReplace;
+            this.replaceWith = replaceWith;
+        }
+
+        @Override
+        public String toString() {
+            return "GenericPatch{" + "zipEntry='"
+                    + zipEntry
+                    + '\''
+                    + ", containsFilter='"
+                    + containsFilter
+                    + '\''
+                    + ", toReplace='"
+                    + toReplace
+                    + '\''
+                    + ", replaceWith='"
+                    + replaceWith
+                    + '\''
+                    + '}';
+        }
+    }
+
+    public static class MappingsSet {
+
+        public final Map<String, Utilities.Mapping> methodMappings = new HashMap<>();
+        public final Map<String, Utilities.Mapping> fieldMappings = new HashMap<>();
+        public final Map<String, String> paramMappings = new HashMap<>();
+        // srg name -> mapping
+        public final ListMultimap<String, GenericMapping> genericMappings = MultimapBuilder.hashKeys().arrayListValues()
+                .build();
+        // zip entry -> patch list
+        public final ListMultimap<String, Utilities.GenericPatch> genericPatches = MultimapBuilder.hashKeys()
+                .arrayListValues().build();
+
+        public String remapSimpleName(String name) {
+            if (StringUtils.isBlank(name)) {
+                return "";
+            } else if (name.startsWith("field_")) {
+                Mapping map = fieldMappings.get(name);
+                return map == null ? name : map.name;
+            } else if (name.startsWith("func_")) {
+                Mapping map = methodMappings.get(name);
+                return map == null ? name : map.name;
+            } else if (name.startsWith("p_")) {
+                return paramMappings.getOrDefault(name, name);
+            } else {
+                return name;
+            }
+        }
+    }
+
+    public static MappingsSet loadMappingCsvs(File methodsCsv, File fieldsCsv, File paramsCsv,
+            @Nullable String genericsFilename) {
+        try {
+            MappingsSet mappings = new MappingsSet();
+            try (CSVReader methodReader = Utilities.createCsvReader(methodsCsv)) {
+                for (String[] csvLine : methodReader) {
+                    // func_100012_b,setPotionDurationMax,0,Toggle the isPotionDurationMax field.
+                    mappings.methodMappings.put(csvLine[0], new Utilities.Mapping(csvLine[1], csvLine[3]));
+                }
+            }
+            try (CSVReader fieldReader = Utilities.createCsvReader(fieldsCsv)) {
+                for (String[] csvLine : fieldReader) {
+                    // field_100013_f,isPotionDurationMax,0,"True if potion effect duration is at maximum, false
+                    // otherwise."
+                    mappings.fieldMappings.put(csvLine[0], new Utilities.Mapping(csvLine[1], csvLine[3]));
+                }
+            }
+            try (CSVReader paramReader = Utilities.createCsvReader(paramsCsv)) {
+                for (String[] csvLine : paramReader) {
+                    // p_104055_1_,force,1
+                    mappings.paramMappings.put(csvLine[0], csvLine[1]);
+                }
+            }
+            if (StringUtils.isNotBlank(genericsFilename)) {
+                URL genericsUrl = RemapSourceJarTask.class.getResource(genericsFilename);
+                URL genericPatchesUrl = RemapSourceJarTask.class
+                        .getResource(genericsFilename.replace("Fields", "Patches"));
+                try (CSVReader genReader = Utilities.createCsvReader(genericsUrl)) {
+                    for (String[] genLine : genReader) {
+                        // zipEntry, className, srg, mcp, param, type, suffix, comment
+                        String srg = genLine[2];
+                        int colon = srg.indexOf(':');
+                        if (colon >= 0) {
+                            srg = srg.substring(0, colon);
+                        }
+                        final String zipEntry = genLine[0];
+                        final String param = genLine[4];
+                        final String type = genLine[5];
+                        final String suffix = genLine[6];
+                        final String key = srg.equals("@init") ? (zipEntry + genLine[2]) : srg;
+                        mappings.genericMappings.put(key, new Utilities.GenericMapping(zipEntry, param, suffix, type));
+                    }
+                }
+                try (CSVReader genReader = Utilities.createCsvReader(genericPatchesUrl)) {
+                    for (String[] genLine : genReader) {
+                        // zipEntry, className, containsFilter, toReplace, replaceWith, reason
+                        mappings.genericPatches.put(
+                                genLine[0],
+                                new Utilities.GenericPatch(genLine[0], genLine[2], genLine[3], genLine[4]));
+                    }
+                }
+            }
+            return mappings;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
