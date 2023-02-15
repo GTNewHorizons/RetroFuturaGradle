@@ -198,14 +198,13 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             for (TreeMap<String, TaskProvider<?>> allProjectTasks : foundTasks.values()) {
                 Map.Entry<String, TaskProvider<?>> lastTask = null;
                 for (Map.Entry<String, TaskProvider<?>> task : allProjectTasks.entrySet()) {
-                    if (lastTask == null) {
-                        lastTask = task;
-                    } else {
+                    if (lastTask != null) {
                         final TaskProvider<?> dependency = lastTask.getValue();
                         task.getValue().configure(t -> { t.mustRunAfter(dependency); });
                         project.getLogger()
                                 .debug("Added false dependency {} -> {}\n", lastTask.getKey(), task.getKey());
                     }
+                    lastTask = task;
                 }
             }
         });
