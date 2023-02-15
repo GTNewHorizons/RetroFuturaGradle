@@ -230,6 +230,8 @@ public final class MinecraftTasks {
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
 
+            task.getUsername().set(mcExt.getUsername());
+            task.getUserUUID().set(mcExt.getUserUUID());
             task.getLwjglVersion().set(2);
             task.classpath(vanillaClientLocation);
             task.classpath(vanillaMcConfiguration);
@@ -243,6 +245,8 @@ public final class MinecraftTasks {
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars);
 
+            task.getUsername().set(mcExt.getUsername());
+            task.getUserUUID().set(mcExt.getUserUUID());
             task.getLwjglVersion().set(2);
             task.classpath(vanillaServerLocation);
             task.getMainClass().set("net.minecraft.server.MinecraftServer");

@@ -461,6 +461,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     taskPackagePatchedMc,
                     "jar");
 
+            task.getUsername().set(mcExt.getUsername());
+            task.getUserUUID().set(mcExt.getUserUUID());
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
@@ -476,6 +478,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setDescription("Runs the deobfuscated server with your mod");
             task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
 
+            task.getUsername().set(mcExt.getUsername());
+            task.getUserUUID().set(mcExt.getUserUUID());
             task.classpath(taskPackageMcLauncher);
             task.classpath(taskPackagePatchedMc);
             task.classpath(patchedConfiguration);
