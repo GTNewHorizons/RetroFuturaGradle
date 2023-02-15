@@ -1,7 +1,9 @@
 zipEntry,className,containsFilter,toReplace,replaceWith,reason
 cpw/mods/fml/common/network/internal/EntitySpawnHandler.java,cpw.mods.fml.common.network.internal.EntitySpawnHandler,getDataWatcher().updateWatchedObjectsFromList,(List<?>) spawnMsg.dataWatcherList,spawnMsg.dataWatcherList,It has a proper type now
 net/minecraft/client/renderer/entity/RenderManager.java,net.minecraft.client.renderer.entity.RenderManager,render = this.getEntityClassRenderObject,p_78715_1_.getSuperclass(),(Class<? extends Entity>) p_78715_1_.getSuperclass(),The if checks to make sure the cast is valid
-net/minecraft/world/chunk/Chunk.java,net.minecraft.world.chunk.Chunk,void getEntitiesOfTypeWithinAAAB,public,public <T extends net.minecraft.entity.Entity>,Add a generic type binding two arguments together
+net/minecraft/world/chunk/Chunk.java,net.minecraft.world.chunk.Chunk,void getEntitiesOfTypeWithinAAAB,public,public <T>,Add a generic type binding two arguments together
 net/minecraft/world/chunk/Chunk.java,net.minecraft.world.chunk.Chunk,p_76618_3_.add,entity,(T) entity,The if checks to make sure the cast is valid
-net/minecraft/world/chunk/EmptyChunk.java,net.minecraft.world.chunk.EmptyChunk,void getEntitiesOfTypeWithinAAAB,public,public <T extends net.minecraft.entity.Entity>,Add a generic type binding two arguments together
+net/minecraft/world/chunk/EmptyChunk.java,net.minecraft.world.chunk.EmptyChunk,void getEntitiesOfTypeWithinAAAB,public,public <T>,Add a generic type binding two arguments together
 net/minecraft/client/renderer/tileentity/TileEntityRendererDispatcher.java,net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher,this.getSpecialRendererByClass(p_147546_1_.getSuperclass());,(p_147546_1_,((Class<? extends net.minecraft.tileentity.TileEntity>)p_147546_1_,The if checks to make sure the cast is valid
+net/minecraft/world/World.java,net.minecraft.world.World,getEntitiesWithinAABB(Class,public,public <T>,Add a generic type binding the return and argument together
+net/minecraft/world/World.java,net.minecraft.world.World,selectEntitiesWithinAABB(Class,public,public <T>,Add a generic type binding the return and argument together
