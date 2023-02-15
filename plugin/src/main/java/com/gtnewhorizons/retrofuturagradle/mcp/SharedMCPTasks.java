@@ -4,19 +4,26 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
+import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
@@ -163,6 +170,45 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     task.getMcpExc().set(srgFile("mcp.exc"));
                     task.doFirst(new MkdirAction(forgeSrgLocation));
                 });
+
+        // Set up dependencies across the cache-writing tasks to suppress Gradle errors about this.
+        // The tasks are idempotent, but there's no way to tell this to the validation layer.
+        project.afterEvaluate(p -> {
+            final Project rootProject = project.getRootProject();
+            final Set<String> tasksToOrder = new HashSet<>();
+            tasksToOrder.add(taskDownloadFernflower.getName());
+            tasksToOrder.add(taskExtractMcpData.getName());
+            tasksToOrder.add(taskExtractForgeUserdev.getName());
+            tasksToOrder.add(taskGenerateForgeSrgMappings.getName());
+            final HashMap<String, TreeMap<String, TaskProvider<?>>> foundTasks = new HashMap<>();
+            for (final Project proj : rootProject.getAllprojects()) {
+                final TaskContainer subprojTasks = proj.getTasks();
+                for (String toFind : tasksToOrder) {
+                    try {
+                        TaskProvider<?> task = subprojTasks.named(toFind);
+                        if (task != null) {
+                            final String taskPath = proj.getPath() + ":" + task.getName();
+                            foundTasks.computeIfAbsent(toFind, k -> new TreeMap<>()).put(taskPath, task);
+                        }
+                    } catch (UnknownTaskException e) {
+                        // Ignore non-RFG subprojects
+                    }
+                }
+            }
+            for (TreeMap<String, TaskProvider<?>> allProjectTasks : foundTasks.values()) {
+                Map.Entry<String, TaskProvider<?>> lastTask = null;
+                for (Map.Entry<String, TaskProvider<?>> task : allProjectTasks.entrySet()) {
+                    if (lastTask == null) {
+                        lastTask = task;
+                    } else {
+                        final TaskProvider<?> dependency = lastTask.getValue();
+                        task.getValue().configure(t -> { t.mustRunAfter(dependency); });
+                        project.getLogger()
+                                .debug("Added false dependency {} -> {}\n", lastTask.getKey(), task.getKey());
+                    }
+                }
+            }
+        });
     }
 
     public Provider<RegularFile> mcpFile(String path) {
