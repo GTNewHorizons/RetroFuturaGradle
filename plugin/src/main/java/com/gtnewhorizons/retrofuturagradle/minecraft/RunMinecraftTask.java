@@ -18,16 +18,19 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.invocation.Gradle;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.JavaExec;
+import org.gradle.api.tasks.options.Option;
 import org.gradle.work.DisableCachingByDefault;
 
 import com.google.common.base.Strings;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.util.ProviderToStringWrapper;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 import cpw.mods.fml.relauncher.Side;
 
@@ -37,10 +40,12 @@ public abstract class RunMinecraftTask extends JavaExec {
     public static final UUID DEFAULT_UUID = UUID.nameUUIDFromBytes(new byte[] { 'd', 'e', 'v' });
 
     @Input
+    @Option(option = "username", description = "Minecraft Username to use")
     public abstract Property<String> getUsername();
 
     @Input
-    public abstract Property<UUID> getUserUUID();
+    @Option(option = "uuid", description = "Minecraft user UUID to use")
+    public abstract Property<String> getUserUUID();
 
     @Input
     public abstract Property<String> getAccessToken();
@@ -60,10 +65,10 @@ public abstract class RunMinecraftTask extends JavaExec {
     private final Side side;
 
     @Inject
-    public RunMinecraftTask(Side side) {
+    public RunMinecraftTask(Side side, Gradle gradle) {
         this.side = side;
         getUsername().convention("Developer");
-        getUserUUID().convention(DEFAULT_UUID);
+        getUserUUID().convention(getUsername().map(name -> Utilities.resolveUUID(name, gradle).toString()));
         getAccessToken().convention("0");
         getExtraArgs().convention((side == Side.SERVER) ? Collections.singletonList("nogui") : Collections.emptyList());
         getExtraJvmArgs().convention(Collections.emptyList());

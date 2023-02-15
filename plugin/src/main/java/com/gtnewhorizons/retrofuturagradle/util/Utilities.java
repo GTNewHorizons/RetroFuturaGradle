@@ -8,9 +8,11 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -20,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -31,6 +35,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Project;
+import org.gradle.api.invocation.Gradle;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -40,6 +45,9 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.mcp.RemapSourceJarTask;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
@@ -60,11 +68,19 @@ public final class Utilities {
     }
 
     public static File getRawCacheRoot(Project project) {
-        return FileUtils.getFile(project.getGradle().getGradleUserHomeDir(), "caches");
+        return getRawCacheRoot(project.getGradle());
+    }
+
+    public static File getRawCacheRoot(Gradle gradle) {
+        return FileUtils.getFile(gradle.getGradleUserHomeDir(), "caches");
+    }
+
+    public static File getCacheRoot(Gradle gradle) {
+        return FileUtils.getFile(getRawCacheRoot(gradle), "retro_futura_gradle");
     }
 
     public static File getCacheRoot(Project project) {
-        return FileUtils.getFile(getRawCacheRoot(project), "retro_futura_gradle");
+        return getCacheRoot(project.getGradle());
     }
 
     public static File getRawCacheDir(Project project, String... paths) {
@@ -407,5 +423,52 @@ public final class Utilities {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static UUID resolveUUID(String username, Gradle gradle) {
+        final boolean isOffline = gradle.getStartParameter().isOffline();
+        final File cacheFile = new File(Utilities.getCacheRoot(gradle), "auth_uuid_cache.properties");
+        final Properties cacheProps = new Properties();
+        if (cacheFile.isFile()) {
+            try (InputStream fis = FileUtils.openInputStream(cacheFile)) {
+                cacheProps.load(fis);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (cacheProps.containsKey(username)) {
+            return UUID.fromString(cacheProps.getProperty(username));
+        }
+        UUID onlineUUID = null;
+        if (!isOffline) {
+            try {
+                URL url = new URL(
+                        Constants.URL_PLAYER_TO_UUID + URLEncoder.encode(username, StandardCharsets.UTF_8.name()));
+                final String json = IOUtils.toString(url, StandardCharsets.UTF_8);
+                JsonElement root = JsonParser.parseString(json);
+                if (root.isJsonObject()) {
+                    JsonObject rootObj = root.getAsJsonObject();
+                    if (rootObj.has("id")) {
+                        String encid = rootObj.get("id").getAsString();
+                        String dashed = encid.replaceFirst(
+                                "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
+                                "$1-$2-$3-$4-$5");
+                        onlineUUID = UUID.fromString(dashed);
+                        cacheProps.setProperty(username, onlineUUID.toString());
+                        try (OutputStream fos = FileUtils.openOutputStream(cacheFile);
+                                BufferedOutputStream bos = IOUtils.buffer(fos)) {
+                            cacheProps.store(bos, "Cache of username->UUID mappings from Mojang servers");
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                // no-op
+            }
+        }
+        if (onlineUUID != null) {
+            return onlineUUID;
+        }
+        // Fallback if no cached UUID nor internet, this is wrong but at least deterministic
+        return UUID.nameUUIDFromBytes(username.getBytes(StandardCharsets.UTF_8));
     }
 }

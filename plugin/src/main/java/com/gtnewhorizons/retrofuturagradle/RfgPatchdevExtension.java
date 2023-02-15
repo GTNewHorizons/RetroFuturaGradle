@@ -22,7 +22,7 @@ public abstract class RfgPatchdevExtension implements IMinecraftyExtension {
 
     public RfgPatchdevExtension(Project project) {
         this.project = project;
-        this.applyMinecraftyConventions(project.getObjects());
+        this.applyMinecraftyConventions(project.getObjects(), project.getGradle());
     }
 
     // Vanilla configs

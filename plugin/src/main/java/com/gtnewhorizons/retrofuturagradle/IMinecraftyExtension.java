@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -10,6 +11,7 @@ import org.gradle.jvm.toolchain.JvmVendorSpec;
 import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec;
 
 import com.google.common.collect.Lists;
+import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 public interface IMinecraftyExtension {
     // Vanilla configs
@@ -18,6 +20,10 @@ public interface IMinecraftyExtension {
      * MC version to download and use, only 1.7.10 is supported now and it is the default.
      */
     public abstract Property<String> getMcVersion();
+
+    public abstract Property<String> getUsername();
+
+    public abstract Property<String> getUserUUID();
 
     /**
      * Whether to add all of MC's dependencies automatically as dependencies of your project, default is true.
@@ -83,9 +89,11 @@ public interface IMinecraftyExtension {
      */
     public abstract Property<Integer> getMainLwjglVersion();
 
-    default void applyMinecraftyConventions(ObjectFactory objects) {
+    default void applyMinecraftyConventions(ObjectFactory objects, Gradle gradle) {
         getMcVersion().convention("1.7.10");
         getMcVersion().finalizeValueOnRead();
+        getUsername().convention("Developer");
+        getUserUUID().convention(getUsername().map(name -> Utilities.resolveUUID(name, gradle).toString()));
         getApplyMcDependencies().convention(Boolean.TRUE);
         getApplyMcDependencies().finalizeValueOnRead();
         getLwjgl2Version().convention("2.9.4-nightly-20150209");

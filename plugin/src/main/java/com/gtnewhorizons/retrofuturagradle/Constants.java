@@ -9,6 +9,7 @@ public final class Constants {
     public static final String URL_LAUNCHER_VERSION_MANIFEST = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
     public static final String URL_ASSETS_ROOT = "https://resources.download.minecraft.net/";
     public static final String URL_FERNFLOWER = "https://files.minecraftforge.net/fernflower-fix-1.0.zip";
+    public static final String URL_PLAYER_TO_UUID = "https://api.mojang.com/users/profiles/minecraft/";
 
     // Well-known paths
     public static final String PATH_USERDEV_FML_ACCESS_TRANFORMER = "src/main/resources/fml_at.cfg";

@@ -25,7 +25,7 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
     public MinecraftExtension(Project project) {
         this.project = project;
         getSkipSlowTasks().convention(false);
-        applyMinecraftyConventions(project.getObjects());
+        applyMinecraftyConventions(project.getObjects(), project.getGradle());
 
         getGroupsToExcludeFromAutoReobfMapping().set(Lists.newArrayList());
 

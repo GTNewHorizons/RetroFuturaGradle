@@ -20,7 +20,7 @@ public class TestMod {
     // etc, and register them with the GameRegistry."
     public void preInit(FMLPreInitializationEvent event) {
         LOG.info("TestMod preInit");
-        if (!replacedVer.equals("1.0")) {
+        if (replacedVer.startsWith("TAG_V")) {
             throw new RuntimeException("Wrong substitution");
         }
     }
