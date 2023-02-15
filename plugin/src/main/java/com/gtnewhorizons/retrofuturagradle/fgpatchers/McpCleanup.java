@@ -219,19 +219,25 @@ public class McpCleanup {
     public static final Pattern CLEANUP_185pi100F = Pattern.compile("0\\.8119[0-9]*[Ff]");
 
     public static String cleanup(String text) {
+        return cleanup(text, true);
+    }
+
+    public static String cleanup(String text, boolean doFormattingChanges) {
         // simple replacements
-        text = CLEANUP_header.matcher(text).replaceAll("");
-        text = CLEANUP_footer.matcher(text).replaceAll("");
-        text = CLEANUP_trailing.matcher(text).replaceAll("");
-        text = CLEANUP_newlines.matcher(text).replaceAll(System.lineSeparator());
-        text = CLEANUP_ifstarts.matcher(text).replaceAll("$1" + System.lineSeparator() + "$2");
-        text = CLEANUP_blockstarts.matcher(text).replaceAll("");
-        text = CLEANUP_blockends.matcher(text).replaceAll("");
-        text = CLEANUP_gl.matcher(text).replaceAll("");
+        if (doFormattingChanges) {
+            text = CLEANUP_header.matcher(text).replaceAll("");
+            text = CLEANUP_footer.matcher(text).replaceAll("");
+            text = CLEANUP_trailing.matcher(text).replaceAll("");
+            text = CLEANUP_newlines.matcher(text).replaceAll(System.lineSeparator());
+            text = CLEANUP_ifstarts.matcher(text).replaceAll("$1" + System.lineSeparator() + "$2");
+            text = CLEANUP_blockstarts.matcher(text).replaceAll("");
+            text = CLEANUP_blockends.matcher(text).replaceAll("");
+            text = CLEANUP_gl.matcher(text).replaceAll("");
+        }
         text = CLEANUP_maxD.matcher(text).replaceAll("Double.MAX_VALUE");
 
         // unicode chars
-        {
+        if (doFormattingChanges) {
             Matcher matcher = CLEANUP_unicode.matcher(text);
             int val;
             StringBuffer buffer = new StringBuffer(text.length());

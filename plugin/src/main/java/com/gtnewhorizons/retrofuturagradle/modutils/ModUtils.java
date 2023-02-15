@@ -20,6 +20,9 @@ import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
  */
 public class ModUtils {
 
+    protected static final String TASK_GROUP_INTERNAL = "Internal RFG Utilities";
+    protected static final String TASK_GROUP_USER = "RFG Utilities";
+
     private final Project project;
     private final MinecraftExtension mcExt;
     private final MinecraftTasks minecraftTasks;
@@ -34,6 +37,12 @@ public class ModUtils {
         final DependencyHandler deps = project.getDependencies();
         final ObjectFactory objects = project.getObjects();
         final ConfigurationContainer configs = project.getConfigurations();
+
+        project.getTasks().register("applyDecompilerCleanupToMain", ApplyDecompCleanupTask.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription(
+                    "Apply MCP decompiler cleanup to the main source set, doing things like replacing numerical OpenGL constants with their names");
+        });
 
         // Dependency deobfuscation utilities
         /*
