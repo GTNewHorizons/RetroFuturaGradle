@@ -5,12 +5,14 @@ import java.io.File;
 import javax.inject.Inject;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
@@ -37,6 +39,11 @@ public abstract class DeobfuscateFileTaskBase extends DefaultTask {
     @PathSensitive(PathSensitivity.NONE)
     @Optional
     public abstract RegularFileProperty getParamsCsv();
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    @Optional
+    public abstract ConfigurableFileCollection getExtraParamsCsvs();
 
     @Input
     @Optional
@@ -79,6 +86,7 @@ public abstract class DeobfuscateFileTaskBase extends DefaultTask {
         getFieldsCsv().set(mcTask.getFieldCsv());
         getMethodsCsv().set(mcTask.getMethodCsv());
         getParamsCsv().set(mcTask.getParamCsv());
+        getExtraParamsCsvs().setFrom(mcTask.getExtraParamsCsvs());
         getGenericFieldsCsvName().set(mcTask.getGenericFieldsCsvName());
         getMinecraftJar().set(mcTask.getInputJar());
     }
@@ -88,6 +96,7 @@ public abstract class DeobfuscateFileTaskBase extends DefaultTask {
                 getMethodsCsv().getAsFile().get(),
                 getFieldsCsv().getAsFile().get(),
                 getParamsCsv().getAsFile().getOrNull(),
+                getExtraParamsCsvs().getFiles(),
                 getGenericFieldsCsvName().getOrNull());
     }
 }

@@ -368,7 +368,7 @@ public final class Utilities {
     }
 
     public static MappingsSet loadMappingCsvs(File methodsCsv, File fieldsCsv, File paramsCsv,
-            @Nullable String genericsFilename) {
+            @Nullable Collection<File> extraParamsCsvs, @Nullable String genericsFilename) {
         try {
             MappingsSet mappings = new MappingsSet();
             try (CSVReader methodReader = Utilities.createCsvReader(methodsCsv)) {
@@ -388,6 +388,15 @@ public final class Utilities {
                 for (String[] csvLine : paramReader) {
                     // p_104055_1_,force,1
                     mappings.paramMappings.put(csvLine[0], csvLine[1]);
+                }
+            }
+            if (extraParamsCsvs != null && !extraParamsCsvs.isEmpty()) {
+                for (File extraParamsCsv : extraParamsCsvs) {
+                    try (CSVReader paramReader = Utilities.createCsvReader(extraParamsCsv)) {
+                        for (String[] csvLine : paramReader) {
+                            mappings.paramMappings.put(csvLine[0], csvLine[1]);
+                        }
+                    }
                 }
             }
             if (StringUtils.isNotBlank(genericsFilename)) {

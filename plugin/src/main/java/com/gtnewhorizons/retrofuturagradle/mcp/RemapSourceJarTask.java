@@ -19,11 +19,13 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -77,6 +79,11 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getParamCsv();
 
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    @Optional
+    public abstract ConfigurableFileCollection getExtraParamsCsvs();
+
     @Input
     @Optional
     public abstract Property<String> getGenericFieldsCsvName();
@@ -127,6 +134,7 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                 getMethodCsv().get().getAsFile(),
                 getFieldCsv().get().getAsFile(),
                 getParamCsv().getAsFile().getOrNull(),
+                getExtraParamsCsvs().getFiles(),
                 getGenericFieldsCsvName().getOrNull());
 
         final Matcher mSrg = SRG_FINDER.matcher("");

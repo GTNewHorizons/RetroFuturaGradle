@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
@@ -72,6 +73,11 @@ public interface IMinecraftyExtension {
      * doesn't have any) Default: true.
      */
     public abstract Property<Boolean> getUseForgeEmbeddedMappings();
+
+    /**
+     * A list of additional params.csv-style mappings for method parameter renaming.
+     */
+    public abstract ConfigurableFileCollection getExtraParamsCsvs();
 
     /**
      * Whether to use the generics map to add missing generic parameters to non-private types in the decompiled source

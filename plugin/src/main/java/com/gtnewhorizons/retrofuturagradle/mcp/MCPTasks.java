@@ -220,6 +220,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
             task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
             task.getParamCsv().set(mcpFile("params.csv"));
+            task.getExtraParamsCsvs().setFrom(mcExt.getExtraParamsCsvs());
             task.getGenericFieldsCsvName().set(mcExt.getInjectMissingGenerics().flatMap(enabled -> {
                 if (enabled) {
                     return mcExt.getMcVersion().map(mcv -> "genericFields-" + mcv + ".csv");
