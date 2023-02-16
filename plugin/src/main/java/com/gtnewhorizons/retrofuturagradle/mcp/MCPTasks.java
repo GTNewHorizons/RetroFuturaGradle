@@ -328,7 +328,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     replacements.put("@@MCVERSION@@", mcExt.getMcVersion());
                     replacements.put("@@ASSETINDEX@@", mcExt.getMcVersion());
                     replacements.put("@@ASSETSDIR@@", mcTasks.getVanillaAssetsLocation().getPath());
-                    replacements.put("@@NATIVESDIR@@", mcTasks.getNativesDirectory().getPath());
+                    replacements.put("@@NATIVESDIR@@", mcTasks.getLwjgl2NativesDirectory().getPath());
                     replacements.put("@@SRGDIR@@", getSrgLocation().map(d -> d.getAsFile().getPath()));
                     replacements.put(
                             "@@SRG_NOTCH_SRG@@",

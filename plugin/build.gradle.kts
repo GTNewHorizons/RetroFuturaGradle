@@ -155,6 +155,7 @@ spotless {
   encoding("UTF-8")
 
   java {
+    target("src/**/*.java")
     toggleOffOn()
     importOrderFile("../spotless.importorder")
     removeUnusedImports()

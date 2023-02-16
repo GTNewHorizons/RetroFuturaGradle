@@ -13,6 +13,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
@@ -54,6 +55,7 @@ public abstract class DeobfuscateFileTaskBase extends DefaultTask {
     public abstract RegularFileProperty getMinecraftJar();
 
     @InputFile
+    @PathSensitive(PathSensitivity.NONE)
     @Option(option = "input", description = "The file to deobfuscate")
     public abstract RegularFileProperty getInputFile();
 
@@ -91,6 +93,7 @@ public abstract class DeobfuscateFileTaskBase extends DefaultTask {
         getMinecraftJar().set(mcTask.getInputJar());
     }
 
+    @Internal
     public Utilities.MappingsSet getMappings() {
         return Utilities.loadMappingCsvs(
                 getMethodsCsv().getAsFile().get(),

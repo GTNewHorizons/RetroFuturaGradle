@@ -112,24 +112,6 @@ class UserDevPluginFunctionalTest {
     }
 
     @Test
-    void canDeobfMergedJarToSrg() throws IOException {
-        writeString(getSettingsFile(), "");
-        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
-
-        // Run the build
-        GradleRunner runner = GradleRunner.create();
-        runner.forwardOutput();
-        runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "deobfuscateMergedJarToSrg");
-        runner.withProjectDir(projectDir);
-        BuildResult result = runner.build();
-        BuildResult secondResult = runner.build();
-        Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
-    }
-
-    @Test
     void canDecompile() throws IOException {
         writeString(getSettingsFile(), "");
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);

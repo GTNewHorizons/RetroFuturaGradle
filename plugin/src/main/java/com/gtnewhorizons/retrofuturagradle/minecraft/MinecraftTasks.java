@@ -13,6 +13,7 @@ import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
@@ -41,10 +42,10 @@ public final class MinecraftTasks {
     private final File versionManifestLocation;
     private final TaskProvider<Download> taskDownloadLauncherVersionManifest;
 
-    private final File assetManifestLocation;
+    private final Provider<RegularFile> assetManifestLocation;
     private final TaskProvider<Download> taskDownloadAssetManifest;
 
-    private final File vanillaClientLocation, vanillaServerLocation;
+    private final Provider<RegularFile> vanillaClientLocation, vanillaServerLocation;
     private final TaskProvider<Download> taskDownloadVanillaJars;
 
     /**
@@ -114,8 +115,9 @@ public final class MinecraftTasks {
                     });
                 });
 
-        assetManifestLocation = Utilities
-                .getCacheDir(project, "assets", "indexes", mcExt.getMcVersion().get() + ".json");
+        assetManifestLocation = project.getLayout().file(
+                mcExt.getMcVersion()
+                        .map(mcVer -> Utilities.getCacheDir(project, "assets", "indexes", mcVer + ".json")));
         taskDownloadAssetManifest = project.getTasks().register("downloadAssetManifest", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDownloadLauncherVersionManifest);
@@ -123,7 +125,7 @@ public final class MinecraftTasks {
                 final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
                 return manifest.getAssetIndexUrl();
             }));
-            task.onlyIf(t -> !assetManifestLocation.exists());
+            task.onlyIf(t -> !assetManifestLocation.get().getAsFile().exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
@@ -132,7 +134,7 @@ public final class MinecraftTasks {
                 final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
                 final byte[] assetManifestJsonRaw;
                 try {
-                    assetManifestJsonRaw = FileUtils.readFileToByteArray(assetManifestLocation);
+                    assetManifestJsonRaw = FileUtils.readFileToByteArray(assetManifestLocation.get().getAsFile());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -144,29 +146,35 @@ public final class MinecraftTasks {
             });
         });
 
-        vanillaClientLocation = Utilities
-                .getCacheDir(project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "client.jar");
-        vanillaServerLocation = Utilities
-                .getCacheDir(project, MC_DOWNLOAD_PATH, mcExt.getMcVersion().get(), "server.jar");
+        vanillaClientLocation = project.getLayout().file(
+                mcExt.getMcVersion()
+                        .map(mcVer -> Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, mcVer, "client.jar")));
+        vanillaServerLocation = project.getLayout().file(
+                mcExt.getMcVersion()
+                        .map(mcVer -> Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, mcVer, "server.jar")));
         taskDownloadVanillaJars = project.getTasks().register("downloadVanillaJars", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskDownloadLauncherVersionManifest);
-            task.doFirst((_t) -> { vanillaClientLocation.getParentFile().mkdirs(); });
+            task.doFirst((_t) -> { vanillaClientLocation.get().getAsFile().getParentFile().mkdirs(); });
             task.src(project.getProviders().provider(() -> {
                 final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
                 return new String[] { manifest.getClientUrl(), manifest.getServerUrl() };
             }));
-            task.onlyIf(t -> !vanillaClientLocation.exists() || !vanillaServerLocation.exists());
+            task.onlyIf(
+                    t -> !vanillaClientLocation.get().getAsFile().exists()
+                            || !vanillaServerLocation.get().getAsFile().exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
-            task.dest(vanillaClientLocation.getParentFile());
+            task.dest(vanillaClientLocation.map(f -> f.getAsFile().getParentFile()));
             task.doLast("verifyVanillaJars", (_t) -> {
                 final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
                 final String realClientSha1, realServerSha1;
                 try {
-                    realClientSha1 = new DigestUtils(DigestUtils.getSha1Digest()).digestAsHex(vanillaClientLocation);
-                    realServerSha1 = new DigestUtils(DigestUtils.getSha1Digest()).digestAsHex(vanillaServerLocation);
+                    realClientSha1 = new DigestUtils(DigestUtils.getSha1Digest())
+                            .digestAsHex(vanillaClientLocation.get().getAsFile());
+                    realServerSha1 = new DigestUtils(DigestUtils.getSha1Digest())
+                            .digestAsHex(vanillaServerLocation.get().getAsFile());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -419,7 +427,7 @@ public final class MinecraftTasks {
         return taskDownloadLauncherVersionManifest;
     }
 
-    public File getAssetManifestLocation() {
+    public Provider<RegularFile> getAssetManifestLocation() {
         return assetManifestLocation;
     }
 
@@ -427,11 +435,11 @@ public final class MinecraftTasks {
         return taskDownloadAssetManifest;
     }
 
-    public File getVanillaClientLocation() {
+    public Provider<RegularFile> getVanillaClientLocation() {
         return vanillaClientLocation;
     }
 
-    public File getVanillaServerLocation() {
+    public Provider<RegularFile> getVanillaServerLocation() {
         return vanillaServerLocation;
     }
 

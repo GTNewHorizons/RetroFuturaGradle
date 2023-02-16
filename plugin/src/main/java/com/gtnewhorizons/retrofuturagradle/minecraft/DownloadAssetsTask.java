@@ -15,6 +15,7 @@ import javax.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputDirectory;
@@ -35,13 +36,13 @@ public abstract class DownloadAssetsTask extends DefaultTask {
      * Asset download root path
      */
     @OutputDirectory
-    public abstract Property<File> getObjectsDir();
+    public abstract RegularFileProperty getObjectsDir();
 
     /**
      * A parset asset manifest JSON object.
      */
     @InputFile
-    public abstract Property<File> getManifest();
+    public abstract RegularFileProperty getManifest();
 
     @Inject
     public abstract WorkerExecutor getWorkerExecutor();
@@ -50,8 +51,8 @@ public abstract class DownloadAssetsTask extends DefaultTask {
 
     @TaskAction
     public void downloadAssets() {
-        final File objectsDir = getObjectsDir().get();
-        final AssetManifest manifest = AssetManifest.read(getManifest().get());
+        final File objectsDir = getObjectsDir().get().getAsFile();
+        final AssetManifest manifest = AssetManifest.read(getManifest().get().getAsFile());
 
         if (!objectsDir.exists()) {
             objectsDir.mkdirs();
