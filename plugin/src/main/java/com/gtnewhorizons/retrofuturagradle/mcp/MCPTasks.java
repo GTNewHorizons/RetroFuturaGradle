@@ -853,6 +853,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 task.getOptions().getCompilerArgs()
                         .add("-Xplugin:RetrofuturagradleTokenReplacement " + replacementsUri.toASCIIString());
                 task.getOptions().setFork(true);
+                task.getInputs().files(project.files(replacementPropFile).builtBy(taskInjectTags));
                 if (javaExt.getToolchain().getLanguageVersion().get().asInt() > 8) {
                     final List<String> jargs = Arrays.asList(
                             "--add-exports",
@@ -878,6 +879,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     if (!task.getName().equals("compileScala")) {
                         return;
                     }
+                    task.getInputs().files(project.files(replacementPropFile).builtBy(taskInjectTags));
                     task.setScalaCompilerPlugins(task.getScalaCompilerPlugins().plus(rfgJavacCfg));
                     if (task.getScalaCompileOptions().getAdditionalParameters() == null) {
                         task.getScalaCompileOptions().setAdditionalParameters(new ArrayList<>());
