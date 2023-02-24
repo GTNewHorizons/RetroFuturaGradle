@@ -105,8 +105,8 @@ public abstract class RunMinecraftTask extends JavaExec {
                     throw new IllegalArgumentException("Lwjgl major version " + ver + " not supported");
                 }
             }).map(
-                    lwjglNatives -> lwjglNatives.getAbsolutePath() + File.pathSeparator
-                            + System.getProperty(JAVA_LIB_PATH));
+                    lwjglNatives -> Utilities.fixWindowsProcessCmdline(
+                            lwjglNatives.getAbsolutePath() + File.pathSeparator + System.getProperty(JAVA_LIB_PATH)));
             systemProperty(JAVA_LIB_PATH, new ProviderToStringWrapper(libraryPath));
 
             classpath(mcTasks.getLwjglConfiguration(getLwjglVersion()));

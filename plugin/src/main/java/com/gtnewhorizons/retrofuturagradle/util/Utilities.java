@@ -34,6 +34,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.gradle.api.Project;
 import org.gradle.api.invocation.Gradle;
 import org.objectweb.asm.ClassReader;
@@ -65,6 +66,17 @@ public final class Utilities {
         builder.enableComplexMapKeySerialization();
         builder.setPrettyPrinting();
         GSON = builder.create();
+    }
+
+    /**
+     * A workaround for https://github.com/gradle/gradle/issues/6072
+     */
+    public static String fixWindowsProcessCmdline(String cmdlineArg) {
+        if (SystemUtils.IS_OS_WINDOWS) {
+            return cmdlineArg.replace("\"", "\\\"");
+        } else {
+            return cmdlineArg;
+        }
     }
 
     public static File getRawCacheRoot(Project project) {
