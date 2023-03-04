@@ -111,7 +111,7 @@ public interface IMinecraftyExtension {
         {
             final JavaToolchainSpec defaultToolchain = new DefaultToolchainSpec(objects);
             defaultToolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
-            defaultToolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
+            defaultToolchain.getVendor().set(JvmVendorSpec.AZUL);
             getJavaToolchain().convention(defaultToolchain);
             getJavaToolchain().finalizeValueOnRead();
         }

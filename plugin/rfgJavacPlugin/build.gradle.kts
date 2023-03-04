@@ -14,7 +14,7 @@ plugins {
 java {
   toolchain {
     languageVersion.set(JavaLanguageVersion.of(8))
-    vendor.set(JvmVendorSpec.ADOPTIUM)
+    vendor.set(JvmVendorSpec.AZUL)
   }
   withSourcesJar()
   withJavadocJar()
@@ -96,7 +96,7 @@ tasks.addRule("Pattern: runTestWithJava<VERSION>") {
       options.isIncremental = false
       val toolchain = DefaultToolchainSpec(objects)
       toolchain.languageVersion.set(JavaLanguageVersion.of(jVersion))
-      toolchain.vendor.set(JvmVendorSpec.ADOPTIUM)
+      toolchain.vendor.set(JvmVendorSpec.AZUL)
       javaCompiler.set(javaToolchains.compilerFor(toolchain))
       classpath = project.tasks.named("shadowJar").get().outputs.files
       // Can't escape spaces, so use URL-encoding
@@ -137,7 +137,7 @@ tasks.register<ScalaCompile>("runTestWithScala") {
   outputs.upToDateWhen { false }
   val toolchain = DefaultToolchainSpec(objects)
   toolchain.languageVersion.set(JavaLanguageVersion.of(8))
-  toolchain.vendor.set(JvmVendorSpec.ADOPTIUM)
+  toolchain.vendor.set(JvmVendorSpec.AZUL)
 
   javaLauncher.set(javaToolchains.launcherFor(toolchain))
   analysisMappingFile.set(

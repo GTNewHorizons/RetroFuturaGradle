@@ -128,7 +128,7 @@ configurations.api.configure { dependencies.remove(depGradleApi) }
 java {
   toolchain {
     languageVersion.set(JavaLanguageVersion.of(8))
-    vendor.set(JvmVendorSpec.ADOPTIUM)
+    vendor.set(JvmVendorSpec.AZUL)
   }
 }
 
@@ -138,14 +138,14 @@ tasks.named<JavaCompile>("compileJava") {
 
   javaCompiler.set(javaToolchains.compilerFor {
     languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.ADOPTIUM)
+    vendor.set(JvmVendorSpec.AZUL)
   })
 }
 
 tasks.withType<Javadoc>().configureEach {
   this.javadocTool.set(javaToolchains.javadocToolFor {
     languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.ADOPTIUM)
+    vendor.set(JvmVendorSpec.AZUL)
   })
 }
 

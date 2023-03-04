@@ -91,7 +91,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
             JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
             final String javaExe = jts.launcherFor(toolchain -> {
                 toolchain.getLanguageVersion().set(JavaLanguageVersion.of(17));
-                toolchain.getVendor().set(JvmVendorSpec.ADOPTIUM);
+                toolchain.getVendor().set(JvmVendorSpec.AZUL);
             }).get().getExecutablePath().getAsFile().getAbsolutePath();
             exec.executable(javaExe);
         }).assertNormalExitValue();
