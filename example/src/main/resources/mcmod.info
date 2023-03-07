@@ -1,0 +1,13 @@
+[
+  {
+    "modid": "RFGExampleMod",
+    "name": "RFG Example mod",
+    "version": "${modVersion}",
+    "mcversion": "1.7.10",
+    "description": "An example mod for Minecraft 1.7.10 with Forge built using RetroFuturaGradle.",
+    "url": "https://github.com/GTNewHorizons/RetroFuturaGradle/",
+    "credits": "",
+    "authorList": ["eigenraven"],
+    "dependencies": []
+  }
+]

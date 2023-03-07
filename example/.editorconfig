@@ -1,0 +1,17 @@
+root = true
+
+[*]
+charset = utf-8
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{bat,ini}]
+end_of_line = crlf
+
+[*.{kt,kts,dtd,json,info,mcmeta,md,sh,svg,xml,xsd,xsl,yaml,yml}]
+indent_size = 2
+
+[*.lang]
+trim_trailing_whitespace = false
