@@ -1,11 +1,10 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec
 
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-library")
   id("scala")
-  id("com.github.johnrengelman.shadow") version "7.1.2"
+  id("com.github.johnrengelman.shadow") version "8.1.0"
   id("com.palantir.git-version") version "0.15.0"
   id("maven-publish")
   id("com.diffplug.spotless") version "6.12.0"
@@ -66,20 +65,13 @@ group = "com.gtnewhorizons"
 
 version = gitVersion().removeSuffix(".dirty")
 
-// Relocate all dependencies into a subpackage
-// https://imperceptiblethoughts.com/shadow/configuration/relocation/#filtering-relocation
-val taskRelocateShadowJar =
-    tasks.register<ConfigureShadowRelocation>("relocateShadowJar") {
-      target = tasks.shadowJar.get()
-      prefix = "com.gtnewhorizons.retrofuturagradle.javac.shadow"
-    }
-
-tasks.shadowJar.configure {
-  dependsOn(taskRelocateShadowJar)
+tasks.shadowJar {
+  isEnableRelocation = true
+  relocationPrefix = "com.gtnewhorizons.retrofuturagradle.javac.shadow"
   archiveClassifier.set("")
 }
 
-tasks.jar.configure {
+tasks.jar {
   enabled = false
   dependsOn(tasks.shadowJar)
 }

@@ -1,8 +1,6 @@
 
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("com.github.johnrengelman.shadow") version "8.1.0"
     id("java-library")
 }
 
@@ -59,7 +57,7 @@ dependencies {
 group = "com.gtnewhorizons"
 version = "1.0"
 
-tasks.named<ShadowJar>("shadowJar") {
+tasks.shadowJar {
     relocate("org.objectweb.asm", "com.gtnewhorizons.asm503")
     relocate("net.md_5.specialsource", "com.gtnewhorizons.specialsource174")
     relocate("org.apache", "com.gtnewhorizons.oldasmwrapper.apache")

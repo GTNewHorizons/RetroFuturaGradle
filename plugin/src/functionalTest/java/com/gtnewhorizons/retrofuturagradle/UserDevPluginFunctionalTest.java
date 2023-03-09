@@ -21,12 +21,20 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class UserDevPluginFunctionalTest {
 
-    public static final String SIMPLE_BUILDSCRIPT = "plugins {\n" + "  id('com.gtnewhorizons.retrofuturagradle')\n"
-            + "}\n"
-            + "\n"
-            + "minecraft {\n"
-            + "  mcVersion = '1.7.10'\n"
-            + "}\n";
+    public static final String SIMPLE_SETTINGS = """
+            plugins {
+              id("org.gradle.toolchains.foojay-resolver-convention") version "0.4.0"
+            }
+            """;
+
+    public static final String SIMPLE_BUILDSCRIPT = """
+            plugins {
+                id('com.gtnewhorizons.retrofuturagradle')
+            }
+            minecraft {
+                mcVersion = '1.7.10'
+            }
+            """;
 
     @TempDir
     File projectDir;
@@ -41,7 +49,7 @@ class UserDevPluginFunctionalTest {
 
     @Test
     void canFetchManifests() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build
@@ -59,7 +67,7 @@ class UserDevPluginFunctionalTest {
 
     @Test
     void canFetchData() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build
@@ -77,7 +85,7 @@ class UserDevPluginFunctionalTest {
 
     @Test
     void canObtainDevPackages() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build
@@ -95,7 +103,7 @@ class UserDevPluginFunctionalTest {
 
     @Test
     void canMergeVanillaSidedJars() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build
@@ -113,7 +121,7 @@ class UserDevPluginFunctionalTest {
 
     @Test
     void canDecompile() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build
@@ -131,7 +139,7 @@ class UserDevPluginFunctionalTest {
 
     @Test
     void canRecompile() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
 
         // Run the build

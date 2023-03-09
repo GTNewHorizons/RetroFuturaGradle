@@ -1,4 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 import java.util.*
 
 /*
@@ -12,7 +11,7 @@ import java.util.*
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-gradle-plugin")
-  id("com.github.johnrengelman.shadow") version "7.1.2"
+  id("com.github.johnrengelman.shadow") version "8.1.0"
   id("com.palantir.git-version") version "0.15.0"
   id("maven-publish")
   id("com.diffplug.spotless") version "6.12.0"
@@ -62,6 +61,7 @@ dependencies {
   shadow(gradleApi())
 
   annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
+  testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
   compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0") { isTransitive = false }
 
   // Apache Commons utilities
@@ -90,7 +90,7 @@ dependencies {
   implementation(
       group = "de.undercouch.download",
       name = "de.undercouch.download.gradle.plugin",
-      version = "5.3.0")
+      version = "5.3.1")
   // JSON handling for Minecraft manifests etc.
   implementation("com.google.code.gson:gson:2.10")
   // Forge utilities (to be merged into the source tree in the future)
@@ -132,7 +132,10 @@ java {
   }
 }
 
-tasks.named<JavaCompile>("compileJava") {
+// Add a source set for the functional test suite
+val functionalTestSourceSet = sourceSets.create("functionalTest") {}
+
+tasks.withType<JavaCompile> {
   sourceCompatibility = "17" // for the IDE support
   options.release.set(8)
 
@@ -149,7 +152,7 @@ tasks.withType<Javadoc>().configureEach {
   })
 }
 
-tasks.named<org.gradle.jvm.tasks.Jar>("jar").configure { from("LICENSE", "docs") }
+tasks.jar { from("LICENSE", "docs") }
 
 spotless {
   encoding("UTF-8")
@@ -202,17 +205,10 @@ java {
   withJavadocJar()
 }
 
-// Relocate all dependencies into a subpackage
-// https://imperceptiblethoughts.com/shadow/configuration/relocation/#filtering-relocation
-val taskRelocateShadowJar =
-    tasks.register<ConfigureShadowRelocation>("relocateShadowJar") {
-      target = tasks.shadowJar.get()
-      prefix = "com.gtnewhorizons.retrofuturagradle.shadow"
-    }
-
 tasks.shadowJar.configure {
-  dependsOn(taskRelocateShadowJar)
   archiveClassifier.set("")
+  isEnableRelocation = true
+  relocationPrefix = "com.gtnewhorizons.retrofuturagradle.shadow"
 }
 
 tasks.jar.configure {
@@ -220,10 +216,8 @@ tasks.jar.configure {
   dependsOn(tasks.shadowJar)
 }
 
-// Add a source set for the functional test suite
-val functionalTestSourceSet = sourceSets.create("functionalTest") {}
-
 configurations["functionalTestImplementation"].extendsFrom(configurations["testImplementation"])
+configurations["functionalTestAnnotationProcessor"].extendsFrom(configurations["testAnnotationProcessor"])
 
 // Add a task to run the functional tests
 val functionalTest by
@@ -235,12 +229,12 @@ val functionalTest by
 
 gradlePlugin.testSourceSets(functionalTestSourceSet)
 
-tasks.named<Task>("check") {
+tasks.check {
   // Run the functional tests as part of `check`
   dependsOn(functionalTest)
 }
 
-tasks.named<Test>("test") {
+tasks.test {
   // Use JUnit Jupiter for unit tests.
   useJUnitPlatform()
 }
