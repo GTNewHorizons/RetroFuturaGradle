@@ -193,6 +193,7 @@ public abstract class GradleStartCommon {
     // coremod hack
     private static final String COREMOD_VAR = "fml.coreMods.load";
     private static final String COREMOD_MF = "FMLCorePlugin";
+    private static final String TWEAKER_MF = "TweakClass";
     // AT hack
     private static final String MOD_ATD_CLASS = "fml.common.asm.transformers.ModAccessTransformer";
     private static final String MOD_AT_METHOD = "addJar";
@@ -209,6 +210,7 @@ public abstract class GradleStartCommon {
 
         final String cpString = System.getProperty("java.class.path");
         final String[] cpEntries = cpString.split(File.pathSeparator);
+        final Set<String> extraTweakers = new HashSet<>();
         for (String cpEntry : cpEntries) {
             File coreMod = new File(cpEntry);
             Manifest manifest = null;
@@ -236,6 +238,12 @@ public abstract class GradleStartCommon {
                 if (!Strings.isNullOrEmpty(clazz)) {
                     LOGGER.info("Found and added coremod: " + clazz);
                     coreMap.put(clazz, coreMod);
+                }
+                final String cascadingTweaker = manifest.getMainAttributes().getValue(TWEAKER_MF);
+                if (!Strings.isNullOrEmpty(cascadingTweaker) && extraTweakers.add(cascadingTweaker)) {
+                    LOGGER.info("Found and added cascading tweaker: " + cascadingTweaker);
+                    extras.add("--tweakClass");
+                    extras.add(cascadingTweaker);
                 }
             }
         }
