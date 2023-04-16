@@ -15,6 +15,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -39,6 +41,7 @@ import org.gradle.api.Project;
 import org.gradle.api.invocation.Gradle;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.tree.ClassNode;
 
 import com.google.common.base.Joiner;
@@ -101,6 +104,51 @@ public final class Utilities {
 
     public static File getCacheDir(Project project, String... paths) {
         return FileUtils.getFile(getCacheRoot(project), paths);
+    }
+
+    public static String getMapStringOrBlank(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value == null ? "" : value.toString();
+    }
+
+    /**
+     * @param path A path like
+     *             {@code "/home/user/.gradle/caches/modules-2/files-2.1/com.github.GTNewHorizons/CodeChickenLib/1.1.6/51081c1c2d8d75ae26f64427849de2c0ba99144/CodeChickenLib-1.1.6-dev.jar"}
+     * @return A dependency specifier like "com.github.GTNewHorizons:CodeChickenLib:1.1.6:dev" or null if not a
+     *         modules-2 path.
+     */
+    public static String getModuleSpecFromCachePath(Path path) {
+        final String[] pathComponents = StreamSupport.stream(path.spliterator(), false).map(Path::toString)
+                .toArray(String[]::new);
+        // Example:
+        // /home/user/.gradle/caches/modules-2/files-2.1/com.github.GTNewHorizons/CodeChickenLib/1.1.6/51081c1c2d8d75ae26f64427849de2c0ba99144/CodeChickenLib-1.1.6-dev.jar`
+        // Try to find modules-2/files-2.1
+        int modulesCacheIndex = -1;
+        for (int i = 0; i < pathComponents.length - 5; i++) {
+            if (pathComponents[i].equalsIgnoreCase("modules-2")
+                    && pathComponents[i + 1].equalsIgnoreCase("files-2.1")) {
+                modulesCacheIndex = i + 2;
+                break;
+            }
+        }
+        if (modulesCacheIndex == -1) {
+            return null;
+        }
+        final String group = pathComponents[modulesCacheIndex];
+        final String module = pathComponents[modulesCacheIndex + 1];
+        final String version = pathComponents[modulesCacheIndex + 2];
+        final String jarName = pathComponents[modulesCacheIndex + 4];
+        final String classifier = StringUtils.removeStart(
+                StringUtils.removeEndIgnoreCase(
+                        StringUtils.removeStartIgnoreCase(jarName, module + "-" + version),
+                        ".jar"),
+                "-").trim();
+        final String gmv = group + ":" + module + ":" + version;
+        if (StringUtils.isEmpty(classifier)) {
+            return gmv;
+        } else {
+            return gmv + ":" + classifier;
+        }
     }
 
     public static CSVReader createCsvReader(URL url) throws IOException {
@@ -377,9 +425,20 @@ public final class Utilities {
                 return name;
             }
         }
+
+        /**
+         * @return A combined map of method, field and param mappings.
+         */
+        public Map<String, String> getCombinedMappings() {
+            Map<String, String> ret = new HashMap<>();
+            methodMappings.forEach((k, m) -> ret.put(k, m.name));
+            fieldMappings.forEach((k, m) -> ret.put(k, m.name));
+            ret.putAll(paramMappings);
+            return ret;
+        }
     }
 
-    public static MappingsSet loadMappingCsvs(File methodsCsv, File fieldsCsv, File paramsCsv,
+    public static MappingsSet loadMappingCsvs(File methodsCsv, File fieldsCsv, @Nullable File paramsCsv,
             @Nullable Collection<File> extraParamsCsvs, @Nullable String genericsFilename) {
         try {
             MappingsSet mappings = new MappingsSet();
@@ -396,10 +455,12 @@ public final class Utilities {
                     mappings.fieldMappings.put(csvLine[0], new Utilities.Mapping(csvLine[1], csvLine[3]));
                 }
             }
-            try (CSVReader paramReader = Utilities.createCsvReader(paramsCsv)) {
-                for (String[] csvLine : paramReader) {
-                    // p_104055_1_,force,1
-                    mappings.paramMappings.put(csvLine[0], csvLine[1]);
+            if (paramsCsv != null) {
+                try (CSVReader paramReader = Utilities.createCsvReader(paramsCsv)) {
+                    for (String[] csvLine : paramReader) {
+                        // p_104055_1_,force,1
+                        mappings.paramMappings.put(csvLine[0], csvLine[1]);
+                    }
                 }
             }
             if (extraParamsCsvs != null && !extraParamsCsvs.isEmpty()) {
@@ -444,6 +505,20 @@ public final class Utilities {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * @param classBytes The .class bytes to remap
+     * @param mappings   The combined mappings set to use for renaming items
+     * @return A jar with names remapped using simple find-and-replace on SRG names in the given mappings (no
+     *         inheritance checks performed)
+     */
+    public static byte[] simpleRemapClass(byte[] classBytes, Map<String, String> mappings) {
+        final ClassReader reader = new ClassReader(classBytes);
+        final ClassWriter writer = new ClassWriter(0);
+        final ClassRemapper remapper = new ClassRemapper(writer, new SimpleSrgRemapper(mappings));
+        reader.accept(remapper, 0);
+        return writer.toByteArray();
     }
 
     public static UUID resolveUUID(String username, Gradle gradle) {
