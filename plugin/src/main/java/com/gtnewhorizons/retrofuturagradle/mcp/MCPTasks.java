@@ -131,6 +131,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final File injectedSourcesLocation;
     public static final String PATCHED_MINECRAFT_CONFIGURATION_NAME = "patchedMinecraft";
 
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     public MCPTasks(Project project, MinecraftExtension mcExt, MinecraftTasks mcTasks) {
         super(project, mcExt, mcTasks);
 

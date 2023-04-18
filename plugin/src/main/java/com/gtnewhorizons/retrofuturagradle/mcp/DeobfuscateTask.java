@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -18,8 +19,10 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -176,19 +179,32 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         }
         getLogger().lifecycle("Renamed {} AT entries", accessMap.getRenameCount());
 
-        RemapperProcessor srgProcessor = new RemapperProcessor(null, mapping, null);
-        RemapperProcessor atProcessor = new RemapperProcessor(null, null, accessMap);
-        JarRemapper remapper = new JarRemapper(srgProcessor, mapping, atProcessor);
+        final RemapperProcessor srgProcessor = new RemapperProcessor(null, mapping, null);
+        final RemapperProcessor atProcessor = new RemapperProcessor(null, null, accessMap);
+        final JarRemapper remapper = new JarRemapper(srgProcessor, mapping, atProcessor);
 
-        Jar input = Jar.init(inputFile);
-        JointProvider inheritanceProviders = new JointProvider();
-        inheritanceProviders.add(new JarProvider(input));
-        mapping.setFallbackInheritanceProvider(inheritanceProviders);
-        remapper.remapJar(input, tempDeobfJar);
-        input = null;
-
-        // Attempt to close the open file handles for the input jar.
-        System.gc();
+        final Jar input = Jar.init(inputFile);
+        try {
+            final JointProvider inheritanceProviders = new JointProvider();
+            inheritanceProviders.add(new JarProvider(input));
+            mapping.setFallbackInheritanceProvider(inheritanceProviders);
+            remapper.remapJar(input, tempDeobfJar);
+        } finally {
+            try {
+                // Close the jar file handle manually, because the old SpecialSource didn't have a close method
+                final Field fFiles = Jar.class.getDeclaredField("jarFiles");
+                fFiles.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                final List<JarFile> files = (List<JarFile>) fFiles.get(input);
+                if (files != null) {
+                    for (JarFile file : files) {
+                        file.close();
+                    }
+                }
+            } catch (ReflectiveOperationException | IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         // Clean up temporary files
         if (!Constants.DEBUG_NO_TMP_CLEANUP) {
