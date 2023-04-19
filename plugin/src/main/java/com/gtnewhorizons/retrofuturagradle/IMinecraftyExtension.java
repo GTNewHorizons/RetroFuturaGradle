@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
@@ -104,7 +105,7 @@ public interface IMinecraftyExtension {
         getApplyMcDependencies().finalizeValueOnRead();
         getLwjgl2Version().convention("2.9.4-nightly-20150209");
         getLwjgl2Version().finalizeValueOnRead();
-        getLwjgl3Version().convention("3.3.1");
+        getLwjgl3Version().convention("3.3.2");
         getLwjgl2Version().finalizeValueOnRead();
         getJavaCompatibilityVersion().convention(8);
         getJavaCompatibilityVersion().finalizeValueOnRead();
@@ -118,9 +119,13 @@ public interface IMinecraftyExtension {
 
         getMcpMappingChannel().convention("stable");
         getMcpMappingChannel().finalizeValueOnRead();
-        getMcpMappingVersion().convention("12");
+        getMcpMappingVersion().convention(getMcVersion().map(ver -> switch (ver) {
+            case "1.7.10" -> "12";
+            case "1.12.2" -> "39";
+            default -> throw new UnsupportedOperationException("Unsupported MC version " + ver);
+        }));
         getMcpMappingVersion().finalizeValueOnRead();
-        getUseForgeEmbeddedMappings().convention(true);
+        getUseForgeEmbeddedMappings().convention(getMinorMcVersion().map(ver -> ver <= 8));
         getUseForgeEmbeddedMappings().finalizeValueOnRead();
         getFernflowerArguments().convention(Lists.newArrayList("-din=1", "-rbr=0", "-dgs=1", "-asc=1", "-log=ERROR"));
         getFernflowerArguments().finalizeValueOnRead();
@@ -146,5 +151,11 @@ public interface IMinecraftyExtension {
             case "1.12.2" -> "1.12.2-14.23.5.2847";
             default -> throw new UnsupportedOperationException();
         });
+    }
+
+    default Provider<Integer> getMinorMcVersion() {
+        return getMcVersion().map(
+                minecraftVersion -> Integer
+                        .parseInt(StringUtils.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10));
     }
 }

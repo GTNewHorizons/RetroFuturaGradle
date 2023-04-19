@@ -25,9 +25,6 @@ version = "1.0"
 minecraft {
     // skipSlowTasks.set(true)
     mcVersion.set("1.12.2")
-    mcpMappingChannel.set("stable")
-    mcpMappingVersion.set("39")
-    useForgeEmbeddedMappings.set(false)
     injectedTags.put("TAG_VERSION", version)
     tagReplacementFiles.add("TestMod.java")
 }

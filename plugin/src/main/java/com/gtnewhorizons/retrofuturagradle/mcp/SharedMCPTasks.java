@@ -125,7 +125,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 .dir(mcExt.getMcVersion().map(mcVer -> switch (mcVer) {
                 case "1.7.10" -> FileUtils.getFile(userdevRoot, "1.7.10-10.13.4.1614-1.7.10");
                 case "1.12.2" -> FileUtils.getFile(userdevRoot, mcExt.getForgeVersion().get());
-                default -> throw new UnsupportedOperationException("Currently only minecraft 1.7.10 is supported.");
+                default -> throw new UnsupportedOperationException("Unsupported Minecraft version " + mcVer);
                 }));
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
@@ -152,8 +152,13 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                         return !(root.isDirectory() && new File(root, "notch-srg.srg").isFile());
                     });
                     // inputs
-                    task.getInputSrg().set(userdevFile("conf/packaged.srg"));
-                    task.getInputExc().set(userdevFile("conf/packaged.exc"));
+                    Provider<Integer> mcVer = mcExt.getMinorMcVersion();
+                    task.getInputSrg().set(
+                            mcVer.flatMap(
+                                    v -> (v <= 8) ? userdevFile("conf/packaged.srg") : userdevFile("merged.srg")));
+                    task.getInputExc().set(
+                            mcVer.flatMap(
+                                    v -> (v <= 8) ? userdevFile("conf/packaged.exc") : userdevFile("merged.exc")));
                     task.getFieldsCsv().set(
                             mcExt.getUseForgeEmbeddedMappings().flatMap(
                                     useForge -> useForge.booleanValue() ? userdevFile("conf/fields.csv")

@@ -777,9 +777,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final DependencyHandler deps = project.getDependencies();
 
         // At afterEvaluate minecraft version should be already set and stable
-        final String minecraftVersion = mcExt.getMcVersion().get();
-        final int mcMinor = Integer
-                .parseInt(StringUtils.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10);
+        final int mcMinor = mcExt.getMinorMcVersion().get();
 
         deps.addProvider(mcpMappingDataConfiguration.getName(), mcExt.mapMcpVersions((mcVer, mcpChan, mcpVer) -> {
             final String mcpMcVerComponent = switch (mcVer) {

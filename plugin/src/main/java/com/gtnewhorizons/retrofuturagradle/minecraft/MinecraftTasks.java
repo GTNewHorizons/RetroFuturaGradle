@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -338,8 +337,7 @@ public final class MinecraftTasks {
         project.afterEvaluate(_p -> {
             // At afterEvaluate minecraft version should be already set and stable
             final String minecraftVersion = mcExt.getMcVersion().get();
-            final int mcMinor = Integer
-                    .parseInt(StringUtils.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10);
+            final int mcMinor = mcExt.getMinorMcVersion().get();
             if (mcExt.getApplyMcDependencies().get()) {
                 String lwjgl2Version = mcExt.getLwjgl2Version().get();
                 final String lwjgl3Version = mcExt.getLwjgl3Version().get();
