@@ -1,0 +1,21 @@
+{
+	"modListVersion": 2,
+	"modList": [{
+		"modid": "testmod",
+		"name": "RFG Test Mod",
+		"description": "Testing RetroFuturaGradle mod loading.",
+		"version": "1.0",
+		"mcversion": "1.7.10",
+		"url": "https://github.com/GTNewHorizons/RetroFuturaGradle/",
+		"updateUrl": "",
+		"authorList": ["eigenraven"],
+		"credits": "",
+		"logoFile": "",
+		"screenshots": [],
+		"parent": "",
+		"requiredMods": [],
+		"dependencies": [],
+		"dependants": [],
+		"useDependencyInformation": true
+	}]
+}

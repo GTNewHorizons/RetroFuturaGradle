@@ -776,18 +776,43 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private void afterEvaluate() {
         final DependencyHandler deps = project.getDependencies();
 
-        deps.addProvider(
-                mcpMappingDataConfiguration.getName(),
-                mcExt.mapMcpVersions(
-                        (mcVer, mcpChan, mcpVer) -> ImmutableMap.of(
-                                "group",
-                                "de.oceanlabs.mcp",
-                                "name",
-                                "mcp_" + mcpChan,
-                                "version",
-                                mcpVer + "-" + mcVer,
-                                "ext",
-                                "zip")));
+        // At afterEvaluate minecraft version should be already set and stable
+        final String minecraftVersion = mcExt.getMcVersion().get();
+        final int mcMinor = Integer
+                .parseInt(StringUtils.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10);
+
+        deps.addProvider(mcpMappingDataConfiguration.getName(), mcExt.mapMcpVersions((mcVer, mcpChan, mcpVer) -> {
+            final String mcpMcVerComponent = switch (mcVer) {
+                case "1.12.2" -> "1.12";
+                case "1.10.2" -> "1.10";
+                default -> mcVer;
+            };
+            return ImmutableMap.of(
+                    "group",
+                    "de.oceanlabs.mcp",
+                    "name",
+                    "mcp_" + mcpChan,
+                    "version",
+                    mcpVer + "-" + mcpMcVerComponent,
+                    "ext",
+                    "zip");
+        }));
+        if (mcMinor > 8) {
+            deps.addProvider(
+                    mcpMappingDataConfiguration.getName(),
+                    mcExt.mapMcpVersions(
+                            (mcVer, mcpChan, mcpVer) -> ImmutableMap.of(
+                                    "group",
+                                    "de.oceanlabs.mcp",
+                                    "name",
+                                    "mcp",
+                                    "version",
+                                    mcVer,
+                                    "classifier",
+                                    "srg",
+                                    "ext",
+                                    "zip")));
+        }
 
         if (mcExt.getSkipSlowTasks().get()) {
             taskDeobfuscateMergedJarToSrg

@@ -29,7 +29,9 @@ public class ExtractNativesTask extends Copy {
                     .filter(f -> f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives));
             final FileCollection twitchZips = vanillaMcConfiguration
                     .filter(f -> f.getName().contains("twitch") && f.getName().contains(twitchNatives));
-            final FileCollection zips = lwjglZips.plus(twitchZips);
+            final FileCollection ttsZips = vanillaMcConfiguration
+                    .filter(f -> f.getName().contains("text2speech") && f.getName().contains("natives"));
+            final FileCollection zips = lwjglZips.plus(twitchZips).plus(ttsZips);
             final ArrayList<FileTree> trees = new ArrayList<>();
             for (File zip : zips) {
                 trees.add(project.zipTree(zip));

@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -19,6 +20,7 @@ import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Specs;
@@ -109,22 +111,22 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 return !(root.isDirectory() && new File(root, "methods.csv").isFile());
             });
             task.setGroup(TASK_GROUP_INTERNAL);
+            task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);
             task.from(
                     project.provider(
-                            () -> project.zipTree(
-                                    mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
+                            () -> mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getFiles().stream()
+                                    .map(project::zipTree).collect(Collectors.toList())));
             task.into(mcpExtractRoot);
             task.doFirst(new MkdirAction(mcpExtractRoot));
         });
 
         final File userdevRoot = Utilities.getRawCacheDir(project, "minecraft", "net", "minecraftforge", "forge");
-        final Provider<Directory> userdevRootProvider = project.getLayout().dir(mcExt.getMcVersion().map(mcVer -> {
-            if (mcVer.equals("1.7.10")) {
-                return FileUtils.getFile(userdevRoot, "1.7.10-10.13.4.1614-1.7.10");
-            } else {
-                throw new UnsupportedOperationException("Currently only minecraft 1.7.10 is supported.");
-            }
-        }));
+        final Provider<Directory> userdevRootProvider = project.getLayout()
+                .dir(mcExt.getMcVersion().map(mcVer -> switch (mcVer) {
+                case "1.7.10" -> FileUtils.getFile(userdevRoot, "1.7.10-10.13.4.1614-1.7.10");
+                case "1.12.2" -> FileUtils.getFile(userdevRoot, mcExt.getForgeVersion().get());
+                default -> throw new UnsupportedOperationException("Currently only minecraft 1.7.10 is supported.");
+                }));
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.onlyIf(t -> {
