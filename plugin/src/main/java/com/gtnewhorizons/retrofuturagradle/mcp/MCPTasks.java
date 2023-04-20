@@ -67,13 +67,12 @@ import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
+import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.FileWithSourcesDependency;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.JarChain;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-
-import cpw.mods.fml.relauncher.Side;
 
 /**
  * Tasks reproducing the MCP/FML/Forge toolchain for deobfuscation
@@ -155,7 +154,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getClientJar().set(mcTasks.getVanillaClientLocation());
                     task.getServerJar().set(mcTasks.getVanillaServerLocation());
                     task.getOutputJar().set(mergedVanillaJarLocation);
-                    task.getMergeConfigFile().set(userdevFile("conf/mcp_merge.cfg"));
+                    task.getMergeConfigFile().set(
+                            mcExt.getMinorMcVersion()
+                                    .flatMap(ver -> (ver <= 8) ? userdevFile("conf/mcp_merge.cfg") : null));
+                    task.getMergeConfig()
+                            .set(mcExt.getMinorMcVersion().map(ver -> (ver <= 8) ? null : Constants.FG23_MERGE_CONFIG));
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
         decompiledMcChain.addTask(taskMergeVanillaSidedJars);
@@ -166,7 +169,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskMergeVanillaSidedJars, taskGenerateForgeSrgMappings);
                     task.getSrgFile().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg));
-                    task.getExceptorJson().set(userdevFile("conf/exceptor.json"));
+                    task.getExceptorJson().set(
+                            mcExt.getMinorMcVersion().flatMap(
+                                    ver -> (ver <= 8) ? userdevFile("conf/exceptor.json") : mcpFile("exceptor.json")));
                     task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(IJarOutputTask::getOutputJar));
                     task.getOutputJar().set(srgMergedJarLocation);
@@ -451,7 +456,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             }
         });
 
-        taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunClient = project.getTasks().register("runClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunClient.configure(task -> {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
@@ -472,7 +477,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getMainClass().set("GradleStart");
         });
 
-        taskRunServer = project.getTasks().register("runServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunServer = project.getTasks().register("runServer", RunMinecraftTask.class, Distribution.DEDICATED_SERVER);
         taskRunServer.configure(task -> {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
@@ -713,7 +718,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     });
                 });
 
-        taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunObfClient.configure(task -> {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
@@ -730,10 +735,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.classpath(mcTasks.getVanillaClientLocation());
             task.classpath(patchedConfiguration);
             task.getMainClass().set("net.minecraft.launchwrapper.Launch");
-            task.getTweakClasses().add("cpw.mods.fml.common.launcher.FMLTweaker");
+            task.getTweakClasses().add(
+                    mcExt.getMinorMcVersion().map(
+                            v -> (v <= 7) ? "cpw.mods.fml.common.launcher.FMLTweaker"
+                                    : "net.minecraftforge.fml.common.launcher.FMLTweaker"));
         });
 
-        taskRunObfServer = project.getTasks().register("runObfServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunObfServer = project.getTasks()
+                .register("runObfServer", RunMinecraftTask.class, Distribution.DEDICATED_SERVER);
         taskRunObfServer.configure(task -> {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
@@ -921,7 +930,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         }
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
-            deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
+            if (mcMinor <= 8) {
+                deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
+            }
 
             taskPatchDecompiledJar.configure(task -> {
                 task.getPatches().builtBy(taskExtractForgeUserdev);
@@ -931,11 +942,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 task.getInjectionDirectories().from(userdevDir("src/main/resources"));
             });
 
+            final String mcVer = mcExt.getMcVersion().get();
             final String PATCHED_MC_CFG = patchedConfiguration.getName();
             // LaunchWrapper brings in its own lwjgl version which we want to override
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "net.minecraft:launchwrapper:1.12")).setTransitive(false);
             deps.add(PATCHED_MC_CFG, "com.google.code.findbugs:jsr305:1.3.9");
-            deps.add(PATCHED_MC_CFG, "org.ow2.asm:asm-debug-all:5.0.3");
             deps.add(PATCHED_MC_CFG, "com.typesafe.akka:akka-actor_2.11:2.3.3");
             deps.add(PATCHED_MC_CFG, "com.typesafe:config:1.2.1");
             deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-actors-migration_2.11:1.1.0");
@@ -948,6 +959,20 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-swing_2.11:1.0.1");
             deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-xml_2.11:1.0.2");
             deps.add(PATCHED_MC_CFG, "lzma:lzma:0.0.1");
+            switch (mcVer) {
+                case "1.7.10" -> {
+                    deps.add(PATCHED_MC_CFG, "org.ow2.asm:asm-debug-all:5.0.3");
+                }
+                case "1.12.2" -> {
+                    deps.add(PATCHED_MC_CFG, "org.ow2.asm:asm-debug-all:5.2");
+                    deps.add(PATCHED_MC_CFG, "org.jline:jline:3.5.1");
+                    deps.add(PATCHED_MC_CFG, "lzma:lzma:0.0.1");
+                    deps.add(PATCHED_MC_CFG, "java3d:vecmath:1.5.2");
+                    deps.add(PATCHED_MC_CFG, "net.sf.trove4j:trove4j:3.0.3");
+                    deps.add(PATCHED_MC_CFG, "org.apache.maven:maven-artifact:3.5.3");
+                }
+                default -> throw new UnsupportedOperationException("Unsupported MC version " + mcVer);
+            }
 
             if (mcExt.getUsesForge().get()) {
                 deobfuscationATs.from(userdevDir(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER));

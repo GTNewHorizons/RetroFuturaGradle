@@ -1,5 +1,9 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import java.util.List;
+
+import com.google.common.collect.ImmutableList;
+
 public final class Constants {
 
     // URLs
@@ -17,4 +21,16 @@ public final class Constants {
 
     // Debug toggles for local development
     public static final boolean DEBUG_NO_TMP_CLEANUP = false;
+
+    public static final List<String> FG23_MERGE_CONFIG = ImmutableList.of(
+            "^org/bouncycastle",
+            "^org/apache",
+            "^com/google",
+            "^com/mojang/authlib",
+            "^com/mojang/util",
+            "^gnu/trove",
+            "^io/netty",
+            "^javax/annotation",
+            "^argo",
+            "^it/");
 }

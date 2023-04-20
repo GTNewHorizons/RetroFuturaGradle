@@ -130,7 +130,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.onlyIf(t -> {
-                File root = userdevExtractRoot.get().getAsFile();
+                final File root = userdevExtractRoot.get().getAsFile();
                 return !(root.isDirectory() && new File(root, "dev.json").isFile());
             });
             task.setGroup(TASK_GROUP_INTERNAL);
@@ -139,7 +139,29 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                             () -> project.zipTree(
                                     forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
             task.into(userdevExtractRoot);
-            task.doFirst(new MkdirAction(userdevExtractRoot));
+            task.doFirst("mkdir", new MkdirAction(userdevExtractRoot));
+            task.doLast("extractFg2DataIfNeeded", tsk -> {
+                final File root = userdevExtractRoot.get().getAsFile();
+                final File srcZip = new File(root, "sources.zip");
+                final File resZip = new File(root, "resources.zip");
+                final File srcMain = FileUtils.getFile(root, "src", "main");
+                final File srcMainJava = FileUtils.getFile(srcMain, "java");
+                final File srcMainRes = FileUtils.getFile(srcMain, "resources");
+                if (srcZip.exists()) {
+                    srcMainJava.mkdirs();
+                    project.copy(copy -> {
+                        copy.from(project.zipTree(srcZip));
+                        copy.into(srcMainJava);
+                    });
+                }
+                if (resZip.exists()) {
+                    srcMainRes.mkdirs();
+                    project.copy(copy -> {
+                        copy.from(project.zipTree(resZip));
+                        copy.into(srcMainRes);
+                    });
+                }
+            });
         });
 
         forgeSrgLocation = userdevRootProvider.map(root -> root.dir("srgs"));
@@ -155,10 +177,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     Provider<Integer> mcVer = mcExt.getMinorMcVersion();
                     task.getInputSrg().set(
                             mcVer.flatMap(
-                                    v -> (v <= 8) ? userdevFile("conf/packaged.srg") : userdevFile("merged.srg")));
+                                    v -> (v <= 8) ? userdevFile("conf/packaged.srg") : mcpFile("joined.srg")));
                     task.getInputExc().set(
                             mcVer.flatMap(
-                                    v -> (v <= 8) ? userdevFile("conf/packaged.exc") : userdevFile("merged.exc")));
+                                    v -> (v <= 8) ? userdevFile("conf/packaged.exc") : mcpFile("joined.exc")));
                     task.getFieldsCsv().set(
                             mcExt.getUseForgeEmbeddedMappings().flatMap(
                                     useForge -> useForge.booleanValue() ? userdevFile("conf/fields.csv")
