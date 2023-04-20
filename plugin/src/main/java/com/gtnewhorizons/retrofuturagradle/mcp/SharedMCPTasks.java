@@ -176,11 +176,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     // inputs
                     Provider<Integer> mcVer = mcExt.getMinorMcVersion();
                     task.getInputSrg().set(
-                            mcVer.flatMap(
-                                    v -> (v <= 8) ? userdevFile("conf/packaged.srg") : mcpFile("joined.srg")));
+                            mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.srg") : mcpFile("joined.srg")));
                     task.getInputExc().set(
-                            mcVer.flatMap(
-                                    v -> (v <= 8) ? userdevFile("conf/packaged.exc") : mcpFile("joined.exc")));
+                            mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.exc") : mcpFile("joined.exc")));
                     task.getFieldsCsv().set(
                             mcExt.getUseForgeEmbeddedMappings().flatMap(
                                     useForge -> useForge.booleanValue() ? userdevFile("conf/fields.csv")

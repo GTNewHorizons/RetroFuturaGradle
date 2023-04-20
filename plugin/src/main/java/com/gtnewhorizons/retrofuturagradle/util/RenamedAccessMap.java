@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.gtnewhorizons.specialsource174.AccessMap;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.AccessMap;
 
 public class RenamedAccessMap extends AccessMap {
 

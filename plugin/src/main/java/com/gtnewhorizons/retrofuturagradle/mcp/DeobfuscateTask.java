@@ -54,19 +54,18 @@ import org.objectweb.asm.tree.MethodNode;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.retrofuturagradle.Constants;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.de.oceanlabs.mcp.mcinjector.MCInjectorImpl;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.Jar;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.JarMapping;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.JarRemapper;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.RemapperProcessor;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.provider.JarProvider;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.provider.JointProvider;
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import com.gtnewhorizons.specialsource174.Jar;
-import com.gtnewhorizons.specialsource174.JarMapping;
-import com.gtnewhorizons.specialsource174.JarRemapper;
-import com.gtnewhorizons.specialsource174.RemapperProcessor;
-import com.gtnewhorizons.specialsource174.provider.JarProvider;
-import com.gtnewhorizons.specialsource174.provider.JointProvider;
-
-import de.oceanlabs.mcp.mcinjector.MCInjectorImpl;
 
 @CacheableTask
 public abstract class DeobfuscateTask extends DefaultTask implements IJarTransformTask {

@@ -81,8 +81,8 @@ dependencies {
   // Java source manipulation
   implementation("com.github.javaparser:javaparser-core:3.24.10")
   implementation("com.github.javaparser:javaparser-symbol-solver-core:3.24.10")
-  // "MCP stuff"
-  implementation(project(":oldasmwrapper", "shadow"))
+  // "MCP stuff", shaded manually later
+  compileOnly(project(":oldasmwrapper", "fullyShadedElements"))
   // Startup classes
   compileOnly("com.mojang:authlib:1.5.16") { isTransitive = false }
   compileOnly("net.minecraft:launchwrapper:1.12") { isTransitive = false }
@@ -90,7 +90,7 @@ dependencies {
   implementation(
       group = "de.undercouch.download",
       name = "de.undercouch.download.gradle.plugin",
-      version = "5.3.1")
+      version = "5.4.0")
   // JSON handling for Minecraft manifests etc.
   implementation("com.google.code.gson:gson:2.10")
   // Forge utilities (to be merged into the source tree in the future)
@@ -152,7 +152,12 @@ tasks.withType<Javadoc>().configureEach {
   })
 }
 
-tasks.jar { from("LICENSE", "docs") }
+tasks.shadowJar {
+  from("LICENSE", "docs")
+  val oldAsmJarTask = project(":oldasmwrapper").tasks.named<Jar>("allJar")
+  dependsOn(oldAsmJarTask)
+  from(zipTree(oldAsmJarTask.get().archiveFile)) // cheaper shadow of an already shaded jar
+}
 
 spotless {
   encoding("UTF-8")

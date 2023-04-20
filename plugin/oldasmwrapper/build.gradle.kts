@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     id("com.github.johnrengelman.shadow") version "8.1.0"
@@ -9,8 +10,6 @@ java {
         languageVersion.set(JavaLanguageVersion.of(8))
         vendor.set(JvmVendorSpec.AZUL)
     }
-    withSourcesJar()
-    withJavadocJar()
 }
 
 repositories {
@@ -44,22 +43,81 @@ repositories {
     mavenCentral {}
 }
 
+val fg12Emulation: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val fg23Emulation: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 dependencies {
-    implementation("org.ow2.asm:asm-debug-all") { version { strictly("5.0.3") } }
-    implementation("com.github.abrarsyed.jastyle:jAstyle:1.2")
-    implementation("com.nothome:javaxdelta:2.0.1")
-    implementation("net.md-5:SpecialSource:1.7.4")
-    implementation("de.oceanlabs.mcp:mcinjector:3.2-SNAPSHOT")
-    implementation("net.minecraftforge.srg2source:Srg2Source:3.2-SNAPSHOT")
-    implementation("org.eclipse.jdt:org.eclipse.jdt.core") { version { strictly("3.10.0") } }
+    fg12Emulation("org.ow2.asm:asm-debug-all") { version { strictly("5.0.3") } }
+    fg12Emulation("com.github.abrarsyed.jastyle:jAstyle:1.2")
+    fg12Emulation("com.nothome:javaxdelta:2.0.1")
+    fg12Emulation("net.md-5:SpecialSource:1.7.4")
+    fg12Emulation("de.oceanlabs.mcp:mcinjector:3.2-SNAPSHOT")
+    fg12Emulation("net.minecraftforge.srg2source:Srg2Source:3.2-SNAPSHOT")
+    fg12Emulation("org.eclipse.jdt:org.eclipse.jdt.core") { version { strictly("3.10.0") } }
+
+    fg23Emulation("org.ow2.asm:asm") { version { strictly("6.0") } }
+    fg23Emulation("org.ow2.asm:asm-commons") { version { strictly("6.0") } }
+    fg23Emulation("org.ow2.asm:asm-tree") { version { strictly("6.0") } }
+    fg23Emulation("com.github.abrarsyed.jastyle:jAstyle:1.3")
+    fg23Emulation("net.md-5:SpecialSource:1.8.2")
+    fg23Emulation("de.oceanlabs.mcp.mirror:mcinjector:3.4-SNAPSHOT")
 }
 
 group = "com.gtnewhorizons"
 version = "1.0"
 
+val fg12EmuJar = tasks.register<ShadowJar>("fg12EmuJar") {
+    archiveClassifier.set("fg12")
+    isEnableRelocation = true
+    relocationPrefix = "com.gtnewhorizons.retrofuturagradle.fg12shadow"
+    configurations.add(fg12Emulation)
+}
+
+val fg23EmuJar = tasks.register<ShadowJar>("fg23EmuJar") {
+    archiveClassifier.set("fg23")
+    isEnableRelocation = true
+    relocationPrefix = "com.gtnewhorizons.retrofuturagradle.fg23shadow"
+    configurations.add(fg23Emulation)
+}
+
 tasks.shadowJar {
-    relocate("org.objectweb.asm", "com.gtnewhorizons.asm503")
-    relocate("net.md_5.specialsource", "com.gtnewhorizons.specialsource174")
-    relocate("org.apache", "com.gtnewhorizons.oldasmwrapper.apache")
-    relocate("com.google", "com.gtnewhorizons.oldasmwrapper.google")
+    enabled = false
+}
+tasks.jar {
+    enabled = false
+}
+
+val allJar by tasks.registering(Jar::class) {
+    dependsOn(fg12EmuJar, fg23EmuJar)
+    // If the classifier is blank, IntelliJ fails to recognize the classes from this jar
+    archiveClassifier.set("all")
+    from(zipTree(fg12EmuJar.get().archiveFile.get()))
+    from(zipTree(fg23EmuJar.get().archiveFile.get()))
+    duplicatesStrategy = DuplicatesStrategy.WARN
+    exclude("about_files", "about_files/**")
+    exclude("ant_tasks", "ant_tasks/**")
+    exclude("module-info.class")
+    exclude("META-INF/LICENSE")
+    exclude("META-INF/README")
+    exclude("META-INF/maven/**")
+}
+
+tasks.assemble {
+    dependsOn(allJar)
+}
+
+val fullyShadedElements: Configuration by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+artifacts {
+    add(fullyShadedElements.name, allJar)
 }

@@ -28,10 +28,10 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 import com.cloudbees.diff.PatchException;
-import com.github.abrarsyed.jastyle.ASFormatter;
-import com.github.abrarsyed.jastyle.OptParser;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.com.github.abrarsyed.jastyle.ASFormatter;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.com.github.abrarsyed.jastyle.OptParser;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
