@@ -64,7 +64,8 @@ import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.pro
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
-import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMap;
+import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMapFG12;
+import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMapFG23;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 @CacheableTask
@@ -103,6 +104,9 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
     @Optional
     public abstract Property<Boolean> getIsStrippingSynthetics();
 
+    @Input
+    public abstract Property<Integer> getMinorMcVersion();
+
     @Override
     public void hashInputs(MessageDigest digest) {
         HashUtils.addPropertyToHash(digest, getAccessTransformerFiles());
@@ -113,6 +117,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         HashUtils.addPropertyToHash(digest, getExceptorJson());
         HashUtils.addPropertyToHash(digest, getIsApplyingMarkers());
         HashUtils.addPropertyToHash(digest, getIsStrippingSynthetics());
+        HashUtils.addPropertyToHash(digest, getMinorMcVersion());
     }
 
     private File taskTempDir;
@@ -121,6 +126,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
     public DeobfuscateTask(Project proj) {
         getIsStrippingSynthetics().convention(false);
         getIsApplyingMarkers().convention(false);
+        getMinorMcVersion().convention(7);
     }
 
     @TaskAction
@@ -129,13 +135,18 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         this.taskTempDir = taskTempDir;
         final File deobfedJar = new File(taskTempDir, "deobf.jar");
         final File exceptedJar = new File(taskTempDir, "excepted.jar");
+        final int mcMinor = getMinorMcVersion().get();
 
         getLogger().lifecycle("Applying SpecialSource");
         final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
-        applySpecialSource(deobfedJar, atFiles);
+        if (mcMinor <= 8) {
+            applySpecialSourceFG12(deobfedJar, atFiles);
+        } else {
+            applySpecialSourceFG23(deobfedJar, atFiles);
+        }
 
         getLogger().lifecycle("Applying Exceptor");
-        applyExceptor(deobfedJar, exceptedJar, new File(taskTempDir, "deobf.log"), atFiles);
+        applyExceptor(deobfedJar, exceptedJar, new File(taskTempDir, "deobf.log"), atFiles, mcMinor);
 
         final boolean isStrippingSynths = getIsStrippingSynthetics().get();
         getLogger()
@@ -149,7 +160,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         }
     }
 
-    private void applySpecialSource(File tempDeobfJar, Set<File> atFiles) throws IOException {
+    private void applySpecialSourceFG12(File tempDeobfJar, Set<File> atFiles) throws IOException {
         final File originalInputFile = getInputJar().get().getAsFile();
         // Work on a copy to make sure the original jar doesn't get modified
         final File inputFile = new File(taskTempDir, "input.jar");
@@ -171,7 +182,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
 
         // Load access transformers
         getLogger().lifecycle("Loading {} AccessTransformers", atFiles.size());
-        RenamedAccessMap accessMap = new RenamedAccessMap(renames);
+        RenamedAccessMapFG12 accessMap = new RenamedAccessMapFG12(renames);
         for (File atFile : atFiles) {
             getLogger().info("{}", atFile.getPath());
             accessMap.loadAccessTransformer(atFile);
@@ -211,7 +222,65 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         }
     }
 
-    private void applyExceptor(File deobfJar, File tempExceptorJar, File logFile, Set<File> atFiles)
+    private void applySpecialSourceFG23(File tempDeobfJar, Set<File> atFiles) throws IOException {
+        final File originalInputFile = getInputJar().get().getAsFile();
+        // Work on a copy to make sure the original jar doesn't get modified
+        final File inputFile = new File(taskTempDir, "input.jar");
+        FileUtils.copyFile(originalInputFile, inputFile);
+        final com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.JarMapping mapping = new com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.JarMapping();
+        mapping.loadMappings(getSrgFile().get().getAsFile());
+        final Map<String, String> renames = new HashMap<>();
+        for (File f : new File[] { getFieldCsv().getAsFile().getOrNull(), getMethodCsv().getAsFile().getOrNull() }) {
+            if (f == null) {
+                continue;
+            }
+            FileUtils.lineIterator(f).forEachRemaining(line -> {
+                String[] parts = line.split(",");
+                if (!"searge".equals(parts[0])) {
+                    renames.put(parts[0], parts[1]);
+                }
+            });
+        }
+
+        // Load access transformers
+        getLogger().lifecycle("Loading {} AccessTransformers", atFiles.size());
+        RenamedAccessMapFG23 accessMap = new RenamedAccessMapFG23(renames);
+        for (File atFile : atFiles) {
+            getLogger().info("{}", atFile.getPath());
+            accessMap.loadAccessTransformer(atFile);
+        }
+        getLogger().lifecycle("Renamed {} AT entries", accessMap.getRenameCount());
+
+        final com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.RemapperProcessor srgProcessor = new com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.RemapperProcessor(
+                null,
+                mapping,
+                null);
+        final com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.RemapperProcessor atProcessor = new com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.RemapperProcessor(
+                null,
+                null,
+                accessMap);
+        final com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.JarRemapper remapper = new com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.JarRemapper(
+                srgProcessor,
+                mapping,
+                atProcessor);
+
+        try (final com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.Jar input = com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.Jar
+                .init(inputFile)) {
+            final com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.provider.JointProvider inheritanceProviders = new com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.provider.JointProvider();
+            inheritanceProviders.add(
+                    new com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.provider.JarProvider(
+                            input));
+            mapping.setFallbackInheritanceProvider(inheritanceProviders);
+            remapper.remapJar(input, tempDeobfJar);
+        }
+
+        // Clean up temporary files
+        if (!Constants.DEBUG_NO_TMP_CLEANUP) {
+            FileUtils.deleteQuietly(inputFile);
+        }
+    }
+
+    private void applyExceptor(File deobfJar, File tempExceptorJar, File logFile, Set<File> atFiles, int mcMinor)
             throws IOException {
         String json = null;
         if (getExceptorJson().isPresent()) {
@@ -258,16 +327,29 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         // Silence MCI logs
         java.util.logging.Logger.getLogger("MCInjector").setLevel(java.util.logging.Level.WARNING);
 
-        MCInjectorImpl.process(
-                deobfJar.getCanonicalPath(),
-                tempExceptorJar.getCanonicalPath(),
-                getExceptorCfg().get().getAsFile().getCanonicalPath(),
-                logFile.getCanonicalPath(),
-                null,
-                0,
-                json,
-                getIsApplyingMarkers().get(),
-                true);
+        if (mcMinor <= 8) {
+            MCInjectorImpl.process(
+                    deobfJar.getCanonicalPath(),
+                    tempExceptorJar.getCanonicalPath(),
+                    getExceptorCfg().get().getAsFile().getCanonicalPath(),
+                    logFile.getCanonicalPath(),
+                    null,
+                    0,
+                    json,
+                    getIsApplyingMarkers().get(),
+                    true);
+        } else {
+            com.gtnewhorizons.retrofuturagradle.fg23shadow.de.oceanlabs.mcp.mcinjector.MCInjectorImpl.process(
+                    deobfJar.getCanonicalPath(),
+                    tempExceptorJar.getCanonicalPath(),
+                    getExceptorCfg().get().getAsFile().getCanonicalPath(),
+                    logFile.getCanonicalPath(),
+                    null,
+                    0,
+                    json,
+                    getIsApplyingMarkers().get(),
+                    true);
+        }
     }
 
     /**

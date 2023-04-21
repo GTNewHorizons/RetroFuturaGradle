@@ -13,6 +13,22 @@ java {
 }
 
 repositories {
+    // For when the Forge maven goes down
+    /*
+    maven {
+        name = "overmind-mirror-mvn"
+        url = uri("https://gregtech.overminddl1.com/")
+        content {
+            includeGroup("net.minecraftforge")
+            includeGroup("net.minecraftforge.srg2source")
+            includeGroup("de.oceanlabs.mcp")
+            includeGroup("cpw.mods")
+        }
+        metadataSources {
+            artifact()
+        }
+    }
+    */
     maven {
         name = "forge"
         url = uri("https://maven.minecraftforge.net")
@@ -67,7 +83,8 @@ dependencies {
     fg23Emulation("org.ow2.asm:asm-tree") { version { strictly("6.0") } }
     fg23Emulation("com.github.abrarsyed.jastyle:jAstyle:1.3")
     fg23Emulation("net.md-5:SpecialSource:1.8.2")
-    fg23Emulation("de.oceanlabs.mcp.mirror:mcinjector:3.4-SNAPSHOT")
+    fg23Emulation("de.oceanlabs.mcp:mcinjector:3.4-SNAPSHOT")
+    fg23Emulation("net.minecraftforge:forgeflower:1.0.342-SNAPSHOT")
 }
 
 group = "com.gtnewhorizons"

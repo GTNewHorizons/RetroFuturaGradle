@@ -271,6 +271,7 @@ public final class MinecraftTasks {
                 content.includeGroup("com.ibm.icu");
                 content.includeGroup("com.mojang");
                 content.includeGroup("com.paulscode");
+                content.includeGroup("java3d");
                 content.includeGroup("net.minecraft");
                 content.includeGroup("org.lwjgl.lwjgl");
                 content.includeGroup("oshi-project");

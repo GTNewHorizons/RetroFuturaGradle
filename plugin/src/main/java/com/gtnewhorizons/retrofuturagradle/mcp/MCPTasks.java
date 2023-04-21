@@ -145,6 +145,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         decompiledMcChain = new JarChain();
 
+        this.patchedConfiguration = project.getConfigurations().create(PATCHED_MINECRAFT_CONFIGURATION_NAME);
+        this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
+        this.patchedConfiguration.setDescription("Dependencies needed to run modded minecraft");
+        this.patchedConfiguration.setCanBeConsumed(false);
+
         mergedVanillaJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
         taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
@@ -179,6 +184,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
+                    task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
                 });
         decompiledMcChain.addTask(taskDeobfuscateMergedJarToSrg);
 
@@ -192,6 +198,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getOutputJar().set(rawDecompiledSrgLocation);
             task.getCacheDir().set(Utilities.getCacheDir(project, "fernflower-cache"));
             task.getFernflower().set(fernflowerLocation);
+            task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
+            task.getClasspath().from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
         });
         decompiledMcChain.addTask(taskDecompileSrgJar);
         taskCleanupDecompSrgJar = project.getTasks()
@@ -258,11 +266,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             });
                     task.into(decompressedSourcesLocation);
                 });
-
-        this.patchedConfiguration = project.getConfigurations().create(PATCHED_MINECRAFT_CONFIGURATION_NAME);
-        this.patchedConfiguration.extendsFrom(mcTasks.getVanillaMcConfiguration());
-        this.patchedConfiguration.setDescription("Dependencies needed to run modded minecraft");
-        this.patchedConfiguration.setCanBeConsumed(false);
 
         final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
@@ -687,6 +690,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs);
+                    task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
                 });
 
         obfRuntimeClasspathConfiguration = project.getConfigurations().create("obfuscatedRuntimeClasspath");

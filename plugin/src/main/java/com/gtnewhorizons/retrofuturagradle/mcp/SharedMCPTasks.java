@@ -72,18 +72,22 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
         forgeUserdevConfiguration.setCanBeConsumed(false);
 
-        fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
-        final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
+        final File fernflower1Location = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
+        final File fernflower1DownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
+        fernflowerLocation = fernflower1Location;
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.src(Constants.URL_FERNFLOWER);
-            task.onlyIf(t -> !fernflowerLocation.exists());
+            task.src(Constants.URL_FERNFLOWER_1);
+            task.onlyIf(t -> mcExt.getMinorMcVersion().get() <= 8 && !fernflowerLocation.exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
-            task.dest(fernflowerDownloadLocation);
+            task.dest(fernflower1DownloadLocation);
             task.doLast(_t -> {
-                try (final FileInputStream fis = new FileInputStream(fernflowerDownloadLocation);
+                if (mcExt.getMinorMcVersion().get() > 8) {
+                    return;
+                }
+                try (final FileInputStream fis = new FileInputStream(fernflower1DownloadLocation);
                         final ZipInputStream zis = new ZipInputStream(fis);
                         final FileOutputStream fos = new FileOutputStream(fernflowerLocation)) {
                     ZipEntry entry;
