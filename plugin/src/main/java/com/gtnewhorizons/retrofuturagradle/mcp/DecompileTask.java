@@ -212,7 +212,9 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
                 mapOptions.put(IFernflowerPreferences.INCLUDE_ENTIRE_CLASSPATH, "1");
                 mapOptions.put(IFernflowerPreferences.REMOVE_SYNTHETIC, "1");
                 mapOptions.put(IFernflowerPreferences.REMOVE_BRIDGE, "1");
-                mapOptions.put(IFernflowerPreferences.USE_JAD_VARNAMING, "1");
+                mapOptions.put(IFernflowerPreferences.LITERALS_AS_IS, "0");
+                mapOptions.put(IFernflowerPreferences.UNIT_TEST_MODE, "0");
+                mapOptions.put(IFernflowerPreferences.MAX_PROCESSING_METHOD, "0");
                 mapOptions.put(DecompilerContext.RENAMER_FACTORY, AdvancedJadRenamer.Factory.class.getName());
 
                 // FernFlowerSettings settings = new FernFlowerSettings(tempDir, in, tempJar,

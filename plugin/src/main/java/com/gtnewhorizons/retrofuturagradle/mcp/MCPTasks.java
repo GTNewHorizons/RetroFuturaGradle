@@ -229,6 +229,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getInputJar().set(taskCleanupDecompSrgJar.flatMap(IJarOutputTask::getOutputJar));
             task.getOutputJar().set(patchedSourcesLocation);
             task.getMaxFuzziness().set(1);
+            task.getPathComponentsToStrip().set(mcExt.getMinorMcVersion().map(mcVer -> (mcVer <= 8) ? 3 : 1));
         });
         decompiledMcChain.addTask(taskPatchDecompiledJar);
 
@@ -950,7 +951,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             taskPatchDecompiledJar.configure(task -> {
                 task.getPatches().builtBy(taskExtractForgeUserdev);
                 task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
-                task.getPatches().from(userdevFile("fmlpatches.zip"));
+                if (mcMinor <= 8) {
+                    task.getPatches().from(userdevFile("fmlpatches.zip"));
+                }
                 task.getInjectionDirectories().from(userdevDir("src/main/java"));
                 task.getInjectionDirectories().from(userdevDir("src/main/resources"));
             });
@@ -990,7 +993,13 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             if (mcExt.getUsesForge().get()) {
                 deobfuscationATs.from(userdevDir(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER));
 
-                taskPatchDecompiledJar.configure(task -> { task.getPatches().from(userdevDir("forgepatches.zip")); });
+                taskPatchDecompiledJar.configure(task -> {
+                    if (mcMinor <= 8) {
+                        task.getPatches().from(userdevFile("forgepatches.zip"));
+                    } else {
+                        task.getPatches().from(userdevFile("patches.zip"));
+                    }
+                });
 
                 final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
                 final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);

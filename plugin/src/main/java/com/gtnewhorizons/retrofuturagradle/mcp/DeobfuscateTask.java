@@ -425,7 +425,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
                     byte[] entryContents = Utilities.readZipEntry(inZip, entry);
 
                     // correct source name
-                    if (entry.getName().endsWith(".class")) {
+                    if (entry.getName().endsWith(".class") && stripSynthetics) {
                         final ClassNode node = Utilities.parseClassBytes(entryContents, entry.getName());
                         // Other asm-based class cleanup can be done here
                         if (stripSynthetics) {
