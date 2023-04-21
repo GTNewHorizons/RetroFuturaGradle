@@ -9,11 +9,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import javax.inject.Inject;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -21,6 +24,8 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.LogLevel;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.PathSensitive;
@@ -54,13 +59,27 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getAstyleConfig();
 
+    @Input
+    public abstract Property<Integer> getMinorMcVersion();
+
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract DirectoryProperty getPatchesInjectDir();
+
     @Override
     public void hashInputs(MessageDigest digest) {
         HashUtils.addPropertyToHash(digest, getPatches());
         HashUtils.addPropertyToHash(digest, getAstyleConfig());
+        HashUtils.addPropertyToHash(digest, getMinorMcVersion());
+        HashUtils.addPropertyToHash(digest, getPatchesInjectDir());
     }
 
     private File taskTempDir;
+
+    @Inject
+    public CleanupDecompiledJarTask() {
+        getMinorMcVersion().convention(7);
+    }
 
     @TaskAction
     public void doCleanup() throws IOException {
@@ -86,16 +105,32 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
         final long post3Ms = System.currentTimeMillis();
         getLogger().lifecycle("  Stage 3 took " + (post3Ms - pre3Ms) + " ms");
 
+        final int mcMinor = getMinorMcVersion().get();
+        if (mcMinor > 8) {
+            getLogger().lifecycle("Fixup stage 4 - injecting package-info");
+            final long pre4Ms = System.currentTimeMillis();
+            final File injectedPIs = injectPackageInfos();
+            final long post4Ms = System.currentTimeMillis();
+            getLogger().lifecycle("  Stage 4 took " + (post4Ms - pre4Ms) + " ms");
+        }
+
         getLogger().lifecycle("Saving the fixed-up jar");
         Utilities.saveMemoryJar(loadedResources, loadedSources, getOutputJar().get().getAsFile(), false);
     }
 
     private File loadAndApplyFfPatches(File decompiled) throws IOException {
         Utilities.loadMemoryJar(decompiled, loadedResources, loadedSources);
+        final int mcMinor = getMinorMcVersion().get();
 
         loadedSources = loadedSources.entrySet().parallelStream().map(entry -> {
             try {
-                return MutablePair.of(entry.getKey(), FFPatcher.processFile(entry.getKey(), entry.getValue(), true));
+                final String patched;
+                if (mcMinor <= 8) {
+                    patched = FFPatcher.processFile(entry.getKey(), entry.getValue(), true);
+                } else {
+                    patched = com.gtnewhorizons.retrofuturagradle.mcp.fg23.FFPatcher.processFile(entry.getValue());
+                }
+                return MutablePair.of(entry.getKey(), patched);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -151,10 +186,12 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
     private static final Pattern AFTER_RULE = Pattern
             .compile("(?m)(?:\\r\\n|\\r|\\n)((?:\\r\\n|\\r|\\n)[ \\t]+(case|default))");
 
-    private static final ThreadLocal<ASFormatter> formatters = new ThreadLocal<>();
+    private static final ThreadLocal<ASFormatter> formattersFG12 = new ThreadLocal<>();
+    private static final ThreadLocal<com.gtnewhorizons.retrofuturagradle.fg23shadow.com.github.abrarsyed.jastyle.ASFormatter> formattersFG23 = new ThreadLocal<>();
 
     private File applyMcpCleanup() throws IOException {
         final File astyleOptions = getAstyleConfig().get().getAsFile();
+        final int mcMinor = getMinorMcVersion().get();
 
         final GLConstantFixer glFixer = new GLConstantFixer();
 
@@ -162,13 +199,25 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
             try {
                 final String filePath = entry.getKey();
                 String text = entry.getValue();
-                ASFormatter formatter = formatters.get();
-
-                if (formatter == null) {
-                    formatter = new ASFormatter();
-                    OptParser parser = new OptParser(formatter);
-                    parser.parseOptionFile(astyleOptions);
-                    formatters.set(formatter);
+                ASFormatter formatterFG12 = formattersFG12.get();
+                com.gtnewhorizons.retrofuturagradle.fg23shadow.com.github.abrarsyed.jastyle.ASFormatter formatterFG23 = formattersFG23
+                        .get();
+                if (mcMinor <= 8) {
+                    if (formatterFG12 == null) {
+                        formatterFG12 = new ASFormatter();
+                        OptParser parser = new OptParser(formatterFG12);
+                        parser.parseOptionFile(astyleOptions);
+                        formattersFG12.set(formatterFG12);
+                    }
+                } else {
+                    if (formatterFG23 == null) {
+                        formatterFG23 = new com.gtnewhorizons.retrofuturagradle.fg23shadow.com.github.abrarsyed.jastyle.ASFormatter();
+                        formatterFG23.setUseProperInnerClassIndenting(false);
+                        com.gtnewhorizons.retrofuturagradle.fg23shadow.com.github.abrarsyed.jastyle.OptParser parser = new com.gtnewhorizons.retrofuturagradle.fg23shadow.com.github.abrarsyed.jastyle.OptParser(
+                                formatterFG23);
+                        parser.parseOptionFile(astyleOptions);
+                        formattersFG23.set(formatterFG23);
+                    }
                 }
 
                 text = McpCleanup.stripComments(text);
@@ -180,7 +229,11 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                 text = glFixer.fixOGL(text);
 
                 try (Reader reader = new StringReader(text); StringWriter writer = new StringWriter()) {
-                    formatter.format(reader, writer);
+                    if (mcMinor <= 8) {
+                        formatterFG12.format(reader, writer);
+                    } else {
+                        formatterFG23.format(reader, writer);
+                    }
                     text = writer.toString();
                 }
 
@@ -195,6 +248,40 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
         }).collect(Collectors.toConcurrentMap(MutablePair::getLeft, MutablePair::getRight));
 
         return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "mcpcleanup.jar"), true);
+    }
+
+    private File injectPackageInfos() throws IOException {
+        final Set<String> seenPackages = new HashSet<>();
+        for (String key : loadedSources.keySet()) {
+            if (key.startsWith("net/minecraft/")) {
+                seenPackages.add(key.substring(0, key.lastIndexOf('/')));
+            }
+        }
+
+        final File injectDir = getPatchesInjectDir().getAsFile().get();
+        final File pkgInfo = new File(injectDir, "package-info-template.java");
+        if (pkgInfo.isFile()) {
+            final String template = FileUtils.readFileToString(pkgInfo, StandardCharsets.UTF_8);
+            for (String pkg : seenPackages) {
+                final String info = template.replace("{PACKAGE}", pkg.replace('/', '.'));
+                loadedSources.put(pkg + "/package-info.java", info);
+            }
+            getLogger().lifecycle("Injected {} package-infos", seenPackages.size());
+        }
+        final File common = new File(injectDir, "common/");
+        if (common.isDirectory()) {
+            String root = common.getAbsolutePath().replace('\\', '/');
+            if (!root.endsWith("/")) root += '/';
+
+            for (File commonFile : this.getProject().fileTree(common)) {
+                String absPath = commonFile.getAbsolutePath().replace('\\', '/');
+                String relPath = absPath.substring(root.length());
+                final String contents = FileUtils.readFileToString(commonFile, StandardCharsets.UTF_8);
+                loadedSources.put(relPath, contents);
+            }
+        }
+
+        return Utilities.saveMemoryJar(loadedResources, loadedSources, new File(taskTempDir, "pkginject.jar"), true);
     }
 
     private void printPatchErrors(List<ContextualPatch.PatchReport> errors) throws IOException {

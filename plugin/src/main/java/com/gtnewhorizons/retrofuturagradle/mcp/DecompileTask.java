@@ -160,13 +160,16 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         final File tempDir = getTemporaryDir();
         final WorkQueue queue = getWorkerExecutor().processIsolation(pws -> {
             final JavaForkOptions fork = pws.getForkOptions();
-            fork.setMinHeapSize("256M");
+            fork.setMinHeapSize("3072M");
             fork.setMaxHeapSize("3072M");
             JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
             final String javaExe = jts.launcherFor(toolchain -> {
-                toolchain.getLanguageVersion().set(JavaLanguageVersion.of(17));
+                // Using Java 17 leads to different resulting decompiled files
+                toolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
                 toolchain.getVendor().set(JvmVendorSpec.AZUL);
             }).get().getExecutablePath().getAsFile().getAbsolutePath();
+            // We can't use Java 17 so at least use some tuning options that are the defaults in newer versions
+            fork.jvmArgs("-XX:+UnlockExperimentalVMOptions", "-XX:+UseG1GC", "-XX:+AggressiveOpts");
             fork.executable(javaExe);
         });
         queue.submit(Fg23DecompTask.class, args -> {
@@ -201,15 +204,15 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
                 Fg23DecompArgs settings = getParameters();
 
                 Map<String, Object> mapOptions = new HashMap<>();
+                // "-din=1", "-rbr=1", "-dgs=1", "-asc=1", "-rsy=1", "-iec=1", "-jvn=1", "-log=TRACE", "-cfg",
+                // "{libraries}", "{input}", "{output}"
                 mapOptions.put(IFernflowerPreferences.DECOMPILE_INNER, "1");
                 mapOptions.put(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES, "1");
                 mapOptions.put(IFernflowerPreferences.ASCII_STRING_CHARACTERS, "1");
                 mapOptions.put(IFernflowerPreferences.INCLUDE_ENTIRE_CLASSPATH, "1");
                 mapOptions.put(IFernflowerPreferences.REMOVE_SYNTHETIC, "1");
                 mapOptions.put(IFernflowerPreferences.REMOVE_BRIDGE, "1");
-                mapOptions.put(IFernflowerPreferences.LITERALS_AS_IS, "0");
-                mapOptions.put(IFernflowerPreferences.UNIT_TEST_MODE, "0");
-                mapOptions.put(IFernflowerPreferences.MAX_PROCESSING_METHOD, "0");
+                mapOptions.put(IFernflowerPreferences.USE_JAD_VARNAMING, "1");
                 mapOptions.put(DecompilerContext.RENAMER_FACTORY, AdvancedJadRenamer.Factory.class.getName());
 
                 // FernFlowerSettings settings = new FernFlowerSettings(tempDir, in, tempJar,

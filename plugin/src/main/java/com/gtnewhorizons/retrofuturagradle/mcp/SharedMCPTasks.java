@@ -245,6 +245,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         return project.getLayout().file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
+    public Provider<Directory> mcpDir(String path) {
+        return project.getLayout().dir(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
     public Provider<RegularFile> userdevFile(String path) {
         return project.getLayout()
                 .file(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));

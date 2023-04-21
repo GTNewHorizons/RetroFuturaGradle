@@ -208,8 +208,17 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.dependsOn(taskDecompileSrgJar, taskExtractForgeUserdev);
                     task.getInputJar().set(taskDecompileSrgJar.flatMap(IJarOutputTask::getOutputJar));
                     task.getOutputJar().set(decompiledSrgLocation);
-                    task.getPatches().set(userdevDir("conf/minecraft_ff"));
-                    task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
+                    task.getPatches().set(
+                            mcExt.getMinorMcVersion().flatMap(
+                                    mcVer -> (mcVer <= 8) ? userdevDir("conf/minecraft_ff")
+                                            : mcpDir("patches/minecraft_merged_ff/")));
+                    task.getAstyleConfig().set(
+                            mcExt.getMinorMcVersion().flatMap(
+                                    mcVer -> (mcVer <= 8) ? userdevFile("conf/astyle.cfg") : mcpFile("astyle.cfg")));
+                    task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
+                    task.getPatchesInjectDir().set(
+                            mcExt.getMinorMcVersion()
+                                    .flatMap(mcVer -> (mcVer <= 8) ? null : mcpDir("patches/inject/")));
                 });
         decompiledMcChain.addTask(taskCleanupDecompSrgJar);
 

@@ -19,6 +19,7 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,6 +62,7 @@ import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.Jar
 import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.RemapperProcessor;
 import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.provider.JarProvider;
 import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.md_5.specialsource.provider.JointProvider;
+import com.gtnewhorizons.retrofuturagradle.fg23shadow.de.oceanlabs.mcp.mcinjector.LVTNaming;
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
@@ -319,6 +321,11 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
                     }
                 }
             }
+
+            if (mcMinor > 8) {
+                removeUnknownClasses(deobfJar, struct);
+            }
+
             File tmpJsonFile = new File(taskTempDir, "transformed.json");
             json = tmpJsonFile.getCanonicalPath();
             FileUtils.write(tmpJsonFile, Utilities.GSON.toJson(struct), StandardCharsets.UTF_8);
@@ -348,7 +355,38 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
                     0,
                     json,
                     getIsApplyingMarkers().get(),
-                    true);
+                    true,
+                    LVTNaming.LVT);
+        }
+    }
+
+    // FG2.3
+    private void removeUnknownClasses(File inJar, Map<String, MCInjectorStruct> config) throws IOException {
+        try (ZipFile zip = new ZipFile(inJar)) {
+            Iterator<Map.Entry<String, MCInjectorStruct>> entries = config.entrySet().iterator();
+            while (entries.hasNext()) {
+                Map.Entry<String, MCInjectorStruct> entry = entries.next();
+                String className = entry.getKey();
+
+                // Verify the configuration contains only classes we actually have
+                if (zip.getEntry(className + ".class") == null) {
+                    entries.remove();
+                    continue;
+                }
+
+                MCInjectorStruct struct = entry.getValue();
+
+                // Verify the inner classes in the configuration actually exist in our deobfuscated JAR file
+                if (struct.innerClasses != null) {
+                    Iterator<MCInjectorStruct.InnerClass> innerClasses = struct.innerClasses.iterator();
+                    while (innerClasses.hasNext()) {
+                        MCInjectorStruct.InnerClass innerClass = innerClasses.next();
+                        if (zip.getEntry(innerClass.inner_class + ".class") == null) {
+                            innerClasses.remove();
+                        }
+                    }
+                }
+            }
         }
     }
 

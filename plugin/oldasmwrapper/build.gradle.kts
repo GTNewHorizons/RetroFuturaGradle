@@ -84,7 +84,7 @@ dependencies {
     fg23Emulation("com.github.abrarsyed.jastyle:jAstyle:1.3")
     fg23Emulation("net.md-5:SpecialSource:1.8.2")
     fg23Emulation("de.oceanlabs.mcp:mcinjector:3.4-SNAPSHOT")
-    fg23Emulation("net.minecraftforge:forgeflower:1.0.342-SNAPSHOT")
+    fg23Emulation("net.minecraftforge:forgeflower:1.0.342.8")
 }
 
 group = "com.gtnewhorizons"

@@ -157,6 +157,13 @@ tasks.shadowJar {
   val oldAsmJarTask = project(":oldasmwrapper").tasks.named<Jar>("allJar")
   dependsOn(oldAsmJarTask)
   from(zipTree(oldAsmJarTask.get().archiveFile)) // cheaper shadow of an already shaded jar
+
+  exclude("META-INF/gradle-plugins/de.*")
+  exclude("META-INF/versions/9/module-info.class")
+  exclude("META-INF/LICENSE")
+  exclude("META-INF/LICENSE*")
+  exclude("META-INF/NOTICE")
+  exclude("META-INF/NOTICE*")
 }
 
 spotless {
