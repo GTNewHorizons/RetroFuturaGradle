@@ -40,7 +40,8 @@ import com.gtnewhorizons.retrofuturagradle.fg12shadow.com.github.abrarsyed.jasty
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FFPatcher;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.FmlCleanup;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanupFg12;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanupFg23;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -220,11 +221,15 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                     }
                 }
 
-                text = McpCleanup.stripComments(text);
-
-                text = McpCleanup.fixImports(text);
-
-                text = McpCleanup.cleanup(text);
+                if (mcMinor <= 8) {
+                    text = McpCleanupFg12.stripComments(text);
+                    text = McpCleanupFg12.fixImports(text);
+                    text = McpCleanupFg12.cleanup(text);
+                } else {
+                    text = McpCleanupFg23.stripComments(text);
+                    text = McpCleanupFg23.fixImports(text);
+                    text = McpCleanupFg23.cleanup(text);
+                }
 
                 text = glFixer.fixOGL(text);
 
@@ -237,9 +242,15 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                     text = writer.toString();
                 }
 
-                text = BEFORE_RULE.matcher(text).replaceAll("$1");
-                text = AFTER_RULE.matcher(text).replaceAll("$1");
-                text = FmlCleanup.renameClass(text);
+                if (mcMinor <= 8) {
+                    text = BEFORE_RULE.matcher(text).replaceAll("$1");
+                    text = AFTER_RULE.matcher(text).replaceAll("$1");
+                    text = FmlCleanup.renameClass(text);
+                }
+
+                if (mcMinor > 8 && !text.endsWith(System.lineSeparator())) {
+                    text += System.lineSeparator();
+                }
 
                 return MutablePair.of(filePath, text);
             } catch (IOException e) {
