@@ -3,15 +3,18 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
@@ -47,7 +50,12 @@ public abstract class CreateLauncherFiles extends DefaultTask {
         }
     }
 
-    public void addResource(ProviderFactory providers, String resPath) {
-        getInputResources().put(resPath, providers.provider(() -> Utilities.readEmbeddedResourceText(resPath)));
+    public void addResources(String stripPattern, Provider<List<String>> resPathList) {
+        getInputResources().putAll(
+                resPathList.map(
+                        resPaths -> resPaths.stream().collect(
+                                Collectors.toMap(
+                                        p -> RegExUtils.removePattern(p, stripPattern),
+                                        Utilities::readEmbeddedResourceText))));
     }
 }

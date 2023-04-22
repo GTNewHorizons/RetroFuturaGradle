@@ -120,7 +120,7 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
 
     // Matches SRG-style names (func_123_g/field_1_p/p_123_1_)
     private static final Pattern SRG_FINDER = Pattern
-            .compile("(func_\\d+_[a-zA-Z_]+|field_\\d+_[a-zA-Z_]+|p_\\w+_\\d+_)([^\\w$])");
+            .compile("(func_\\d+_[a-zA-Z_]+|field_\\d+_[a-zA-Z_]+|p_\\w+_\\d+_)([^\\w$]|$)");
     private static final Pattern METHOD_DEFINITION = Pattern
             .compile("^((?: {4})+|\\t+)(?:[\\w$.\\[\\]]+ )+([0-9a-zA-Z_]+)\\(");
 

@@ -49,7 +49,6 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
@@ -335,13 +334,26 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             taskExtractForgeUserdev,
                             mcTasks.getTaskExtractNatives(mcExt.getMainLwjglVersion()));
                     task.getOutputDir().set(launcherSourcesLocation);
-                    final ProviderFactory providers = project.getProviders();
-                    task.addResource(providers, "GradleStart.java");
-                    task.addResource(providers, "GradleStartServer.java");
-                    task.addResource(providers, "net/minecraftforge/gradle/GradleStartCommon.java");
-                    task.addResource(providers, "net/minecraftforge/gradle/OldPropertyMapSerializer.java");
-                    task.addResource(providers, "net/minecraftforge/gradle/tweakers/CoremodTweaker.java");
-                    task.addResource(providers, "net/minecraftforge/gradle/tweakers/AccessTransformerTweaker.java");
+
+                    task.addResources("fg[0-9]+/", mcExt.getMinorMcVersion().map(mcMinor -> {
+                        if (mcMinor <= 8) {
+                            return Arrays.asList(
+                                    "fg12/GradleStart.java",
+                                    "fg12/GradleStartServer.java",
+                                    "fg12/net/minecraftforge/gradle/GradleStartCommon.java",
+                                    "fg12/net/minecraftforge/gradle/OldPropertyMapSerializer.java",
+                                    "fg12/net/minecraftforge/gradle/tweakers/CoremodTweaker.java",
+                                    "fg12/net/minecraftforge/gradle/tweakers/AccessTransformerTweaker.java");
+                        } else {
+                            return Arrays.asList(
+                                    "fg23/GradleStart.java",
+                                    "fg23/GradleStartServer.java",
+                                    "fg23/net/minecraftforge/gradle/GradleStartCommon.java",
+                                    "fg23/net/minecraftforge/gradle/GradleForgeHacks.java",
+                                    "fg23/net/minecraftforge/gradle/tweakers/CoremodTweaker.java",
+                                    "fg23/net/minecraftforge/gradle/tweakers/AccessTransformerTweaker.java");
+                        }
+                    }));
 
                     MapProperty<String, String> replacements = task.getReplacementTokens();
                     replacements.put("@@MCVERSION@@", mcExt.getMcVersion());
@@ -373,10 +385,31 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             "@@CSVDIR@@",
                             taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv)
                                     .map(f -> f.getAsFile().getParentFile().getPath()));
-                    replacements.put("@@CLIENTTWEAKER@@", "cpw.mods.fml.common.launcher.FMLTweaker");
-                    replacements.put("@@SERVERTWEAKER@@", "cpw.mods.fml.common.launcher.FMLServerTweaker");
-                    replacements.put("@@BOUNCERCLIENT@@", "net.minecraft.launchwrapper.Launch");
-                    replacements.put("@@BOUNCERSERVER@@", "net.minecraft.launchwrapper.Launch");
+                    replacements.putAll(mcExt.getMinorMcVersion().map(mcMinor -> {
+                        if (mcMinor <= 8) {
+                            return ImmutableMap.of(
+                                    "@@BOUNCERCLIENT@@",
+                                    "net.minecraft.launchwrapper.Launch",
+                                    "@@BOUNCERSERVER@@",
+                                    "net.minecraft.launchwrapper.Launch",
+                                    "@@CLIENTTWEAKER@@",
+                                    "cpw.mods.fml.common.launcher.FMLTweaker",
+                                    "@@SERVERTWEAKER@@",
+                                    "cpw.mods.fml.common.launcher.FMLServerTweaker");
+                        } else {
+                            return ImmutableMap.of(
+                                    "@@BOUNCERCLIENT@@",
+                                    "net.minecraft.launchwrapper.Launch",
+                                    "@@BOUNCERSERVER@@",
+                                    "net.minecraft.launchwrapper.Launch",
+                                    "@@TWEAKERCLIENT@@",
+                                    "net.minecraftforge.fml.common.launcher.FMLTweaker",
+                                    "@@TWEAKERSERVER@@",
+                                    "net.minecraftforge.fml.common.launcher.FMLServerTweaker",
+                                    "//@@EXTRALINES@@",
+                                    "net.minecraftforge.gradle.GradleForgeHacks.searchCoremods(this);");
+                        }
+                    }));
                 });
 
         launcherSources = sourceSets.create(SOURCE_SET_LAUNCHER, sourceSet -> {

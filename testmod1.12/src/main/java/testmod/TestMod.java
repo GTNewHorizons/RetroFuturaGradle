@@ -1,7 +1,7 @@
 package testmod;
 
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.event.*;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.event.*;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import org.apache.logging.log4j.LogManager;
@@ -10,19 +10,15 @@ import org.apache.logging.log4j.Logger;
 /**
  * RFG test mod class
  */
-@Mod(modid = "testmod", version = "TAG_VERSION", name = "RFG Test Mod", acceptedMinecraftVersions = "[1.7.10]")
+@Mod(modid = "testmod", version = Tags.TAG_VERSION, name = "RFG Test Mod", acceptedMinecraftVersions = "[1.12.2]")
 public class TestMod {
     private static Logger LOG = LogManager.getLogger("testmod");
-    public static String replacedVer = "TAG_VERSION";
 
     @Mod.EventHandler
     // preInit "Run before anything else. Read your config, create blocks, items,
     // etc, and register them with the GameRegistry."
     public void preInit(FMLPreInitializationEvent event) {
         LOG.info("TestMod preInit");
-        if (replacedVer.startsWith("TAG_V")) {
-            throw new RuntimeException("Wrong substitution");
-        }
     }
 
     @Mod.EventHandler
@@ -35,7 +31,7 @@ public class TestMod {
     // postInit "Handle interaction with other mods, complete your setup based on this."
     public void postInit(FMLPostInitializationEvent event) {
         LOG.info("TestMod postInit");
-        Block bed = Blocks.bed;
-        LOG.info("Bed name is {}", bed.getUnlocalizedName());
+        Block bed = Blocks.BED;
+        LOG.info("Bed name is {}", bed.getRegistryName());
     }
 }

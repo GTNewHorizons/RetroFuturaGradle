@@ -20,7 +20,7 @@ public final class Constants {
     public static final String PATH_USERDEV_FORGE_ACCESS_TRANFORMER = "src/main/resources/forge_at.cfg";
 
     // Debug toggles for local development
-    public static final boolean DEBUG_NO_TMP_CLEANUP = true;
+    public static final boolean DEBUG_NO_TMP_CLEANUP = false;
 
     public static final List<String> FG23_MERGE_CONFIG = ImmutableList.of(
             "^org/bouncycastle",

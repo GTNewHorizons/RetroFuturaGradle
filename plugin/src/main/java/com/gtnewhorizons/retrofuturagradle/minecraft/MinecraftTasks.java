@@ -20,9 +20,9 @@ import org.gradle.internal.os.OperatingSystem;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
+import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
-import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
 
 /**
@@ -231,7 +231,8 @@ public final class MinecraftTasks {
             task.configureMe(project, natives3Directory, lwjgl3Configuration, vanillaMcConfiguration);
         });
 
-        taskRunVanillaClient = project.getTasks().register("runVanillaClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunVanillaClient = project.getTasks()
+                .register("runVanillaClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunVanillaClient.configure(task -> {
             task.setup(project);
             task.setDescription("Runs the vanilla (unmodified) game client, use --debug-jvm for debugging");
@@ -246,7 +247,8 @@ public final class MinecraftTasks {
             task.classpath(lwjgl2Configuration);
             task.getMainClass().set("net.minecraft.client.main.Main");
         });
-        taskRunVanillaServer = project.getTasks().register("runVanillaServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunVanillaServer = project.getTasks()
+                .register("runVanillaServer", RunMinecraftTask.class, Distribution.DEDICATED_SERVER);
         taskRunVanillaServer.configure(task -> {
             task.setup(project);
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");

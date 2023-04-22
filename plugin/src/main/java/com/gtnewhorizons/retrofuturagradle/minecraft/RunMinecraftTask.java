@@ -33,8 +33,6 @@ import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.ProviderToStringWrapper;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
-import cpw.mods.fml.relauncher.Side;
-
 @DisableCachingByDefault(because = "Executes code for manual interaction")
 public abstract class RunMinecraftTask extends JavaExec {
 
@@ -64,12 +62,6 @@ public abstract class RunMinecraftTask extends JavaExec {
     public abstract Property<Integer> getLwjglVersion();
 
     private final Distribution side;
-
-    @Inject
-    @Deprecated
-    public RunMinecraftTask(Side side, Gradle gradle) {
-        this(side == Side.CLIENT ? Distribution.CLIENT : Distribution.DEDICATED_SERVER, gradle);
-    }
 
     @Inject
     public RunMinecraftTask(Distribution side, Gradle gradle) {

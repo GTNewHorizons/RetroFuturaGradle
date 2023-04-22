@@ -26,7 +26,6 @@ minecraft {
     // skipSlowTasks.set(true)
     mcVersion.set("1.12.2")
     injectedTags.put("TAG_VERSION", version)
-    tagReplacementFiles.add("TestMod.java")
 }
 
 tasks.injectTags.configure {
