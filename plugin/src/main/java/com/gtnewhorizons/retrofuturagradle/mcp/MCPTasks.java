@@ -407,6 +407,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                                     "@@TWEAKERSERVER@@",
                                     "net.minecraftforge.fml.common.launcher.FMLServerTweaker",
                                     "//@@EXTRALINES@@",
+                                    "net.minecraftforge.gradle.GradleForgeHacks.searchCoremods(this);",
+                                    "// @@EXTRALINES@@",
                                     "net.minecraftforge.gradle.GradleForgeHacks.searchCoremods(this);");
                         }
                     }));

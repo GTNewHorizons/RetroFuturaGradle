@@ -18,6 +18,8 @@ plugins {
   id("com.github.gmazzo.buildconfig") version "3.1.0"
 }
 
+evaluationDependsOnChildren()
+
 repositories {
   maven {
     name = "forge"
@@ -56,6 +58,12 @@ group = "com.gtnewhorizons"
 
 version = gitVersion().removeSuffix(".dirty")
 
+val runtimeOnlyNonPublishable by configurations.creating {
+  isCanBeConsumed = false
+  isCanBeResolved = false
+}
+configurations.runtimeClasspath.configure { extendsFrom(runtimeOnlyNonPublishable) }
+
 dependencies {
   shadow(localGroovy())
   shadow(gradleApi())
@@ -83,6 +91,8 @@ dependencies {
   implementation("com.github.javaparser:javaparser-symbol-solver-core:3.24.10")
   // "MCP stuff", shaded manually later
   compileOnly(project(":oldasmwrapper", "fullyShadedElements"))
+  testImplementation(project(":oldasmwrapper", "fullyShadedElements"))
+  runtimeOnlyNonPublishable(project(":oldasmwrapper", "fullyShadedElements"))
   // Startup classes
   compileOnly("com.mojang:authlib:1.5.16") { isTransitive = false }
   compileOnly("net.minecraft:launchwrapper:1.12") { isTransitive = false }
@@ -238,6 +248,19 @@ val functionalTest by
       classpath = functionalTestSourceSet.runtimeClasspath
       useJUnitPlatform()
     }
+
+listOf(configurations.runtimeClasspath, configurations.compileClasspath,
+  configurations.testRuntimeClasspath, configurations.testCompileClasspath,
+  configurations.named("functionalTestRuntimeClasspath"), configurations.named("functionalTestCompileClasspath"),
+).forEach {
+  it.configure {
+    // Make sure we resolve the jar and not the empty classes of :oldasmwrapper
+    attributes.attribute(
+      LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+      objects.named(LibraryElements::class, LibraryElements.JAR)
+    )
+  }
+}
 
 gradlePlugin.testSourceSets(functionalTestSourceSet)
 

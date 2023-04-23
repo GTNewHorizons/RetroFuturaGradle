@@ -95,6 +95,7 @@ val fg12EmuJar = tasks.register<ShadowJar>("fg12EmuJar") {
     isEnableRelocation = true
     relocationPrefix = "com.gtnewhorizons.retrofuturagradle.fg12shadow"
     configurations.add(fg12Emulation)
+    exclude("META-INF/*.SF", "META-INF/*.RSA")
 }
 
 val fg23EmuJar = tasks.register<ShadowJar>("fg23EmuJar") {
@@ -102,6 +103,7 @@ val fg23EmuJar = tasks.register<ShadowJar>("fg23EmuJar") {
     isEnableRelocation = true
     relocationPrefix = "com.gtnewhorizons.retrofuturagradle.fg23shadow"
     configurations.add(fg23Emulation)
+    exclude("META-INF/*.SF", "META-INF/*.RSA")
 }
 
 tasks.shadowJar {

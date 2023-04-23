@@ -28,6 +28,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -64,6 +65,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
     public abstract Property<Integer> getMinorMcVersion();
 
     @InputDirectory
+    @Optional
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract DirectoryProperty getPatchesInjectDir();
 
@@ -269,26 +271,28 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
             }
         }
 
-        final File injectDir = getPatchesInjectDir().getAsFile().get();
-        final File pkgInfo = new File(injectDir, "package-info-template.java");
-        if (pkgInfo.isFile()) {
-            final String template = FileUtils.readFileToString(pkgInfo, StandardCharsets.UTF_8);
-            for (String pkg : seenPackages) {
-                final String info = template.replace("{PACKAGE}", pkg.replace('/', '.'));
-                loadedSources.put(pkg + "/package-info.java", info);
+        final File injectDir = getPatchesInjectDir().getAsFile().getOrNull();
+        if (injectDir != null) {
+            final File pkgInfo = new File(injectDir, "package-info-template.java");
+            if (pkgInfo.isFile()) {
+                final String template = FileUtils.readFileToString(pkgInfo, StandardCharsets.UTF_8);
+                for (String pkg : seenPackages) {
+                    final String info = template.replace("{PACKAGE}", pkg.replace('/', '.'));
+                    loadedSources.put(pkg + "/package-info.java", info);
+                }
+                getLogger().lifecycle("Injected {} package-infos", seenPackages.size());
             }
-            getLogger().lifecycle("Injected {} package-infos", seenPackages.size());
-        }
-        final File common = new File(injectDir, "common/");
-        if (common.isDirectory()) {
-            String root = common.getAbsolutePath().replace('\\', '/');
-            if (!root.endsWith("/")) root += '/';
+            final File common = new File(injectDir, "common/");
+            if (common.isDirectory()) {
+                String root = common.getAbsolutePath().replace('\\', '/');
+                if (!root.endsWith("/")) root += '/';
 
-            for (File commonFile : this.getProject().fileTree(common)) {
-                String absPath = commonFile.getAbsolutePath().replace('\\', '/');
-                String relPath = absPath.substring(root.length());
-                final String contents = FileUtils.readFileToString(commonFile, StandardCharsets.UTF_8);
-                loadedSources.put(relPath, contents);
+                for (File commonFile : this.getProject().fileTree(common)) {
+                    String absPath = commonFile.getAbsolutePath().replace('\\', '/');
+                    String relPath = absPath.substring(root.length());
+                    final String contents = FileUtils.readFileToString(commonFile, StandardCharsets.UTF_8);
+                    loadedSources.put(relPath, contents);
+                }
             }
         }
 
