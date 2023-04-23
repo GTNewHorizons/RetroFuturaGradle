@@ -114,6 +114,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 File root = mcpExtractRoot.get().getAsFile();
                 return !(root.isDirectory() && new File(root, "methods.csv").isFile());
             });
+            task.getOutputs().upToDateWhen(t -> {
+                File root = mcpExtractRoot.get().getAsFile();
+                return root.isDirectory() && new File(root, "methods.csv").isFile();
+            });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);
             task.from(
@@ -136,6 +140,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             task.onlyIf(t -> {
                 final File root = userdevExtractRoot.get().getAsFile();
                 return !(root.isDirectory() && new File(root, "dev.json").isFile());
+            });
+            task.getOutputs().upToDateWhen(t -> {
+                final File root = userdevExtractRoot.get().getAsFile();
+                return root.isDirectory() && new File(root, "dev.json").isFile();
             });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
