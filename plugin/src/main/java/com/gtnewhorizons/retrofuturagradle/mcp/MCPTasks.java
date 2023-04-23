@@ -196,7 +196,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getInputJar().set(taskDeobfuscateMergedJarToSrg.flatMap(IJarOutputTask::getOutputJar));
             task.getOutputJar().set(rawDecompiledSrgLocation);
             task.getCacheDir().set(Utilities.getCacheDir(project, "fernflower-cache"));
-            task.getFernflower().set(fernflowerLocation);
+            task.getFernflower().set(
+                    project.getLayout()
+                            .file(mcExt.getMinorMcVersion().map(mcVer -> (mcVer <= 8) ? fernflowerLocation : null)));
             task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
             task.getClasspath().from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
         });

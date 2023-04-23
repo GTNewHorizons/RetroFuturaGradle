@@ -24,6 +24,7 @@ import org.gradle.api.tasks.CompileClasspath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -57,6 +58,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
     public abstract DirectoryProperty getCacheDir();
 
     @InputFile
+    @Optional
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getFernflower();
 
