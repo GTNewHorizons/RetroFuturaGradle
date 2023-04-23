@@ -53,6 +53,12 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
     @Input
     public abstract Property<Integer> getMaxFuzziness();
 
+    /**
+     * Number of path components (between slashes) to strip in patch file paths
+     */
+    @Input
+    public abstract Property<Integer> getPathComponentsToStrip();
+
     @Inject
     public abstract FileOperations getFileOperations();
 
@@ -72,6 +78,7 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
     @Inject
     public PatchSourcesTask() {
         getMaxFuzziness().convention(0);
+        getPathComponentsToStrip().convention(3);
     }
 
     @TaskAction
@@ -110,7 +117,7 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
     private void patchFiles() throws IOException, PatchException {
         final Utilities.InMemoryJarContextProvider contextProvider = new Utilities.InMemoryJarContextProvider(
                 loadedSources,
-                3);
+                getPathComponentsToStrip().get());
         final File logFile = new File(getTemporaryDir(), "patching.log");
         Throwable failure = null;
         int patchCount = 0;
@@ -146,7 +153,7 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
                                     logStream.printf(" - Hunk %d fuzzed %d%n", hunk.getHunkID(), hunk.getFuzz());
                                 } else if (!hunk.getStatus().isSuccess() && getLogger().isErrorEnabled()) {
                                     logStream.printf(
-                                            " - Hunk %d failed (%d+%d -> %d+%d): %n %s%n",
+                                            " - Hunk %d failed (%d+%d -> %d+%d): %n%s%n",
                                             hunk.getHunkID(),
                                             hunk.hunk.baseStart,
                                             hunk.hunk.baseCount,

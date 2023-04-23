@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.minecraftforge.srg2source.rangeapplier.MethodData;
-import net.minecraftforge.srg2source.rangeapplier.SrgContainer;
-
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -26,6 +23,8 @@ import org.gradle.api.tasks.TaskAction;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.minecraftforge.srg2source.rangeapplier.MethodData;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.minecraftforge.srg2source.rangeapplier.SrgContainer;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.opencsv.CSVReader;
 

@@ -20,9 +20,9 @@ import org.gradle.internal.os.OperatingSystem;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
+import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
-import cpw.mods.fml.relauncher.Side;
 import de.undercouch.gradle.tasks.download.Download;
 
 /**
@@ -231,7 +231,8 @@ public final class MinecraftTasks {
             task.configureMe(project, natives3Directory, lwjgl3Configuration, vanillaMcConfiguration);
         });
 
-        taskRunVanillaClient = project.getTasks().register("runVanillaClient", RunMinecraftTask.class, Side.CLIENT);
+        taskRunVanillaClient = project.getTasks()
+                .register("runVanillaClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunVanillaClient.configure(task -> {
             task.setup(project);
             task.setDescription("Runs the vanilla (unmodified) game client, use --debug-jvm for debugging");
@@ -246,7 +247,8 @@ public final class MinecraftTasks {
             task.classpath(lwjgl2Configuration);
             task.getMainClass().set("net.minecraft.client.main.Main");
         });
-        taskRunVanillaServer = project.getTasks().register("runVanillaServer", RunMinecraftTask.class, Side.SERVER);
+        taskRunVanillaServer = project.getTasks()
+                .register("runVanillaServer", RunMinecraftTask.class, Distribution.DEDICATED_SERVER);
         taskRunVanillaServer.configure(task -> {
             task.setup(project);
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
@@ -267,21 +269,24 @@ public final class MinecraftTasks {
             mvn.setName("mojang");
             mvn.setUrl(Constants.URL_MOJANG_LIBRARIES_MAVEN);
             mvn.mavenContent(content -> {
+                content.includeGroup("ca.weblite");
                 content.includeGroup("com.ibm.icu");
                 content.includeGroup("com.mojang");
                 content.includeGroup("com.paulscode");
-                content.includeGroup("org.lwjgl.lwjgl");
-                content.includeGroup("tv.twitch");
+                content.includeGroup("java3d");
                 content.includeGroup("net.minecraft");
+                content.includeGroup("org.lwjgl.lwjgl");
+                content.includeGroup("oshi-project");
+                content.includeGroup("tv.twitch");
             });
         });
         repos.maven(mvn -> {
             mvn.setName("forge");
             mvn.setUrl(Constants.URL_FORGE_MAVEN);
             mvn.mavenContent(content -> {
-                content.includeGroup("net.minecraftforge");
-                content.includeGroup("de.oceanlabs.mcp");
                 content.includeGroup("cpw.mods");
+                content.includeGroup("de.oceanlabs.mcp");
+                content.includeGroup("net.minecraftforge");
                 content.includeGroup("org.scala-lang");
             });
             // Allow pom-less artifacts (e.g. MCP data zips)
@@ -333,6 +338,9 @@ public final class MinecraftTasks {
         }
 
         project.afterEvaluate(_p -> {
+            // At afterEvaluate minecraft version should be already set and stable
+            final String minecraftVersion = mcExt.getMcVersion().get();
+            final int mcMinor = mcExt.getMinorMcVersion().get();
             if (mcExt.getApplyMcDependencies().get()) {
                 String lwjgl2Version = mcExt.getLwjgl2Version().get();
                 final String lwjgl3Version = mcExt.getLwjgl3Version().get();
@@ -347,16 +355,7 @@ public final class MinecraftTasks {
 
                 final String VANILLA_MC_CFG = vanillaMcConfiguration.getName();
                 final DependencyHandler deps = project.getDependencies();
-                deps.add(VANILLA_MC_CFG, "com.mojang:netty:1.8.8");
-                deps.add(VANILLA_MC_CFG, "com.mojang:realms:1.3.5");
-                deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-compress:1.8.1");
-                deps.add(VANILLA_MC_CFG, "org.apache.httpcomponents:httpclient:4.3.3");
-                deps.add(VANILLA_MC_CFG, "commons-logging:commons-logging:1.1.3");
-                deps.add(VANILLA_MC_CFG, "org.apache.httpcomponents:httpcore:4.3.2");
-                deps.add(VANILLA_MC_CFG, "java3d:vecmath:1.3.1");
-                deps.add(VANILLA_MC_CFG, "net.sf.trove4j:trove4j:3.0.3");
-                deps.add(VANILLA_MC_CFG, "com.ibm.icu:icu4j-core-mojang:51.2");
-                deps.add(VANILLA_MC_CFG, "net.sf.jopt-simple:jopt-simple:4.5");
+
                 // paulscode libraries depend on lwjgl only
                 ((ExternalModuleDependency) deps.add(VANILLA_MC_CFG, "com.paulscode:codecjorbis:20101023"))
                         .setTransitive(false);
@@ -368,17 +367,64 @@ public final class MinecraftTasks {
                         .setTransitive(false);
                 ((ExternalModuleDependency) deps.add(VANILLA_MC_CFG, "com.paulscode:soundsystem:20120107"))
                         .setTransitive(false);
-                deps.add(VANILLA_MC_CFG, "io.netty:netty-all:4.0.10.Final");
-                deps.add(VANILLA_MC_CFG, "com.google.guava:guava:17.0");
-                deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-lang3:3.1");
-                deps.add(VANILLA_MC_CFG, "commons-io:commons-io:2.4");
-                deps.add(VANILLA_MC_CFG, "commons-codec:commons-codec:1.9");
-                deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput:2.0.5");
-                deps.add(VANILLA_MC_CFG, "net.java.jutils:jutils:1.0.0");
-                deps.add(VANILLA_MC_CFG, "com.google.code.gson:gson:2.2.4");
-                deps.add(VANILLA_MC_CFG, "com.mojang:authlib:1.5.21");
-                deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-api:2.0-beta9");
-                deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-core:2.0-beta9");
+
+                switch (minecraftVersion) {
+                    case "1.7.10" -> {
+                        deps.add(VANILLA_MC_CFG, "com.mojang:netty:1.8.8");
+                        deps.add(VANILLA_MC_CFG, "com.mojang:realms:1.3.5");
+                        deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-compress:1.8.1");
+                        deps.add(VANILLA_MC_CFG, "org.apache.httpcomponents:httpclient:4.3.3");
+                        deps.add(VANILLA_MC_CFG, "commons-logging:commons-logging:1.1.3");
+                        deps.add(VANILLA_MC_CFG, "org.apache.httpcomponents:httpcore:4.3.2");
+                        deps.add(VANILLA_MC_CFG, "java3d:vecmath:1.3.1");
+                        deps.add(VANILLA_MC_CFG, "net.sf.trove4j:trove4j:3.0.3");
+                        deps.add(VANILLA_MC_CFG, "com.ibm.icu:icu4j-core-mojang:51.2");
+                        deps.add(VANILLA_MC_CFG, "net.sf.jopt-simple:jopt-simple:4.5");
+                        deps.add(VANILLA_MC_CFG, "io.netty:netty-all:4.0.10.Final");
+                        deps.add(VANILLA_MC_CFG, "com.google.guava:guava:17.0");
+                        deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-lang3:3.1");
+                        deps.add(VANILLA_MC_CFG, "commons-io:commons-io:2.4");
+                        deps.add(VANILLA_MC_CFG, "commons-codec:commons-codec:1.9");
+                        deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput:2.0.5");
+                        deps.add(VANILLA_MC_CFG, "net.java.jutils:jutils:1.0.0");
+                        deps.add(VANILLA_MC_CFG, "com.google.code.gson:gson:2.2.4");
+                        deps.add(VANILLA_MC_CFG, "com.mojang:authlib:1.5.21");
+                        deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-api:2.0-beta9");
+                        deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-core:2.0-beta9");
+                    }
+                    case "1.12.2" -> {
+                        deps.add(VANILLA_MC_CFG, "com.mojang:patchy:1.3.9");
+                        deps.add(VANILLA_MC_CFG, "oshi-project:oshi-core:1.1");
+                        deps.add(VANILLA_MC_CFG, "net.java.dev.jna:jna:4.4.0");
+                        deps.add(VANILLA_MC_CFG, "net.java.dev.jna:platform:3.4.0");
+                        deps.add(VANILLA_MC_CFG, "com.ibm.icu:icu4j-core-mojang:51.2");
+                        deps.add(VANILLA_MC_CFG, "net.sf.jopt-simple:jopt-simple:5.0.3");
+                        deps.add(VANILLA_MC_CFG, "io.netty:netty-all:4.1.9.Final");
+                        deps.add(VANILLA_MC_CFG, "com.google.guava:guava:21.0");
+                        deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-lang3:3.5");
+                        deps.add(VANILLA_MC_CFG, "commons-io:commons-io:2.5");
+                        deps.add(VANILLA_MC_CFG, "commons-codec:commons-codec:1.10");
+                        deps.add(VANILLA_MC_CFG, "com.google.code.gson:gson:2.8.0");
+                        deps.add(VANILLA_MC_CFG, "com.mojang:authlib:1.5.25");
+                        deps.add(VANILLA_MC_CFG, "com.mojang:realms:1.10.22");
+                        deps.add(VANILLA_MC_CFG, "org.apache.commons:commons-compress:1.8.1");
+                        deps.add(VANILLA_MC_CFG, "org.apache.httpcomponents:httpclient:4.3.3");
+                        deps.add(VANILLA_MC_CFG, "commons-logging:commons-logging:1.1.3");
+                        deps.add(VANILLA_MC_CFG, "org.apache.httpcomponents:httpcore:4.3.2");
+                        deps.add(VANILLA_MC_CFG, "it.unimi.dsi:fastutil:7.1.0");
+                        deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-api:2.17.1");
+                        deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-core:2.17.1");
+                        deps.add(VANILLA_MC_CFG, "com.mojang:text2speech:1.10.3");
+                        if (os.isWindows()) {
+                            deps.add(VANILLA_MC_CFG, "com.mojang:text2speech:1.10.3:natives-windows");
+                        } else if (os.isLinux()) {
+                            deps.add(VANILLA_MC_CFG, "com.mojang:text2speech:1.10.3:natives-linux");
+                        } else if (os.isMacOsX()) {
+                            deps.add(VANILLA_MC_CFG, "ca.weblite:java-objc-bridge:1.0.0");
+                        }
+                    }
+                }
+
                 final String LWJGL2_CFG = lwjgl2Configuration.getName();
                 deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl:" + lwjgl2Version);
                 deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl_util:" + lwjgl2Version);
@@ -402,10 +448,12 @@ public final class MinecraftTasks {
                 deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjgl3Version + ":" + lwjgl3Natives);
 
                 deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput-platform:2.0.5:" + lwjgl2Natives);
-                deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");
-                if (os.isWindows()) {
-                    deps.add(VANILLA_MC_CFG, "tv.twitch:twitch-platform:5.16:natives-windows-64");
-                    deps.add(VANILLA_MC_CFG, "tv.twitch:twitch-external-platform:4.5:natives-windows-64");
+                if (mcMinor <= 8) {
+                    deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");
+                    if (os.isWindows()) {
+                        deps.add(VANILLA_MC_CFG, "tv.twitch:twitch-platform:5.16:natives-windows-64");
+                        deps.add(VANILLA_MC_CFG, "tv.twitch:twitch-external-platform:4.5:natives-windows-64");
+                    }
                 }
             }
         });

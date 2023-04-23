@@ -4,14 +4,14 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.gtnewhorizons.specialsource174.AccessMap;
+import com.gtnewhorizons.retrofuturagradle.fg23shadow.net.md_5.specialsource.AccessMap;
 
-public class RenamedAccessMap extends AccessMap {
+public class RenamedAccessMapFG23 extends AccessMap {
 
     private final Map<String, String> symbolRenameMap;
     private int renameCount = 0;
 
-    public RenamedAccessMap(Map<String, String> symbolRenameMap) {
+    public RenamedAccessMapFG23(Map<String, String> symbolRenameMap) {
         this.symbolRenameMap = symbolRenameMap;
     }
 

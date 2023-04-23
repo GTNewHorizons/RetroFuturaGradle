@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -30,10 +32,12 @@ import org.apache.commons.io.LineIterator;
 import org.apache.commons.lang3.tuple.Pair;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -45,19 +49,22 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 
 @CacheableTask
 public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutputTask {
 
     @InputFile
+    @Optional
     @PathSensitive(PathSensitivity.NONE)
     public abstract RegularFileProperty getMergeConfigFile();
+
+    @Input
+    @Optional
+    public abstract ListProperty<String> getMergeConfig();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -70,9 +77,14 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
     @Input
     public abstract Property<String> getMcVersion();
 
+    private Class<? extends Enum<?>> sideClass;
+    private Class<? extends Annotation> sideOnlyClass;
+    private Enum<?> sideClient, sideServer;
+
     @Override
     public void hashInputs(MessageDigest digest) {
         HashUtils.addPropertyToHash(digest, getMergeConfigFile());
+        HashUtils.addPropertyToHash(digest, getMergeConfig());
         HashUtils.addPropertyToHash(digest, getClientJar());
         HashUtils.addPropertyToHash(digest, getServerJar());
         HashUtils.addPropertyToHash(digest, getMcVersion());
@@ -80,7 +92,19 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
 
     @TaskAction
     void mergeJars() throws IOException {
-        final MergeConfig config = new MergeConfig(getMergeConfigFile().get().getAsFile());
+        if (getMcVersion().get().startsWith("1.7.")) {
+            sideClass = cpw.mods.fml.relauncher.Side.class;
+            sideOnlyClass = cpw.mods.fml.relauncher.SideOnly.class;
+        } else {
+            sideClass = net.minecraftforge.fml.relauncher.Side.class;
+            sideOnlyClass = net.minecraftforge.fml.relauncher.SideOnly.class;
+        }
+        sideClient = sideClass.getEnumConstants()[0];
+        sideServer = sideClass.getEnumConstants()[1];
+
+        final MergeConfig config = new MergeConfig(
+                getMergeConfigFile().getAsFile().getOrNull(),
+                getMergeConfig().getOrElse(Collections.emptyList()));
         try (final ZipFile clientJar = new ZipFile(getClientJar().get().getAsFile());
                 final ZipFile serverJar = new ZipFile(getServerJar().get().getAsFile());
                 final FileOutputStream outFOS = new FileOutputStream(getOutputJar().get().getAsFile());
@@ -140,7 +164,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
                 copySidedClass(config, serverJar, entry.getValue(), outJar, false);
             }
             // Add the Side&SideOnly classes to the jar
-            for (Class<?> klass : ImmutableList.of(Side.class, SideOnly.class)) {
+            for (Class<?> klass : ImmutableList.of(sideClass, sideOnlyClass)) {
                 final String entityName = klass.getName().replace('.', '/');
                 final String zipPath = entityName + ".class";
                 if (!processedClasses.contains(entityName)) {
@@ -154,38 +178,46 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
 
     private static class MergeConfig {
 
-        public MergeConfig(File f) throws IOException {
+        public MergeConfig(File f, List<String> entries) throws IOException {
             final HashSet<String> copyToServer = new HashSet<>();
             final HashSet<String> copyToClient = new HashSet<>();
             final HashSet<String> dontAnnotate = new HashSet<>();
             final HashSet<String> dontProcess = new HashSet<>();
-            try (final FileInputStream fis = new FileInputStream(f);
-                    final BufferedInputStream bis = new BufferedInputStream(fis);
-                    final LineIterator lines = IOUtils.lineIterator(bis, StandardCharsets.UTF_8)) {
-                while (lines.hasNext()) {
-                    final String line = lines.nextLine().split("#", 2)[0].trim();
-                    if (line.isEmpty()) {
-                        continue;
-                    }
-                    final char cmd = line.charAt(0);
-                    final String instruction = line.substring(1);
-                    switch (cmd) {
-                        case '!':
-                            dontAnnotate.add(instruction);
-                            break;
-                        case '<':
-                            copyToClient.add(instruction);
-                            break;
-                        case '>':
-                            copyToServer.add(instruction);
-                            break;
-                        case '^':
-                            dontProcess.add(instruction);
-                            break;
-                        default:
-                            throw new RuntimeException("Invalid mergeconfig instruction: " + instruction);
+            final Consumer<String> processLine = line -> {
+                if (line.isEmpty()) {
+                    return;
+                }
+                final char cmd = line.charAt(0);
+                final String instruction = line.substring(1);
+                switch (cmd) {
+                    case '!':
+                        dontAnnotate.add(instruction);
+                        break;
+                    case '<':
+                        copyToClient.add(instruction);
+                        break;
+                    case '>':
+                        copyToServer.add(instruction);
+                        break;
+                    case '^':
+                        dontProcess.add(instruction);
+                        break;
+                    default:
+                        throw new RuntimeException("Invalid mergeconfig instruction: " + instruction);
+                }
+            };
+            if (f != null) {
+                try (final FileInputStream fis = new FileInputStream(f);
+                        final BufferedInputStream bis = new BufferedInputStream(fis);
+                        final LineIterator lines = IOUtils.lineIterator(bis, StandardCharsets.UTF_8)) {
+                    while (lines.hasNext()) {
+                        final String line = lines.nextLine().split("#", 2)[0].trim();
+                        processLine.accept(line);
                     }
                 }
+            }
+            if (entries != null) {
+                entries.forEach(processLine);
             }
             this.copyToServer = Collections.unmodifiableSet(copyToServer);
             this.copyToClient = Collections.unmodifiableSet(copyToClient);
@@ -233,10 +265,10 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
         {
             for (int cPos = 0, sPos = 0; cPos < clientClass.fields.size(); cPos++, sPos++) {
                 final FieldNode cNode = clientClass.fields.get(cPos);
-                final FieldOrMethod cFom = new FieldOrMethod(Side.CLIENT, cNode);
+                final FieldOrMethod cFom = new FieldOrMethod(Distribution.CLIENT, cNode);
                 if (sPos < serverClass.fields.size()) {
                     final FieldNode sNode = serverClass.fields.get(sPos);
-                    final FieldOrMethod sFom = new FieldOrMethod(Side.SERVER, sNode);
+                    final FieldOrMethod sFom = new FieldOrMethod(Distribution.DEDICATED_SERVER, sNode);
                     entryKeys.add(sFom.getKey());
                     sidedEntries.put(sFom.getKey(), sFom);
                     if (!cNode.name.equals(sNode.name)) {
@@ -270,7 +302,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
                     final MethodNode sNode = serverClass.methods.get(sPos);
                     serverName = sNode.name;
                     if (serverName.equals(lastName) || cPos == cLen) {
-                        final FieldOrMethod fom = new FieldOrMethod(Side.SERVER, sNode);
+                        final FieldOrMethod fom = new FieldOrMethod(Distribution.DEDICATED_SERVER, sNode);
                         entryKeys.add(fom.getKey());
                         sidedEntries.put(fom.getKey(), fom);
                     } else {
@@ -282,7 +314,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
                     lastName = clientName;
                     clientName = cNode.name;
                     if (clientName.equals(lastName) || sPos == sLen) {
-                        final FieldOrMethod fom = new FieldOrMethod(Side.CLIENT, cNode);
+                        final FieldOrMethod fom = new FieldOrMethod(Distribution.CLIENT, cNode);
                         entryKeys.add(fom.getKey());
                         sidedEntries.put(fom.getKey(), fom);
                     } else {
@@ -309,28 +341,27 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
         return Utilities.emitClassBytes(clientClass, ClassWriter.COMPUTE_MAXS);
     }
 
-    private static AnnotationNode makeSideAnnotation(boolean isClientOnly) {
-        AnnotationNode an = new AnnotationNode(Type.getDescriptor(SideOnly.class));
+    private AnnotationNode makeSideAnnotation(boolean isClientOnly) {
+        AnnotationNode an = new AnnotationNode(Type.getDescriptor(sideOnlyClass));
         an.values = new ArrayList<>(2);
         an.values.add("value");
-        Side side = isClientOnly ? Side.CLIENT : Side.SERVER;
-        an.values.add(new String[] { Type.getDescriptor(side.getClass()), side.toString() });
+        an.values.add(new String[] { Type.getDescriptor(sideClass), isClientOnly ? "CLIENT" : "SERVER" });
         return an;
     }
 
-    private static class FieldOrMethod {
+    private class FieldOrMethod {
 
-        public final Side side;
+        public final Distribution side;
         private final FieldNode field;
         private final MethodNode method;
 
-        public FieldOrMethod(Side side, FieldNode field) {
+        public FieldOrMethod(Distribution side, FieldNode field) {
             this.side = side;
             this.field = field;
             this.method = null;
         }
 
-        public FieldOrMethod(Side side, MethodNode method) {
+        public FieldOrMethod(Distribution side, MethodNode method) {
             this.side = side;
             this.field = null;
             this.method = method;
@@ -372,7 +403,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
                 }
                 annotations = this.method.visibleAnnotations;
             }
-            annotations.add(makeSideAnnotation(side == Side.CLIENT));
+            annotations.add(makeSideAnnotation(side == Distribution.CLIENT));
         }
     }
 }

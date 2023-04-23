@@ -16,7 +16,7 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskAction;
 
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
-import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanup;
+import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanupFg12;
 
 public class ApplyDecompCleanupTask extends DefaultTask {
 
@@ -37,7 +37,7 @@ public class ApplyDecompCleanupTask extends DefaultTask {
                         FileUtils.iterateFiles(dir, new String[] { "java" }, true))) {
                     if (javaFile.isFile()) {
                         final String source = FileUtils.readFileToString(javaFile, StandardCharsets.UTF_8);
-                        String patched = McpCleanup.cleanup(source, false);
+                        String patched = McpCleanupFg12.cleanup(source, false);
                         patched = glFixer.fixOGL(patched);
                         if (!patched.equals(source)) {
                             getLogger().info("Patched {}", javaFile);

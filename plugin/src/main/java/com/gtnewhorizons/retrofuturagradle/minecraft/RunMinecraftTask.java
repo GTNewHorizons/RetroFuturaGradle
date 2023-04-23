@@ -29,10 +29,9 @@ import org.gradle.work.DisableCachingByDefault;
 
 import com.google.common.base.Strings;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
+import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.ProviderToStringWrapper;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-
-import cpw.mods.fml.relauncher.Side;
 
 @DisableCachingByDefault(because = "Executes code for manual interaction")
 public abstract class RunMinecraftTask extends JavaExec {
@@ -62,15 +61,16 @@ public abstract class RunMinecraftTask extends JavaExec {
     @Input
     public abstract Property<Integer> getLwjglVersion();
 
-    private final Side side;
+    private final Distribution side;
 
     @Inject
-    public RunMinecraftTask(Side side, Gradle gradle) {
+    public RunMinecraftTask(Distribution side, Gradle gradle) {
         this.side = side;
         getUsername().convention("Developer");
         getUserUUID().convention(getUsername().map(name -> Utilities.resolveUUID(name, gradle).toString()));
         getAccessToken().convention("0");
-        getExtraArgs().convention((side == Side.SERVER) ? Collections.singletonList("nogui") : Collections.emptyList());
+        getExtraArgs().convention(
+                (side == Distribution.DEDICATED_SERVER) ? Collections.singletonList("nogui") : Collections.emptyList());
         getExtraJvmArgs().convention(Collections.emptyList());
         getLwjglVersion().convention(2);
 
@@ -92,7 +92,7 @@ public abstract class RunMinecraftTask extends JavaExec {
 
         systemProperty("fml.ignoreInvalidMinecraftCertificates", true);
         getJavaLauncher().convention(mcExt.getToolchainLauncher());
-        if (side == Side.CLIENT) {
+        if (side == Distribution.CLIENT) {
             dependsOn(mcTasks.getTaskExtractNatives(getLwjglVersion()));
 
             final String JAVA_LIB_PATH = "java.library.path";
@@ -123,16 +123,21 @@ public abstract class RunMinecraftTask extends JavaExec {
 
     public List<String> calculateArgs(Project project) {
         ArrayList<String> args = new ArrayList<>();
-        if (side == Side.CLIENT) {
+        if (side == Distribution.CLIENT) {
             MinecraftExtension mcExt = Objects
                     .requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
             MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
+            final String mcVer = mcExt.getMcVersion().get();
+            final String argVer = switch (mcVer) {
+                case "1.12.2" -> "FML_DEV";
+                default -> mcVer;
+            };
             args.addAll(
                     Arrays.asList(
                             "--username",
                             getUsername().get(),
                             "--version",
-                            mcExt.getMcVersion().get(),
+                            argVer,
                             "--gameDir",
                             getWorkingDir().getAbsolutePath(),
                             "--assetsDir",
@@ -168,7 +173,7 @@ public abstract class RunMinecraftTask extends JavaExec {
             FileUtils.forceMkdir(getWorkingDir());
             args(calculateArgs(project));
             jvmArgs(calculateJvmArgs(project));
-            if (side == Side.SERVER) {
+            if (side == Distribution.DEDICATED_SERVER) {
                 final File eula = new File(getWorkingDir(), "eula.txt");
                 if (!eula.exists()) {
                     getLogger().warn(

@@ -40,9 +40,9 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.retrofuturagradle.fg12shadow.com.nothome.delta.GDiffPatcher;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
-import com.nothome.delta.GDiffPatcher;
 
 import lzma.sdk.lzma.Decoder;
 import lzma.streams.LzmaInputStream;

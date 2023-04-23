@@ -18,6 +18,8 @@ plugins {
   id("com.github.gmazzo.buildconfig") version "3.1.0"
 }
 
+evaluationDependsOnChildren()
+
 repositories {
   maven {
     name = "forge"
@@ -56,6 +58,12 @@ group = "com.gtnewhorizons"
 
 version = gitVersion().removeSuffix(".dirty")
 
+val runtimeOnlyNonPublishable by configurations.creating {
+  isCanBeConsumed = false
+  isCanBeResolved = false
+}
+configurations.runtimeClasspath.configure { extendsFrom(runtimeOnlyNonPublishable) }
+
 dependencies {
   shadow(localGroovy())
   shadow(gradleApi())
@@ -81,8 +89,10 @@ dependencies {
   // Java source manipulation
   implementation("com.github.javaparser:javaparser-core:3.24.10")
   implementation("com.github.javaparser:javaparser-symbol-solver-core:3.24.10")
-  // "MCP stuff"
-  implementation(project(":oldasmwrapper", "shadow"))
+  // "MCP stuff", shaded manually later
+  compileOnly(project(":oldasmwrapper", "fullyShadedElements"))
+  testImplementation(project(":oldasmwrapper", "fullyShadedElements"))
+  runtimeOnlyNonPublishable(project(":oldasmwrapper", "fullyShadedElements"))
   // Startup classes
   compileOnly("com.mojang:authlib:1.5.16") { isTransitive = false }
   compileOnly("net.minecraft:launchwrapper:1.12") { isTransitive = false }
@@ -90,7 +100,7 @@ dependencies {
   implementation(
       group = "de.undercouch.download",
       name = "de.undercouch.download.gradle.plugin",
-      version = "5.3.1")
+      version = "5.4.0")
   // JSON handling for Minecraft manifests etc.
   implementation("com.google.code.gson:gson:2.10")
   // Forge utilities (to be merged into the source tree in the future)
@@ -152,7 +162,19 @@ tasks.withType<Javadoc>().configureEach {
   })
 }
 
-tasks.jar { from("LICENSE", "docs") }
+tasks.shadowJar {
+  from("LICENSE", "docs")
+  val oldAsmJarTask = project(":oldasmwrapper").tasks.named<Jar>("allJar")
+  dependsOn(oldAsmJarTask)
+  from(zipTree(oldAsmJarTask.get().archiveFile)) // cheaper shadow of an already shaded jar
+
+  exclude("META-INF/gradle-plugins/de.*")
+  exclude("META-INF/versions/9/module-info.class")
+  exclude("META-INF/LICENSE")
+  exclude("META-INF/LICENSE*")
+  exclude("META-INF/NOTICE")
+  exclude("META-INF/NOTICE*")
+}
 
 spotless {
   encoding("UTF-8")
@@ -226,6 +248,19 @@ val functionalTest by
       classpath = functionalTestSourceSet.runtimeClasspath
       useJUnitPlatform()
     }
+
+listOf(configurations.runtimeClasspath, configurations.compileClasspath,
+  configurations.testRuntimeClasspath, configurations.testCompileClasspath,
+  configurations.named("functionalTestRuntimeClasspath"), configurations.named("functionalTestCompileClasspath"),
+).forEach {
+  it.configure {
+    // Make sure we resolve the jar and not the empty classes of :oldasmwrapper
+    attributes.attribute(
+      LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+      objects.named(LibraryElements::class, LibraryElements.JAR)
+    )
+  }
+}
 
 gradlePlugin.testSourceSets(functionalTestSourceSet)
 

@@ -1,95 +1,97 @@
+/*
+ * A Gradle plugin for the creation of Minecraft mods and MinecraftForge plugins. Copyright (C) 2013-2019 Minecraft
+ * Forge Copyright (C) 2020-2023 anatawa12 and other contributors This library is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation; either version 2.1 of the License, or (at your option) any later version. This library is distributed in
+ * the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details. You should have
+ * received a copy of the GNU Lesser General Public License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
 package com.gtnewhorizons.retrofuturagradle.fgpatchers;
 
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class McpCleanup {
+public class McpCleanupFg23 {
 
     public static final Pattern COMMENTS_TRAILING = Pattern.compile("(?m)[ \\t]+$");
     public static final Pattern COMMENTS_NEWLINES = Pattern.compile("(?m)^(?:\\r\\n|\\r|\\n){2,}");
 
+    enum CommentState {
+        CODE,
+        STRING,
+        CHARACTER,
+        SINGLE_LINE_COMMENT,
+        MULTI_LINE_COMMENT,
+    }
+
     public static String stripComments(String text) {
-        StringReader in = new StringReader(text);
-        StringWriter out = new StringWriter(text.length());
-        boolean inComment = false;
-        boolean inString = false;
-        char c;
-        int ci;
-        try {
-            while ((ci = in.read()) != -1) {
-                c = (char) ci;
-                switch (c) {
-                    case '\\': {
-                        out.write(c);
-                        out.write(in.read()); // Skip escaped chars
-                        break;
-                    }
-                    case '\"': {
-                        if (!inComment) {
-                            out.write(c);
-                            inString = !inString;
+        CommentState state = CommentState.CODE;
+        int i = 0;
+        try (StringWriter out = new StringWriter(text.length())) {
+            while (i < text.length()) {
+                if (state == CommentState.CODE) {
+                    out.write(text.charAt(i++));
+                } else if (state == CommentState.STRING || state == CommentState.CHARACTER) {
+                    // write the first quote
+                    out.write(text.charAt(i++));
+                    char end = state == CommentState.STRING ? '"' : '\'';
+                    while (i < text.length() && text.charAt(i) != end) {
+                        // escape characters
+                        if (text.charAt(i) == '\\') {
+                            out.write(text.charAt(i++));
                         }
-                        break;
-                    }
-                    case '\'': {
-                        if (!inComment) {
-                            out.write(c);
-                            out.write(in.read());
-                            out.write(in.read());
+                        // the slash might have been the last character
+                        if (i >= text.length()) {
+                            break;
                         }
-                        break;
+                        out.write(text.charAt(i++));
                     }
-                    case '*': {
-                        char c2 = (char) in.read();
-                        if (inComment && c2 == '/') {
-                            inComment = false;
-                            out.write(' '); // Allows int x = 3; int y = -/**/-x; to work
-                        } else {
-                            out.write(c);
-                            out.write(c2);
-                        }
-                        break;
+                    // write the second quote
+                    // check because the text might not have ended
+                    if (i < text.length()) {
+                        out.write(text.charAt(i++));
                     }
-                    case '/': {
-                        if (!inString) {
-                            char c2 = (char) in.read();
-                            switch (c2) {
-                                case '/':
-                                    char c3 = 0;
-                                    while (c3 != '\n' && c3 != '\r') {
-                                        c3 = (char) in.read();
-                                    }
-                                    out.write(c3); // write newline
-                                    break;
-                                case '*':
-                                    inComment = true;
-                                    break;
-                                default:
-                                    out.write(c);
-                                    out.write(c2);
-                                    break;
-                            }
-                        } else {
-                            out.write(c);
-                        }
-                        break;
+                } else if (state == CommentState.SINGLE_LINE_COMMENT) {
+                    i += 2; // skip "//"
+                    while (i < text.length() && text.charAt(i) != '\n' && text.charAt(i) != '\r') {
+                        i++;
                     }
-                    default: {
-                        if (!inComment) {
-                            out.write(c);
-                        }
-                        break;
+                    // i += 1; // skip the ending newline
+                    // Successive new lines will be fixed by our regex below.
+                } else // state == CommentState.MULTI_LINE_COMMENT
+                {
+                    i += 2; // skip "/*"
+                    while (i < text.length() && (text.charAt(i) != '*' || text.charAt(i + 1) != '/')) {
+                        i++;
+                    }
+                    i += 2; // skip "*/"
+                }
+                state = null;
+                if (i < text.length()) {
+                    if (text.charAt(i) == '"') {
+                        state = CommentState.STRING;
+                    } else if (text.charAt(i) == '\'') {
+                        state = CommentState.CHARACTER;
                     }
                 }
+                if (i + 1 < text.length() && state == null) {
+                    if (text.charAt(i) == '/' && text.charAt(i + 1) == '/') {
+                        state = CommentState.SINGLE_LINE_COMMENT;
+                    } else if (text.charAt(i) == '/' && text.charAt(i + 1) == '*') {
+                        state = CommentState.MULTI_LINE_COMMENT;
+                    }
+                }
+                if (state == null) {
+                    state = CommentState.CODE;
+                }
             }
-            out.close();
+            text = out.toString();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        text = out.toString();
 
         text = COMMENTS_TRAILING.matcher(text).replaceAll("");
         text = COMMENTS_NEWLINES.matcher(text).replaceAll(System.lineSeparator());
@@ -219,25 +221,19 @@ public class McpCleanup {
     public static final Pattern CLEANUP_185pi100F = Pattern.compile("0\\.8119[0-9]*[Ff]");
 
     public static String cleanup(String text) {
-        return cleanup(text, true);
-    }
-
-    public static String cleanup(String text, boolean doFormattingChanges) {
         // simple replacements
-        if (doFormattingChanges) {
-            text = CLEANUP_header.matcher(text).replaceAll("");
-            text = CLEANUP_footer.matcher(text).replaceAll("");
-            text = CLEANUP_trailing.matcher(text).replaceAll("");
-            text = CLEANUP_newlines.matcher(text).replaceAll(System.lineSeparator());
-            text = CLEANUP_ifstarts.matcher(text).replaceAll("$1" + System.lineSeparator() + "$2");
-            text = CLEANUP_blockstarts.matcher(text).replaceAll("");
-            text = CLEANUP_blockends.matcher(text).replaceAll("");
-            text = CLEANUP_gl.matcher(text).replaceAll("");
-        }
+        text = CLEANUP_header.matcher(text).replaceAll("");
+        text = CLEANUP_footer.matcher(text).replaceAll("");
+        text = CLEANUP_trailing.matcher(text).replaceAll("");
+        text = CLEANUP_newlines.matcher(text).replaceAll(System.lineSeparator());
+        text = CLEANUP_ifstarts.matcher(text).replaceAll("$1" + System.lineSeparator() + "$2");
+        text = CLEANUP_blockstarts.matcher(text).replaceAll("");
+        text = CLEANUP_blockends.matcher(text).replaceAll("");
+        text = CLEANUP_gl.matcher(text).replaceAll("");
         text = CLEANUP_maxD.matcher(text).replaceAll("Double.MAX_VALUE");
 
         // unicode chars
-        if (doFormattingChanges) {
+        {
             Matcher matcher = CLEANUP_unicode.matcher(text);
             int val;
             StringBuffer buffer = new StringBuffer(text.length());

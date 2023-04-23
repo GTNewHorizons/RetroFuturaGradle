@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -19,6 +20,7 @@ import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Specs;
@@ -70,18 +72,22 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         forgeUserdevConfiguration = project.getConfigurations().create("forgeUserdev");
         forgeUserdevConfiguration.setCanBeConsumed(false);
 
-        fernflowerLocation = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
-        final File fernflowerDownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
+        final File fernflower1Location = Utilities.getCacheDir(project, "mcp", "fernflower.jar");
+        final File fernflower1DownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
+        fernflowerLocation = fernflower1Location;
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.src(Constants.URL_FERNFLOWER);
-            task.onlyIf(t -> !fernflowerLocation.exists());
+            task.src(Constants.URL_FERNFLOWER_1);
+            task.onlyIf(t -> mcExt.getMinorMcVersion().get() <= 8 && !fernflowerLocation.exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
-            task.dest(fernflowerDownloadLocation);
+            task.dest(fernflower1DownloadLocation);
             task.doLast(_t -> {
-                try (final FileInputStream fis = new FileInputStream(fernflowerDownloadLocation);
+                if (mcExt.getMinorMcVersion().get() > 8) {
+                    return;
+                }
+                try (final FileInputStream fis = new FileInputStream(fernflower1DownloadLocation);
                         final ZipInputStream zis = new ZipInputStream(fis);
                         final FileOutputStream fos = new FileOutputStream(fernflowerLocation)) {
                     ZipEntry entry;
@@ -109,26 +115,26 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 return !(root.isDirectory() && new File(root, "methods.csv").isFile());
             });
             task.setGroup(TASK_GROUP_INTERNAL);
+            task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);
             task.from(
                     project.provider(
-                            () -> project.zipTree(
-                                    mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
+                            () -> mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getFiles().stream()
+                                    .map(project::zipTree).collect(Collectors.toList())));
             task.into(mcpExtractRoot);
             task.doFirst(new MkdirAction(mcpExtractRoot));
         });
 
         final File userdevRoot = Utilities.getRawCacheDir(project, "minecraft", "net", "minecraftforge", "forge");
-        final Provider<Directory> userdevRootProvider = project.getLayout().dir(mcExt.getMcVersion().map(mcVer -> {
-            if (mcVer.equals("1.7.10")) {
-                return FileUtils.getFile(userdevRoot, "1.7.10-10.13.4.1614-1.7.10");
-            } else {
-                throw new UnsupportedOperationException("Currently only minecraft 1.7.10 is supported.");
-            }
-        }));
+        final Provider<Directory> userdevRootProvider = project.getLayout()
+                .dir(mcExt.getMcVersion().map(mcVer -> switch (mcVer) {
+                case "1.7.10" -> FileUtils.getFile(userdevRoot, "1.7.10-10.13.4.1614-1.7.10");
+                case "1.12.2" -> FileUtils.getFile(userdevRoot, mcExt.getForgeVersion().get());
+                default -> throw new UnsupportedOperationException("Unsupported Minecraft version " + mcVer);
+                }));
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.onlyIf(t -> {
-                File root = userdevExtractRoot.get().getAsFile();
+                final File root = userdevExtractRoot.get().getAsFile();
                 return !(root.isDirectory() && new File(root, "dev.json").isFile());
             });
             task.setGroup(TASK_GROUP_INTERNAL);
@@ -137,7 +143,29 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                             () -> project.zipTree(
                                     forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
             task.into(userdevExtractRoot);
-            task.doFirst(new MkdirAction(userdevExtractRoot));
+            task.doFirst("mkdir", new MkdirAction(userdevExtractRoot));
+            task.doLast("extractFg2DataIfNeeded", tsk -> {
+                final File root = userdevExtractRoot.get().getAsFile();
+                final File srcZip = new File(root, "sources.zip");
+                final File resZip = new File(root, "resources.zip");
+                final File srcMain = FileUtils.getFile(root, "src", "main");
+                final File srcMainJava = FileUtils.getFile(srcMain, "java");
+                final File srcMainRes = FileUtils.getFile(srcMain, "resources");
+                if (srcZip.exists()) {
+                    srcMainJava.mkdirs();
+                    project.copy(copy -> {
+                        copy.from(project.zipTree(srcZip));
+                        copy.into(srcMainJava);
+                    });
+                }
+                if (resZip.exists()) {
+                    srcMainRes.mkdirs();
+                    project.copy(copy -> {
+                        copy.from(project.zipTree(resZip));
+                        copy.into(srcMainRes);
+                    });
+                }
+            });
         });
 
         forgeSrgLocation = userdevRootProvider.map(root -> root.dir("srgs"));
@@ -150,8 +178,11 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                         return !(root.isDirectory() && new File(root, "notch-srg.srg").isFile());
                     });
                     // inputs
-                    task.getInputSrg().set(userdevFile("conf/packaged.srg"));
-                    task.getInputExc().set(userdevFile("conf/packaged.exc"));
+                    Provider<Integer> mcVer = mcExt.getMinorMcVersion();
+                    task.getInputSrg().set(
+                            mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.srg") : mcpFile("joined.srg")));
+                    task.getInputExc().set(
+                            mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.exc") : mcpFile("joined.exc")));
                     task.getFieldsCsv().set(
                             mcExt.getUseForgeEmbeddedMappings().flatMap(
                                     useForge -> useForge.booleanValue() ? userdevFile("conf/fields.csv")
@@ -212,6 +243,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
 
     public Provider<RegularFile> mcpFile(String path) {
         return project.getLayout().file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+    }
+
+    public Provider<Directory> mcpDir(String path) {
+        return project.getLayout().dir(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
     public Provider<RegularFile> userdevFile(String path) {
