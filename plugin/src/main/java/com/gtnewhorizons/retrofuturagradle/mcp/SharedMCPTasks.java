@@ -111,12 +111,16 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                         (chan, ver) -> FileUtils.getFile(mcpRoot, "mcp_" + chan, ver)));
         taskExtractMcpData = project.getTasks().register("extractMcpData", Copy.class, task -> {
             task.onlyIf(t -> {
-                File root = mcpExtractRoot.get().getAsFile();
-                return !(root.isDirectory() && new File(root, "methods.csv").isFile());
+                final File root = mcpExtractRoot.get().getAsFile();
+                final boolean hasExtraFiles = mcExt.getMinorMcVersion().get() <= 8
+                        || new File(root, "joined.exc").isFile();
+                return !(root.isDirectory() && hasExtraFiles && new File(root, "methods.csv").isFile());
             });
             task.getOutputs().upToDateWhen(t -> {
                 File root = mcpExtractRoot.get().getAsFile();
-                return root.isDirectory() && new File(root, "methods.csv").isFile();
+                final boolean hasExtraFiles = mcExt.getMinorMcVersion().get() <= 8
+                        || new File(root, "joined.exc").isFile();
+                return root.isDirectory() && hasExtraFiles && new File(root, "methods.csv").isFile();
             });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);

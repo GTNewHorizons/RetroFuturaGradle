@@ -280,7 +280,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                     final String info = template.replace("{PACKAGE}", pkg.replace('/', '.'));
                     loadedSources.put(pkg + "/package-info.java", info);
                 }
-                getLogger().lifecycle("Injected {} package-infos", seenPackages.size());
+                getLogger().lifecycle("  Injected {} package-infos", seenPackages.size());
             }
             final File common = new File(injectDir, "common/");
             if (common.isDirectory()) {
