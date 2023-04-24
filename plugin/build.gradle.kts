@@ -12,7 +12,7 @@ plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-gradle-plugin")
   id("com.github.johnrengelman.shadow") version "8.1.0"
-  id("com.palantir.git-version") version "0.15.0"
+  id("com.palantir.git-version") version "3.0.0"
   id("maven-publish")
   id("com.diffplug.spotless") version "6.12.0"
   id("com.github.gmazzo.buildconfig") version "3.1.0"
