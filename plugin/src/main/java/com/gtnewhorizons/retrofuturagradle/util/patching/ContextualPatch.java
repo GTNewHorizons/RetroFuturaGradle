@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import com.cloudbees.diff.Hunk;
@@ -177,13 +178,14 @@ public final class ContextualPatch {
         patchReader.close();
 
         byte[] buffer = new byte[MAGIC.length()];
-        InputStream in = new FileInputStream(patchFile);
-        int read = in.read(buffer);
-        in.close();
+        int read;
+        try (InputStream in = FileUtils.openInputStream(patchFile)) {
+            read = in.read(buffer);
+        }
         if (read != -1 && MAGIC.equals(new String(buffer, "utf8"))) { // NOI18N
             encoding = "utf8"; // NOI18N
         }
-        patchReader = new BufferedReader(new InputStreamReader(new FileInputStream(patchFile), encoding));
+        patchReader = new BufferedReader(new InputStreamReader(FileUtils.openInputStream(patchFile), encoding));
     }
 
     private PatchReport applyPatch(SinglePatch patch, boolean dryRun) throws IOException, PatchException {
@@ -320,12 +322,12 @@ public final class ContextualPatch {
                 copyStreamsCloseAll(new FileOutputStream(patch.targetFile), new ByteArrayInputStream(content));
             }
         } else {
+            if (lines.size() == 0) {
+                return;
+            }
             PrintWriter w = new PrintWriter(
                     new OutputStreamWriter(new FileOutputStream(patch.targetFile), getEncoding(patch.targetFile)));
             try {
-                if (lines.size() == 0) {
-                    return;
-                }
                 for (String line : lines.subList(0, lines.size() - 1)) {
                     w.println(line);
                 }
@@ -991,18 +993,33 @@ public final class ContextualPatch {
             }
             String[] t = target.split(" ");
             String[] h = hunk.split(" ");
-            if (t.length != h.length) {
-                return false;
-            }
-            for (int x = 0; x < t.length; x++) {
-                if (isAccess(t[x]) && isAccess(h[x])) {
+
+            // don't check length, changing any modifier to default (removing it) will change length
+            int targetIndex = 0;
+            int hunkIndex = 0;
+            while (targetIndex < t.length && hunkIndex < h.length) {
+                boolean isTargetAccess = isAccess(t[targetIndex]);
+                boolean isHunkAccess = isAccess(h[hunkIndex]);
+                if (isTargetAccess || isHunkAccess) {
+                    // Skip access modifiers
+                    if (isTargetAccess) {
+                        targetIndex++;
+                    }
+                    if (isHunkAccess) {
+                        hunkIndex++;
+                    }
                     continue;
-                } else if (!t[x].equals(h[x])) {
-                    if (isLabel(t[x]) && isLabel(h[x])) continue;
+                }
+                String hunkPart = h[hunkIndex];
+                String targetPart = t[targetIndex];
+                boolean labels = isLabel(targetPart) && isLabel(hunkPart);
+                if (!labels && !targetPart.equals(hunkPart)) {
                     return false;
                 }
+                hunkIndex++;
+                targetIndex++;
             }
-            return true;
+            return h.length == hunkIndex && t.length == targetIndex;
         }
         if (c14nWhitespace) {
             return target.replaceAll("[\t| ]+", " ").equals(hunk.replaceAll("[\t| ]+", " "));
@@ -1013,7 +1030,8 @@ public final class ContextualPatch {
 
     private boolean isAccess(String data) {
         return data.equalsIgnoreCase("public") || data.equalsIgnoreCase("private")
-                || data.equalsIgnoreCase("protected");
+                || data.equalsIgnoreCase("protected")
+                || data.equalsIgnoreCase("final");
     }
 
     private boolean isLabel(String data) // Damn FernFlower
