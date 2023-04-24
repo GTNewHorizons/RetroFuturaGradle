@@ -296,17 +296,23 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         final SourceSet testSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
+        final Configuration cfgApi = project.getConfigurations().getByName("api");
+        final Configuration cfgCompileOnlyApi = project.getConfigurations().getByName("compileOnlyApi");
         final SourceSet apiSet = javaExt.getSourceSets().create("api", set -> {
-            set.setCompileClasspath(patchedConfiguration.plus(patchedMcSources.getOutput()));
-            set.setRuntimeClasspath(patchedConfiguration);
+            set.setCompileClasspath(
+                    set.getCompileClasspath().plus(patchedConfiguration).plus(patchedMcSources.getOutput()));
+            set.setRuntimeClasspath(set.getRuntimeClasspath().plus(patchedConfiguration));
         });
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
         mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(apiSet.getOutput()));
         testSet.setCompileClasspath(testSet.getCompileClasspath().plus(apiSet.getOutput()));
         testSet.setRuntimeClasspath(testSet.getRuntimeClasspath().plus(apiSet.getOutput()));
-
-        project.getConfigurations().getByName(apiSet.getCompileClasspathConfigurationName())
-                .extendsFrom(project.getConfigurations().getByName(mainSet.getCompileClasspathConfigurationName()));
+        final Configuration apiCompileCfg = project.getConfigurations()
+                .getByName(apiSet.getCompileClasspathConfigurationName());
+        final Configuration apiRuntimeCfg = project.getConfigurations()
+                .getByName(apiSet.getRuntimeClasspathConfigurationName());
+        apiCompileCfg.extendsFrom(cfgApi).extendsFrom(cfgCompileOnlyApi);
+        apiRuntimeCfg.extendsFrom(cfgApi).extendsFrom(cfgCompileOnlyApi);
 
         taskBuildPatchedMc = project.getTasks()
                 .named(patchedMcSources.getCompileJavaTaskName(), JavaCompile.class, task -> {
