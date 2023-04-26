@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
@@ -110,6 +111,26 @@ public abstract class DownloadAssetsTask extends DefaultTask {
                         BufferedOutputStream bos = new BufferedOutputStream(fos)) {
                     IOUtils.copy(bis, bos);
                     bos.flush();
+
+                    final String realSha1;
+                    try {
+                        realSha1 = new DigestUtils(DigestUtils.getSha1Digest())
+                                .digestAsHex(params.getTargetFile().get());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (!realSha1.equals(params.getSha1().get())) {
+                        bos.close();
+                        fos.close();
+                        FileUtils.deleteQuietly(params.getTargetFile().get());
+                        throw new RuntimeException(
+                                String.format(
+                                        "Asset %s sha1sum doesn't match! Downloaded: %s Expected: %s",
+                                        params.getTargetFile().get().getAbsolutePath(),
+                                        realSha1,
+                                        params.getSha1().get()));
+                    }
+
                     System.out.printf(
                             "Downloaded asset (%3d/%3d) %s\n",
                             downloaded.incrementAndGet(),
@@ -117,28 +138,14 @@ public abstract class DownloadAssetsTask extends DefaultTask {
                             params.getSha1().get());
                     break;
                 } catch (Exception e) {
-                    System.err.println(e);
+                    System.err.println(e.getMessage());
+                    e.printStackTrace();
                 }
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     // no-op
                 }
-            }
-
-            final String realSha1;
-            try {
-                realSha1 = new DigestUtils(DigestUtils.getSha1Digest()).digestAsHex(params.getTargetFile().get());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            if (!realSha1.equals(params.getSha1().get())) {
-                throw new RuntimeException(
-                        String.format(
-                                "Asset %s sha1sum doesn't match! Downloaded: %s Expected: %s",
-                                params.getTargetFile().get().getAbsolutePath(),
-                                realSha1,
-                                params.getSha1().get()));
             }
         }
     }
