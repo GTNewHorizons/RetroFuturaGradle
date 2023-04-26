@@ -7,10 +7,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.gradle.testkit.runner.BuildResult;
@@ -172,14 +168,14 @@ class UserDevPluginFunctionalTest {
     void canSetupWithoutForge() throws IOException {
         writeString(getSettingsFile(), SIMPLE_SETTINGS);
         String buildscript = """
-            plugins {
-                id('com.gtnewhorizons.retrofuturagradle')
-            }
-            minecraft {
-                mcVersion = '1.12.2'
-                usesForge = false
-            }
-            """;
+                plugins {
+                    id('com.gtnewhorizons.retrofuturagradle')
+                }
+                minecraft {
+                    mcVersion = '1.12.2'
+                    usesForge = false
+                }
+                """;
         writeString(getBuildFile(), buildscript);
 
         // Run the build
@@ -196,10 +192,10 @@ class UserDevPluginFunctionalTest {
 
         // Check for the absence of net.minecraftforge packages except net.minecraftforge.fml.relauncher
         try (final ZipFile jar = new ZipFile(new File(getLocalCacheDir(), "mcp_patched_minecraft-sources.jar"))) {
-            Assertions.assertEquals(0, jar.stream()
-                    .filter(ze -> ze.getName().startsWith("net/minecraftforge"))
-                    .filter(ze -> !ze.getName().startsWith("net/minecraftforge/fml/relauncher"))
-                    .count());
+            Assertions.assertEquals(
+                    0,
+                    jar.stream().filter(ze -> ze.getName().startsWith("net/minecraftforge"))
+                            .filter(ze -> !ze.getName().startsWith("net/minecraftforge/fml/relauncher")).count());
         }
     }
 
