@@ -997,7 +997,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
             }
 
-            if (!"1.12.2".equals(mcExt.getMcVersion().get()) || mcExt.getUsesForge().get()) {
+            if (mcMinor <= 8 || mcExt.getUsesForge().get()) {
                 taskPatchDecompiledJar.configure(task -> {
                     task.getPatches().builtBy(taskExtractForgeUserdev);
                     task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
