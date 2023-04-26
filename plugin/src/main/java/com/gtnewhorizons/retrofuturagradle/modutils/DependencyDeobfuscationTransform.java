@@ -136,7 +136,7 @@ public abstract class DependencyDeobfuscationTransform
                 final JarInputStream jis = new JarInputStream(bis, false);
                 final OutputStream os = FileUtils.openOutputStream(outFileTemp, false);
                 final BufferedOutputStream bos = new BufferedOutputStream(os);
-                final JarOutputStream jos = new JarOutputStream(bos)) {
+                final JarOutputStream jos = makeTransformerJarOutputStream(jis, bos)) {
             JarEntry entry;
             while ((entry = jis.getNextJarEntry()) != null) {
                 if (StringUtils.endsWithIgnoreCase(entry.getName(), ".dsa")
@@ -150,31 +150,47 @@ public abstract class DependencyDeobfuscationTransform
                     byte[] data = IOUtils.toByteArray(jis);
                     IOUtils.write(Utilities.simpleRemapClass(data, combined), jos);
                 } else if (StringUtils.endsWith(entry.getName(), "META-INF/MANIFEST.MF")) {
+                    // This if will only trigger if the manifest is not one of the first 2 jar entries
                     Manifest mf = new Manifest(CloseShieldInputStream.wrap(jis));
-                    // Strip checksums
-                    final List<String> entriesToRemove = new ArrayList<>();
-                    for (Map.Entry<String, Attributes> mfEntry : mf.getEntries().entrySet()) {
-                        final Attributes attrs = mfEntry.getValue();
-                        final Object[] keys = attrs.keySet().toArray(new Object[0]);
-                        for (Object key : keys) {
-                            if (StringUtils.endsWith(key.toString(), "-Digest")) {
-                                attrs.remove(key);
-                            }
-                        }
-                        if (attrs.size() == 0
-                                || (attrs.size() == 1 && attrs.keySet().iterator().next().toString().equals("Name"))) {
-                            attrs.clear();
-                            entriesToRemove.add(mfEntry.getKey());
-                        }
-                    }
-                    entriesToRemove.forEach(mf.getEntries()::remove);
+                    transformManifest(mf);
                     mf.write(jos);
                 } else {
                     IOUtils.copy(jis, jos);
                 }
+                jos.closeEntry();
             }
         }
 
         Files.move(outFileTemp, outFile);
+    }
+
+    private static JarOutputStream makeTransformerJarOutputStream(JarInputStream jis, OutputStream os)
+            throws IOException {
+        if (jis.getManifest() != null) {
+            final Manifest mf = jis.getManifest();
+            transformManifest(mf);
+            return new JarOutputStream(os, mf);
+        } else {
+            return new JarOutputStream(os);
+        }
+    }
+
+    private static void transformManifest(Manifest mf) {
+        final List<String> entriesToRemove = new ArrayList<>();
+        for (Map.Entry<String, Attributes> mfEntry : mf.getEntries().entrySet()) {
+            final Attributes attrs = mfEntry.getValue();
+            final Object[] keys = attrs.keySet().toArray(new Object[0]);
+            for (Object key : keys) {
+                if (StringUtils.endsWith(key.toString(), "-Digest")) {
+                    attrs.remove(key);
+                }
+            }
+            if (attrs.size() == 0
+                    || (attrs.size() == 1 && attrs.keySet().iterator().next().toString().equals("Name"))) {
+                attrs.clear();
+                entriesToRemove.add(mfEntry.getKey());
+            }
+        }
+        entriesToRemove.forEach(mf.getEntries()::remove);
     }
 }
