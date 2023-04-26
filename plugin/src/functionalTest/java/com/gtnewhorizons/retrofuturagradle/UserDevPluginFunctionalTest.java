@@ -7,6 +7,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.BuildTask;
@@ -45,6 +50,14 @@ class UserDevPluginFunctionalTest {
 
     private File getSettingsFile() {
         return new File(projectDir, "settings.gradle");
+    }
+
+    private File getBuildDir() {
+        return new File(projectDir, "build");
+    }
+
+    private File getLocalCacheDir() {
+        return new File(getBuildDir(), "rfg");
     }
 
     @Test
@@ -153,6 +166,41 @@ class UserDevPluginFunctionalTest {
         Assertions.assertArrayEquals(
                 secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
                 new BuildTask[] {});
+    }
+
+    @Test
+    void canSetupWithoutForge() throws IOException {
+        writeString(getSettingsFile(), SIMPLE_SETTINGS);
+        String buildscript = """
+            plugins {
+                id('com.gtnewhorizons.retrofuturagradle')
+            }
+            minecraft {
+                mcVersion = '1.12.2'
+                usesForge = false
+            }
+            """;
+        writeString(getBuildFile(), buildscript);
+
+        // Run the build
+        GradleRunner runner = GradleRunner.create();
+        runner.forwardOutput();
+        runner.withPluginClasspath();
+        runner.withArguments("--stacktrace", "--", "packagePatchedMc");
+        runner.withProjectDir(projectDir);
+        BuildResult result = runner.build();
+        BuildResult secondResult = runner.build();
+        Assertions.assertArrayEquals(
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
+                new BuildTask[] {});
+
+        // Check for the absence of net.minecraftforge packages except net.minecraftforge.fml.relauncher
+        try (final ZipFile jar = new ZipFile(new File(getLocalCacheDir(), "mcp_patched_minecraft-sources.jar"))) {
+            Assertions.assertEquals(0, jar.stream()
+                    .filter(ze -> ze.getName().startsWith("net/minecraftforge"))
+                    .filter(ze -> !ze.getName().startsWith("net/minecraftforge/fml/relauncher"))
+                    .count());
+        }
     }
 
     private void writeString(File file, String string) throws IOException {

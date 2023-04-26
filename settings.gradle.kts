@@ -21,4 +21,3 @@ plugins {
 include("testmod")
 include("testmod1.12")
 include("testdepmod")
-include("testnoforgeenv")
