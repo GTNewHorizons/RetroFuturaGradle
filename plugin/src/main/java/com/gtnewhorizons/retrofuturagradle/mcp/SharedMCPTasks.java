@@ -143,7 +143,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
             task.onlyIf(t -> {
                 final File root = userdevExtractRoot.get().getAsFile();
-                return !(root.isDirectory() && new File(root, "dev.json").isFile());
+                return !forgeUserdevConfiguration.isEmpty() && !(root.isDirectory() && new File(root, "dev.json").isFile());
             });
             task.getOutputs().upToDateWhen(t -> {
                 final File root = userdevExtractRoot.get().getAsFile();
@@ -153,7 +153,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             task.from(
                     project.provider(
                             () -> project.zipTree(
-                                    forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
+                                    forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL))));
             task.into(userdevExtractRoot);
             task.doFirst("mkdir", new MkdirAction(userdevExtractRoot));
             task.doLast("extractFg2DataIfNeeded", tsk -> {
