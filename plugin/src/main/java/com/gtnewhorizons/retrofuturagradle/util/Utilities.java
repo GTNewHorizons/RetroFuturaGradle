@@ -124,7 +124,7 @@ public final class Utilities {
         // /home/user/.gradle/caches/modules-2/files-2.1/com.github.GTNewHorizons/CodeChickenLib/1.1.6/51081c1c2d8d75ae26f64427849de2c0ba99144/CodeChickenLib-1.1.6-dev.jar`
         // Try to find modules-2/files-2.1
         int modulesCacheIndex = -1;
-        for (int i = 0; i < pathComponents.length - 5; i++) {
+        for (int i = 0; i < pathComponents.length - 6; i++) {
             if (pathComponents[i].equalsIgnoreCase("modules-2")
                     && pathComponents[i + 1].equalsIgnoreCase("files-2.1")) {
                 modulesCacheIndex = i + 2;
