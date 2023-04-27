@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           mv plugin/build/docs $RUNNER_TEMP/docs_output
-          rm plugin/build -rf
+          git clean -f -d -x
           git checkout gh-pages
           mkdir -p $TARGET_FOLDER
           rm -rf $TARGET_FOLDER
