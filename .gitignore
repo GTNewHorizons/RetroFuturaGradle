@@ -1,5 +1,6 @@
 .gradle
 .settings
+bin/
 /.idea/
 /.vscode/
 /plugin/gradle

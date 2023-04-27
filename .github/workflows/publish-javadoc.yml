@@ -1,0 +1,65 @@
+name: Deploy Javadoc
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  javadoc:
+    concurrency: javadoc-publish
+    runs-on: ubuntu-latest
+    outputs:
+      result_hash: ${{ steps.deploy.outputs.hash }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v3
+        with:
+          java-version: |
+            8
+            17
+          distribution: 'azul'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Generate Javadoc
+        run: cd plugin && ../gradlew --no-daemon javadoc
+
+      - name: Deploy 🚀
+        id: deploy
+        shell: bash
+        run: |
+          mv plugin/build/docs $RUNNER_TEMP/docs_output
+          rm plugin/build -rf
+          git checkout gh-pages
+          mkdir -p $TARGET_FOLDER
+          rm -rf $TARGET_FOLDER
+          mv $RUNNER_TEMP/docs_output $TARGET_FOLDER -v
+          git add $TARGET_FOLDER
+          if git diff --cached --exit-code > /dev/null ; then
+            echo Nothing to deploy
+            exit 0
+          fi
+          find . -name javadoc -type d -print | sed 's#^\./\(.*\)/javadoc$#\1#' | sort --version-sort --reverse > index.txt
+          git add index.txt
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git commit -m "Deploy javadoc from ref $TARGET_FOLDER"
+          git push
+          echo "::set-output name=hash::$(git rev-parse HEAD)"
+        env:
+          TARGET_FOLDER: ${{ github.ref_name }}
+          COMMIT_AUTHOR: ${{ github.pusher.name }}
+          COMMIT_EMAIL: ${{ github.pusher.email }}
