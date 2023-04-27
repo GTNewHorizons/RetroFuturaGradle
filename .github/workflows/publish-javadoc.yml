@@ -28,7 +28,7 @@ jobs:
           java-version: |
             8
             17
-          distribution: 'azul'
+          distribution: 'zulu'
           cache: gradle
 
       - name: Grant execute permission for gradlew
