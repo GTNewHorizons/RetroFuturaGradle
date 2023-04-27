@@ -43,12 +43,14 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.internal.artifacts.dependencies.DefaultDependencyArtifact;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
@@ -87,6 +89,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
      * Merged C+S jar remapped to SRG names
      */
     private final File srgMergedJarLocation;
+
+    private final TaskProvider<ExtractDependencyATsTask> taskExtractDependencyATs;
 
     private final TaskProvider<DeobfuscateTask> taskDeobfuscateMergedJarToSrg;
     private final ConfigurableFileCollection deobfuscationATs;
@@ -167,11 +171,27 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 });
         decompiledMcChain.addTask(taskMergeVanillaSidedJars);
 
+        final File extractedDependencyAts = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "dependency_at.cfg");
+        taskExtractDependencyATs = project.getTasks()
+                .register("extractDependencyATs", ExtractDependencyATsTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.onlyIf(
+                            "useDependencyAccessTransformers set in minecraft{}",
+                            _t -> mcExt.getUseDependencyAccessTransformers().get());
+                    task.getDependencies().from(
+                            mcExt.getUseDependencyAccessTransformers().map(
+                                    use -> use ? mcExt.getDependenciesForAccessTransformerScan() : project.files()));
+                    task.getOutputFile().set(extractedDependencyAts);
+                });
+        final Provider<FileCollection> extractedDependencyATs = mcExt.getUseDependencyAccessTransformers().map(
+                use -> use ? project.files(taskExtractDependencyATs.flatMap(ExtractDependencyATsTask::getOutputFile))
+                        : project.files());
+
         srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft.jar");
         taskDeobfuscateMergedJarToSrg = project.getTasks()
                 .register("deobfuscateMergedJarToSrg", DeobfuscateTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskMergeVanillaSidedJars, taskGenerateForgeSrgMappings);
+                    task.dependsOn(taskMergeVanillaSidedJars, taskGenerateForgeSrgMappings, taskExtractDependencyATs);
                     task.getSrgFile().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getNotchToSrg));
                     task.getExceptorJson().set(
                             mcExt.getMinorMcVersion().flatMap(
@@ -182,7 +202,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     // No fields or methods CSV - passing them in causes ATs to not successfully apply
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
-                    task.getAccessTransformerFiles().setFrom(deobfuscationATs);
+                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
                     task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
                 });
         decompiledMcChain.addTask(taskDeobfuscateMergedJarToSrg);
@@ -742,7 +762,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
-                    task.getAccessTransformerFiles().setFrom(deobfuscationATs);
+                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
                     task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
                 });
 

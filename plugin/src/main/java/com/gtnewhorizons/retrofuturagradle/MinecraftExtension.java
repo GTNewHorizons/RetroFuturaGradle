@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle;
 import java.util.Objects;
 
 import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -31,6 +32,9 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
 
         getUsesFml().convention(true);
         getUsesForge().convention(true);
+
+        getUseDependencyAccessTransformers().convention(false);
+        getDependenciesForAccessTransformerScan().from(project.getConfigurations().getByName("compileClasspath"));
     }
 
     // Internal configs
@@ -120,6 +124,19 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
      * to reobfJarConfiguration as needed
      */
     public abstract SetProperty<String> getGroupsToExcludeFromAutoReobfMapping();
+
+    /**
+     * Set to true to scan dependencies for access transformers (based on FMLAT entries in MANIFEST.MFs). False by
+     * default.
+     */
+    public abstract Property<Boolean> getUseDependencyAccessTransformers();
+
+    /**
+     * If {@link MinecraftExtension#getUseDependencyAccessTransformers()} is true, this is the list of files to scan for
+     * AT entries. It's the compileClasspath configuration by default, use
+     * {@link ConfigurableFileCollection#setFrom(Object...)} if you want to replace it with something else.
+     */
+    public abstract ConfigurableFileCollection getDependenciesForAccessTransformerScan();
 
     public Provider<JavaLauncher> getToolchainLauncher() {
         JavaToolchainService jts = Objects
