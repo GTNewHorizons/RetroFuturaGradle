@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>RetroFuturaGradle API Documentation Index</title>
+    <meta name="viewport" content="width=device-width">
+    <meta name="description" content="Automatically generated API documentation for RetroFuturaGradle.">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- Look, I'm not a frontend developer. Laugh at my JS/HTML/CSS as you wish. I won't feel ashamed. I made this to work.-->
+    <style>
+        .navbar {
+            top: 0;
+            position: fixed;
+            height: 40px;
+            width: 100%;
+            background-color: #4D7A97;
+            color: #FFFFFF;
+        }
+
+        .navbar-content {
+            margin: 8px;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        .framebox {
+            top: 40px;
+        }
+
+        .framebox, iframe {
+            width: 100%;
+            height: calc(100vh - 40px);
+            margin: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        .navbar-left {
+            float: left;
+        }
+
+        .navbar-right {
+            float: right;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="navbar">
+    <div class="navbar-content">
+        <div class="navbar-left">
+            <span>Current Version: <input disabled id="current-select"></span>
+            <label for="version-select">Select version/branch: </label>
+            <select id="version-select"></select>
+            <button id="use-version" disabled>Switch Version</button>
+            <button id="refresh-version" disabled>Refresh Version</button>
+            <i id="reload-indicator" class="fa fa-spinner fa-spin hidden" style="font-size:24px"></i>
+        </div>
+        <div class="navbar-right">
+        </div>
+    </div>
+</div>
+<div class="framebox">
+    <iframe id="frame"></iframe>
+</div>
+<script type="application/javascript">
+    (function () {
+        const cacheKey = 'rfg-doc-versions';
+        const lastUseKey = 'rfg-doc-last-use-version';
+
+        function reload_versions() {
+            document.getElementById('reload-indicator').classList.remove('hidden')
+            document.getElementById('use-version').disabled = true
+            document.getElementById('refresh-version').disabled = true
+            fetch("https://gtnewhorizons.github.io/RetroFuturaGradle/index.txt")
+                .then((res) => {
+                    if (!res.ok)
+                        reload_versions_fallback()
+                    res.text().then(
+                        (text) => set_versions(text.trim().split('\n').map((e) => e.trim()).filter((e) => e.length !== 0)),
+                        reload_versions_fallback
+                    )
+                }, reload_versions_fallback)
+
+        }
+
+        function reload_versions_fallback() {
+            fetch("https://api.github.com/repos/GTNewHorizons/RetroFuturaGradle/git/trees/gh-pages")
+                .then((res) => {
+                    res.json().then((rawVersions) => {
+                        let versions = rawVersions['tree'].filter((e) => e['type'] === 'tree' && e['path'] !== 'feature')
+                            .map((e) => e['path'])
+                        set_versions(versions)
+                    })
+                })
+        }
+
+        function set_versions(versions) {
+            let select = document.getElementById('version-select')
+            select.textContent = ''
+            localStorage.setItem(cacheKey, JSON.stringify(versions))
+            versions.forEach((e) => {
+                let child = document.createElement('option')
+                child.text = e
+                child.value = e
+                select.appendChild(child)
+                document.getElementById('reload-indicator').classList.add('hidden')
+                document.getElementById('use-version').disabled = false
+                document.getElementById('refresh-version').disabled = false
+            })
+        }
+
+        function set_version(version) {
+            document.getElementById('current-select').value = version
+            document.getElementById('frame').src = 'https://gtnewhorizons.github.io/RetroFuturaGradle/' + version + '/javadoc/index.html?overview-summary.html'
+            localStorage.setItem(lastUseKey, version)
+        }
+
+        let versionsJson = localStorage.getItem(cacheKey)
+        console.log('versionsJson', versionsJson)
+        if (!versionsJson) {
+            reload_versions()
+        } else {
+            set_versions(JSON.parse(versionsJson))
+        }
+
+        let p = new URLSearchParams(location.search)
+        if (p.has('version')) {
+            let ver = p.get('version')
+            set_version(ver)
+            history.replaceState(ver, '')
+        } else {
+            let lastUse = localStorage.getItem(lastUseKey)
+            console.log('lastUse', lastUse)
+            if (lastUse) {
+                set_version(lastUse)
+                p.set('version', lastUse)
+                history.pushState(lastUse, '', '?' + p)
+            }
+        }
+
+        addEventListener('popstate', set_version)
+
+        document.getElementById('use-version').onclick = (e) => {
+            let version = document.getElementById('version-select').value;
+            set_version(version)
+            let p = new URLSearchParams(location.search)
+            p.set('version', version)
+            history.pushState(version, '', '?' + p)
+        }
+
+        document.getElementById('refresh-version').onclick = reload_versions
+    })()
+</script>
+</body>
+</html>
+
