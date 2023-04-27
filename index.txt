@@ -1,3 +1,1 @@
-plugin/rfgJavacPlugin/build/tmp
-plugin/rfgJavacPlugin/build/docs
 master
