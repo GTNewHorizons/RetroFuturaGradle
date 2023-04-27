@@ -887,20 +887,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
         }
 
-        if (mcExt.getUsesForge().get()) {
-            deps.addProvider(
-                    forgeUserdevConfiguration.getName(),
-                    mcExt.getForgeVersion()
-                            .map(forgeVer -> String.format("net.minecraftforge:forge:%s:userdev", forgeVer)));
-        }
-
-        if (mcExt.getUsesForge().get()) {
-            deps.addProvider(
-                    forgeUniversalConfiguration.getName(),
-                    mcExt.getForgeVersion()
-                            .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
-        }
-
         // Workaround https://github.com/gradle/gradle/issues/10861 to avoid publishing these dependencies
         for (String configName : new String[] { JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
                 JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
@@ -998,6 +984,18 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             }
 
             if (mcMinor <= 8 || mcExt.getUsesForge().get()) {
+                taskExtractForgeUserdev.configure(t -> t.setEnabled(true));
+
+                deps.addProvider(
+                        forgeUserdevConfiguration.getName(),
+                        mcExt.getForgeVersion()
+                                .map(forgeVer -> String.format("net.minecraftforge:forge:%s:userdev", forgeVer)));
+
+                deps.addProvider(
+                        forgeUniversalConfiguration.getName(),
+                        mcExt.getForgeVersion()
+                                .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
+
                 taskPatchDecompiledJar.configure(task -> {
                     task.getPatches().builtBy(taskExtractForgeUserdev);
                     task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
