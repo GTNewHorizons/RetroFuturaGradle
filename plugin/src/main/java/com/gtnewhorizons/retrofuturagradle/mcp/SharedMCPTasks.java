@@ -141,9 +141,11 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 }));
         final Provider<Directory> userdevExtractRoot = userdevRootProvider.map(root -> root.dir("unpacked"));
         taskExtractForgeUserdev = project.getTasks().register("extractForgeUserdev", Copy.class, task -> {
+            task.setEnabled(false); // Enabled as needed in MCPTasks
             task.onlyIf(t -> {
                 final File root = userdevExtractRoot.get().getAsFile();
-                return !(root.isDirectory() && new File(root, "dev.json").isFile());
+                return !forgeUserdevConfiguration.isEmpty()
+                        && !(root.isDirectory() && new File(root, "dev.json").isFile());
             });
             task.getOutputs().upToDateWhen(t -> {
                 final File root = userdevExtractRoot.get().getAsFile();
@@ -152,8 +154,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
                     project.provider(
-                            () -> project.zipTree(
-                                    forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL).getSingleFile())));
+                            () -> forgeUserdevConfiguration.isEmpty() ? project.files()
+                                    : project.zipTree(
+                                            forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL)
+                                                    .getSingleFile())));
             task.into(userdevExtractRoot);
             task.doFirst("mkdir", new MkdirAction(userdevExtractRoot));
             task.doLast("extractFg2DataIfNeeded", tsk -> {

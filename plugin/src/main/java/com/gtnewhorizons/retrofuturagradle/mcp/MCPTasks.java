@@ -887,15 +887,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
         }
 
-        deps.addProvider(
-                forgeUserdevConfiguration.getName(),
-                mcExt.getForgeVersion()
-                        .map(forgeVer -> String.format("net.minecraftforge:forge:%s:userdev", forgeVer)));
-        deps.addProvider(
-                forgeUniversalConfiguration.getName(),
-                mcExt.getForgeVersion()
-                        .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
-
         // Workaround https://github.com/gradle/gradle/issues/10861 to avoid publishing these dependencies
         for (String configName : new String[] { JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
                 JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
@@ -985,21 +976,36 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 });
             }
         }
+
         if (mcExt.getUsesFml().get()) {
             deobfuscationATs.builtBy(taskExtractForgeUserdev);
             if (mcMinor <= 8) {
                 deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
             }
 
-            taskPatchDecompiledJar.configure(task -> {
-                task.getPatches().builtBy(taskExtractForgeUserdev);
-                task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
-                if (mcMinor <= 8) {
-                    task.getPatches().from(userdevFile("fmlpatches.zip"));
-                }
-                task.getInjectionDirectories().from(userdevDir("src/main/java"));
-                task.getInjectionDirectories().from(userdevDir("src/main/resources"));
-            });
+            if (mcMinor <= 8 || mcExt.getUsesForge().get()) {
+                taskExtractForgeUserdev.configure(t -> t.setEnabled(true));
+
+                deps.addProvider(
+                        forgeUserdevConfiguration.getName(),
+                        mcExt.getForgeVersion()
+                                .map(forgeVer -> String.format("net.minecraftforge:forge:%s:userdev", forgeVer)));
+
+                deps.addProvider(
+                        forgeUniversalConfiguration.getName(),
+                        mcExt.getForgeVersion()
+                                .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
+
+                taskPatchDecompiledJar.configure(task -> {
+                    task.getPatches().builtBy(taskExtractForgeUserdev);
+                    task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
+                    if (mcMinor <= 8) {
+                        task.getPatches().from(userdevFile("fmlpatches.zip"));
+                    }
+                    task.getInjectionDirectories().from(userdevDir("src/main/java"));
+                    task.getInjectionDirectories().from(userdevDir("src/main/resources"));
+                });
+            }
 
             final String mcVer = mcExt.getMcVersion().get();
             final String PATCHED_MC_CFG = patchedConfiguration.getName();
