@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -92,7 +94,18 @@ public abstract class DependencyDeobfuscationTransform
         if (!mustRunDeobf) {
             final Path inputPath = inputFile.toPath();
             final String moduleSpec = Utilities.getModuleSpecFromCachePath(inputPath);
-            mustRunDeobf = modulesToDeobf.contains(moduleSpec);
+            if (moduleSpec == null) {
+                for (final String foundSpec : modulesToDeobf) {
+                    final List<String> parts = Arrays.stream(foundSpec.split(":")).filter(StringUtils::isNotBlank)
+                            .collect(Collectors.toList());
+                    final String foundJar = StringUtils.join(parts, "-") + ".jar";
+                    if (inputPath.endsWith(foundJar)) {
+                        mustRunDeobf = true;
+                    }
+                }
+            } else {
+                mustRunDeobf = modulesToDeobf.contains(moduleSpec);
+            }
         }
 
         return mustRunDeobf;
