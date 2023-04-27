@@ -175,6 +175,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskExtractDependencyATs = project.getTasks()
                 .register("extractDependencyATs", ExtractDependencyATsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskExtractForgeUserdev, taskExtractMcpData);
                     task.onlyIf(
                             "useDependencyAccessTransformers set in minecraft{}",
                             _t -> mcExt.getUseDependencyAccessTransformers().get());
