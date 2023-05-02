@@ -80,7 +80,7 @@
             document.getElementById('reload-indicator').classList.remove('hidden')
             document.getElementById('use-version').disabled = true
             document.getElementById('refresh-version').disabled = true
-            fetch("https://gtnewhorizons.github.io/RetroFuturaGradle/index.txt")
+            fetch("https://www.gtnewhorizons.com/RetroFuturaGradle/index.txt", {cache: "no-cache"})
                 .then((res) => {
                     if (!res.ok)
                         reload_versions_fallback()
@@ -93,7 +93,7 @@
         }
 
         function reload_versions_fallback() {
-            fetch("https://api.github.com/repos/GTNewHorizons/RetroFuturaGradle/git/trees/gh-pages")
+            fetch("https://api.github.com/repos/GTNewHorizons/RetroFuturaGradle/git/trees/gh-pages", {cache: "no-cache"})
                 .then((res) => {
                     res.json().then((rawVersions) => {
                         let versions = rawVersions['tree'].filter((e) => e['type'] === 'tree' && e['path'] !== 'feature')
@@ -120,7 +120,7 @@
 
         function set_version(version) {
             document.getElementById('current-select').value = version
-            document.getElementById('frame').src = 'https://gtnewhorizons.github.io/RetroFuturaGradle/' + version + '/javadoc/index.html?overview-summary.html'
+            document.getElementById('frame').src = 'https://www.gtnewhorizons.com/RetroFuturaGradle/' + version + '/javadoc/index.html?overview-summary.html'
             localStorage.setItem(lastUseKey, version)
         }
 
