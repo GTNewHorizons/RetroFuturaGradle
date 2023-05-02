@@ -160,6 +160,12 @@ tasks.withType<Javadoc>().configureEach {
     languageVersion.set(JavaLanguageVersion.of(17))
     vendor.set(JvmVendorSpec.AZUL)
   })
+  with(options as StandardJavadocDocletOptions) {
+    links(
+      "https://docs.gradle.org/${gradle.gradleVersion}/javadoc/",
+      "https://docs.oracle.com/en/java/javase/17/docs/api/"
+    )
+  }
 }
 
 tasks.shadowJar {
