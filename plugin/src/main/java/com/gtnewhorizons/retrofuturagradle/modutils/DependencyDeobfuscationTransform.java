@@ -158,7 +158,7 @@ public abstract class DependencyDeobfuscationTransform
                         || StringUtils.containsIgnoreCase(entry.getName(), "meta-inf/sig-")) {
                     continue;
                 }
-                jos.putNextEntry(entry);
+                jos.putNextEntry(new JarEntry(entry.getName()));
                 if (StringUtils.endsWithIgnoreCase(entry.getName(), ".class")) {
                     byte[] data = IOUtils.toByteArray(jis);
                     IOUtils.write(Utilities.simpleRemapClass(data, combined), jos);
