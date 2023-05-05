@@ -184,7 +184,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             });
         });
 
-        forgeSrgLocation = userdevRootProvider.map(root -> root.dir("srgs"));
+        forgeSrgLocation = mcExt.getUseForgeEmbeddedMappings().flatMap(
+                useForge -> useForge ? userdevRootProvider.map(root -> root.dir("srgs"))
+                        : mcpExtractRoot.map(root -> root.dir("rfg_srgs")));
         taskGenerateForgeSrgMappings = project.getTasks()
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
