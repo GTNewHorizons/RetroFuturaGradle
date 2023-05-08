@@ -84,7 +84,12 @@ public abstract class ExtractDependencyATsTask extends DefaultTask {
                         if (atName.isEmpty()) {
                             continue;
                         }
-                        final ZipEntry entry = jar.getEntry("META-INF/" + atName);
+                        final String atJarPath = "META-INF/" + atName;
+                        final ZipEntry entry = jar.getEntry(atJarPath);
+                        if (entry == null) {
+                            getLogger().warn("Dependency AT '{}'!'{}' not found, skipping.", dep.getName(), atJarPath);
+                            continue;
+                        }
                         final String atContent;
                         try (final InputStream is = jar.getInputStream(entry)) {
                             atContent = IOUtils.toString(is, StandardCharsets.UTF_8);
