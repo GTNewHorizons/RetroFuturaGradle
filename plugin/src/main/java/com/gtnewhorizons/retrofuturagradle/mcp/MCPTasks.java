@@ -478,12 +478,12 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 set -> { set.getJava().setSrcDirs(project.files(injectedSourcesLocation).builtBy(taskInjectTags)); });
         project.getTasks().named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
-        mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
-        mainSet.setRuntimeClasspath(
-                mainSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()).plus(launcherSources.getOutput()));
-        testSet.setCompileClasspath(testSet.getCompileClasspath().plus(injectedSourceSet.getOutput()));
-        testSet.setRuntimeClasspath(
-                testSet.getRuntimeClasspath().plus(injectedSourceSet.getOutput()).plus(launcherSources.getOutput()));
+        final FileCollection mcCp = launcherSources.getOutput().plus(patchedMcSources.getOutput());
+        final FileCollection extraCp = mcCp.plus(injectedSourceSet.getOutput());
+        mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(extraCp));
+        mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(extraCp));
+        testSet.setCompileClasspath(testSet.getCompileClasspath().plus(extraCp));
+        testSet.setRuntimeClasspath(testSet.getRuntimeClasspath().plus(extraCp));
         project.getTasks().named("jar", Jar.class)
                 .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
 
@@ -1070,14 +1070,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                         task.getPatches().from(userdevFile("patches.zip"));
                     }
                 });
-
-                final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
-                final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-                final ConfigurableFileCollection mcCp = project.getObjects().fileCollection();
-                mcCp.from(launcherSources.getOutput());
-                mcCp.from(patchedMcSources.getOutput());
-                mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(mcCp));
-                mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(mcCp));
             }
         }
     }
