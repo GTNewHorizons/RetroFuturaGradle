@@ -11,6 +11,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.provider.MapProperty;
@@ -42,12 +43,18 @@ public abstract class InjectTagsTask extends DefaultTask {
     @OutputDirectory
     public abstract DirectoryProperty getOutputDir();
 
+    /**
+     * Whether to remove stale files from the output directory. True by default.
+     */
+    @Input
+    public abstract Property<Boolean> getCleanOutputDir();
+
     @Inject
     protected abstract FileOperations getFileOperations();
 
     @Inject
     public InjectTagsTask() {
-        onlyIf(t -> !getTags().get().isEmpty());
+        getCleanOutputDir().convention(true);
     }
 
     @TaskAction
@@ -61,7 +68,15 @@ public abstract class InjectTagsTask extends DefaultTask {
             final String outClassName = (lastDot >= 0) ? outClass.substring(lastDot + 1) : outClass;
             final String outPath = (outPackage == null ? "" : outPackage.replace('.', '/') + "/") + outClassName
                     + ".java";
-            final File outFile = getOutputDir().get().file(outPath).getAsFile();
+            final Directory outputDir = getOutputDir().get();
+            if (getCleanOutputDir().get() && outputDir.getAsFile().isDirectory()) {
+                try {
+                    FileUtils.deleteDirectory(outputDir.getAsFile());
+                } catch (IOException e) {
+                    getLogger().warn("Could not clean output directory {}", outputDir.getAsFile(), e);
+                }
+            }
+            final File outFile = outputDir.file(outPath).getAsFile();
             FileUtils.forceMkdirParent(outFile);
             final StringBuilder outWriter = new StringBuilder();
             if (outPackage != null) {
