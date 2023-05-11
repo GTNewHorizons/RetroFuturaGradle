@@ -829,7 +829,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
             task.setWorkingDir(obfRunFolder);
             task.systemProperty("retrofuturagradle.reobfDev", true);
-            task.classpath(project.getTasks().named("reobfJar"));
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
