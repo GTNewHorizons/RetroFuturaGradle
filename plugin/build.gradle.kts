@@ -69,6 +69,8 @@ dependencies {
   shadow(gradleApi())
 
   annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
+  // workaround for https://github.com/bsideup/jabel/issues/174
+  annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
   testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
   compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0") { isTransitive = false }
 
