@@ -56,7 +56,13 @@ val gitVersion: groovy.lang.Closure<String> by extra
 
 group = "com.gtnewhorizons"
 
-version = gitVersion().removeSuffix(".dirty")
+val versionOverride = System.getenv("VERSION") ?: null
+val identifiedVersion = versionOverride ?: gitVersion().removeSuffix(".dirty")
+version = identifiedVersion
+
+if (identifiedVersion == versionOverride) {
+  println("Override version to $version!")
+}
 
 val runtimeOnlyNonPublishable by configurations.creating {
   isCanBeConsumed = false
