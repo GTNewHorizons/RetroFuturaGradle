@@ -54,11 +54,12 @@ public class UpdateDependenciesTask extends DefaultTask {
             List<String> versions = fetchVersions(modName);
             if (versions.isEmpty()) {
                 getLogger().warn(String.format("No releases found on %s", modName));
+                continue;
             }
             int currentVersionIndex = -1;
             int latestVersionIndex = -1;
             // Assume last pushed version == latest version. Maybe we can actually parse version string,
-            // but for now it works well for mass updating dependencies.
+            // but for now it works most of the time.
             for (int i = versions.size() - 1; i >= 0; i--) {
                 String versionCandidate = versions.get(i);
                 if (currentVersionIndex == -1 && versionCandidate.equals(currentVersion)) {
