@@ -25,7 +25,8 @@ import org.w3c.dom.NodeList;
 
 public class UpdateDependenciesTask extends DefaultTask {
 
-    private static final Pattern GTNH_DEPENDENCY = Pattern.compile("com\\.github\\.GTNewHorizons:(.+):(.+):dev");
+    private static final Pattern GTNH_DEPENDENCY = Pattern
+            .compile("com\\.github\\.GTNewHorizons:([^:]+):([^:'\"]+)(:[^:'\"]+)?");
 
     @Inject
     public UpdateDependenciesTask() {
