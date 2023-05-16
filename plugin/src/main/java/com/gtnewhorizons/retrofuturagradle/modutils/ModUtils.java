@@ -4,24 +4,29 @@ import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.FileCollection;
-import org.gradle.api.file.FileTree;
-import org.gradle.api.file.RegularFile;
+import org.gradle.api.file.*;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.plugins.BasePluginExtension;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.language.jvm.tasks.ProcessResources;
 
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
+import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
@@ -39,6 +44,7 @@ public class ModUtils {
     private final MCPTasks mcpTasks;
     private final ConfigurableFileCollection depFilesToDeobf;
     private final SetProperty<String> depModulesToDeobf;
+    private final Property<String> mixinRefMap;
 
     /**
      * Attribute that controls running the deobfuscation artifact transform.
@@ -58,6 +64,7 @@ public class ModUtils {
 
         this.depFilesToDeobf = objects.fileCollection();
         this.depModulesToDeobf = objects.setProperty(String.class);
+        this.mixinRefMap = objects.property(String.class);
 
         project.getTasks().register("applyDecompilerCleanupToMain", ApplyDecompCleanupTask.class, task -> {
             task.setGroup(TASK_GROUP_USER);
@@ -88,6 +95,29 @@ public class ModUtils {
                     cfg.getAttributes().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.TRUE);
                 }
             });
+        });
+
+        project.afterEvaluate(_p -> {
+            if (this.mixinRefMap.isPresent()) {
+                File tempMixinDir = FileUtils.getFile(project.getBuildDir(), "tmp", "mixins");
+                File mixinSrg = new File(tempMixinDir, "mixins.srg");
+                File mixinRefMapFile = new File(tempMixinDir, this.mixinRefMap.get());
+                TaskProvider<ReobfuscatedJar> reobfJarTask = project.getTasks()
+                        .named("reobfJar", ReobfuscatedJar.class);
+                reobfJarTask.configure(task -> task.getExtraSrgFiles().from(mixinSrg));
+                project.getTasks().named("compileJava", JavaCompile.class).configure(task -> {
+                    task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs());
+                    List<String> compilerArgs = task.getOptions().getCompilerArgs();
+                    compilerArgs.add(
+                            "-AreobfSrgFile=" + reobfJarTask.map(ReobfuscatedJar::getSrg).map(RegularFileProperty::get)
+                                    .map(RegularFile::getAsFile));
+                    compilerArgs.add("-AoutSrgFile=" + mixinSrg);
+                    compilerArgs.add("-AoutRefMapFile=" + mixinRefMapFile);
+                });
+                ProcessResources processResources = project.getExtensions().getByType(ProcessResources.class);
+                processResources.from(mixinRefMapFile);
+                processResources.dependsOn("compileJava");
+            }
         });
 
         deps.getExtensions().add("rfg", new RfgDependencyExtension());
@@ -122,6 +152,22 @@ public class ModUtils {
                             "Unsupported dependency type " + depSpec.getClass() + " for RFG deobfuscation");
                 }
         return depSpec;
+    }
+
+    /**
+     * Wrap a mixin dependency specification with a call to this function to allow RFG to recognise the need for a
+     * refmap to be generated. The dependency should be declared as part of the annotationProcessor configuration
+     */
+    public Object enableMixins(Object mixinSpec, String refMapName) {
+        mixinRefMap.set(refMapName);
+        return mixinSpec;
+    }
+
+    public Object enableMixins(Object mixinSpec) {
+        return enableMixins(
+                mixinSpec,
+                "mixins." + project.getExtensions().getByType(BasePluginExtension.class).getArchivesName()
+                        + ".refmap.json");
     }
 
     public class RfgDependencyExtension {
