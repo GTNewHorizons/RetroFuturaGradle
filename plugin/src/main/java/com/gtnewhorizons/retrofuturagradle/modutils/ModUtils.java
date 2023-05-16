@@ -114,9 +114,10 @@ public class ModUtils {
                     compilerArgs.add("-AoutSrgFile=" + mixinSrg);
                     compilerArgs.add("-AoutRefMapFile=" + mixinRefMapFile);
                 });
-                ProcessResources processResources = project.getExtensions().getByType(ProcessResources.class);
-                processResources.from(mixinRefMapFile);
-                processResources.dependsOn("compileJava");
+                project.getTasks().named("processResources", ProcessResources.class).configure(task -> {
+                    task.from(mixinRefMapFile);
+                    task.dependsOn("compileJava");
+                });
             }
         });
 
