@@ -16,6 +16,7 @@ import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.*;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
@@ -113,10 +114,12 @@ public class ModUtils {
                 reobfJarTask.configure(task -> task.getExtraSrgFiles().from(mixinSrg));
                 project.getTasks().named("compileJava", JavaCompile.class).configure(task -> {
                     task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs());
+                    ListProperty<String> reobfSrgFile = project.getObjects().listProperty(String.class);
+                    reobfSrgFile.add(
+                            reobfJarTask.map(ReobfuscatedJar::getSrg).map(RegularFileProperty::get)
+                                    .map(RegularFile::getAsFile).map(f -> "-AreobfSrgFile=" + f));
+                    task.getOptions().getCompilerArgumentProviders().add(reobfSrgFile::get);
                     List<String> compilerArgs = task.getOptions().getCompilerArgs();
-                    compilerArgs.add(
-                            "-AreobfSrgFile=" + reobfJarTask.map(ReobfuscatedJar::getSrg).map(RegularFileProperty::get)
-                                    .map(RegularFile::getAsFile).get());
                     compilerArgs.add("-AoutSrgFile=" + mixinSrg);
                     compilerArgs.add("-AoutRefMapFile=" + mixinRefMapFile);
                 });
@@ -171,10 +174,10 @@ public class ModUtils {
     }
 
     public Object enableMixins(Object mixinSpec) {
-        return enableMixins(
-                mixinSpec,
-                "mixins." + project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().get()
-                        + ".refmap.json");
+        mixinRefMap.set(
+                project.getExtensions().getByType(BasePluginExtension.class).getArchivesName()
+                        .map(name -> String.format("mixins.%s.refmap.json", name)));
+        return mixinSpec;
     }
 
     public class RfgDependencyExtension {
