@@ -116,7 +116,7 @@ public class ModUtils {
                     List<String> compilerArgs = task.getOptions().getCompilerArgs();
                     compilerArgs.add(
                             "-AreobfSrgFile=" + reobfJarTask.map(ReobfuscatedJar::getSrg).map(RegularFileProperty::get)
-                                    .map(RegularFile::getAsFile));
+                                    .map(RegularFile::getAsFile).get());
                     compilerArgs.add("-AoutSrgFile=" + mixinSrg);
                     compilerArgs.add("-AoutRefMapFile=" + mixinRefMapFile);
                 });
@@ -173,7 +173,7 @@ public class ModUtils {
     public Object enableMixins(Object mixinSpec) {
         return enableMixins(
                 mixinSpec,
-                "mixins." + project.getExtensions().getByType(BasePluginExtension.class).getArchivesName()
+                "mixins." + project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().get()
                         + ".refmap.json");
     }
 
