@@ -1,0 +1,12 @@
+com.gtnewhorizons.retrofuturagradle
+com.gtnewhorizons.retrofuturagradle.fgpatchers
+com.gtnewhorizons.retrofuturagradle.json
+com.gtnewhorizons.retrofuturagradle.mcp
+com.gtnewhorizons.retrofuturagradle.mcp.fg23
+com.gtnewhorizons.retrofuturagradle.minecraft
+com.gtnewhorizons.retrofuturagradle.modutils
+com.gtnewhorizons.retrofuturagradle.patchdev
+com.gtnewhorizons.retrofuturagradle.util
+com.gtnewhorizons.retrofuturagradle.util.patching
+cpw.mods.fml.relauncher
+net.minecraftforge.fml.relauncher
