@@ -4,6 +4,7 @@ import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +14,8 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.AttributeCompatibilityRule;
+import org.gradle.api.attributes.CompatibilityCheckDetails;
 import org.gradle.api.file.*;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
@@ -53,6 +56,18 @@ public class ModUtils {
     public static final Attribute<Boolean> DEOBFUSCATOR_TRANSFORMED = Attribute
             .of("rfgDeobfuscatorTransformed", Boolean.class);
 
+    public static class DeobfuscatorTransformerCompatRules implements AttributeCompatibilityRule<Boolean> {
+
+        @Override
+        public void execute(CompatibilityCheckDetails<Boolean> details) {
+            if (details.getProducerValue() == null) {
+                details.compatible();
+            } else {
+                details.incompatible();
+            }
+        }
+    }
+
     public ModUtils(Project project, MinecraftExtension mcExt, MinecraftTasks minecraftTasks, MCPTasks mcpTasks) {
         this.project = project;
         this.mcExt = mcExt;
@@ -79,6 +94,11 @@ public class ModUtils {
                     "Updates dependencies described at dependencies.gradle. Currently only supports GTNH repositories.");
         });
 
+        project.getDependencies().getAttributesSchema().attribute(DEOBFUSCATOR_TRANSFORMED, ams -> {
+            ams.getCompatibilityRules().add(DeobfuscatorTransformerCompatRules.class);
+            ams.getDisambiguationRules().pickFirst(Comparator.nullsFirst(Comparator.naturalOrder()));
+        });
+
         // Dependency deobfuscation utilities, see comment on deobfuscate
         deps.registerTransform(DependencyDeobfuscationTransform.class, spec -> {
             spec.getFrom().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
@@ -97,6 +117,9 @@ public class ModUtils {
                     .attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
             project.getConfigurations().configureEach(cfg -> {
                 // Don't add the deobfuscator-transformed attribute to published variants
+                if (cfg.isCanBeConsumed() && !cfg.isCanBeResolved()) {
+                    return;
+                }
                 if (cfg.getName().endsWith("Elements") || cfg.getName().endsWith("ElementsForTest")) {
                     return;
                 }

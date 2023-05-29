@@ -218,7 +218,9 @@ public final class MinecraftTasks {
         this.vanillaMcConfiguration = project.getConfigurations().create("vanilla_minecraft");
         this.vanillaMcConfiguration.setCanBeConsumed(false);
         this.lwjgl2Configuration = project.getConfigurations().create("lwjgl2Classpath");
+        this.lwjgl2Configuration.setCanBeConsumed(false);
         this.lwjgl3Configuration = project.getConfigurations().create("lwjgl3Classpath");
+        this.lwjgl3Configuration.setCanBeConsumed(false);
         applyMcDependencies();
 
         taskExtractNatives2 = project.getTasks().register("extractNatives2", ExtractNativesTask.class, task -> {
