@@ -50,6 +50,7 @@ public class GradleForgeHacks {
     // coremod hack
     private static final String COREMOD_VAR = "fml.coreMods.load";
     private static final String COREMOD_MF = "FMLCorePlugin";
+    private static final String TWEAKER_MF = "TweakClass";
     // AT hack
     private static final String MOD_ATD_CLASS = "net.minecraftforge.fml.common.asm.transformers.ModAccessTransformer";
     private static final String MOD_AT_METHOD = "addJar";
@@ -77,7 +78,7 @@ public class GradleForgeHacks {
         for (String cpEntry : cpEntries) {
             File coreMod = new File(cpEntry);
             try {
-                searchCoremodAtUrl(coreMod.toURI().toURL(), atRegistrar);
+                searchCoremodAtUrl(common, extraTweakers, coreMod.toURI().toURL(), atRegistrar);
             } catch (IOException | InvocationTargetException | IllegalAccessException | URISyntaxException e) {
                 GradleStartCommon.LOGGER.warn("GradleForgeHacks failed to search for coremod at {}", coreMod, e);
             }
@@ -97,7 +98,8 @@ public class GradleForgeHacks {
         }
     }
 
-    private static void searchCoremodAtUrl(URL url, AtRegistrar atRegistrar)
+    private static void searchCoremodAtUrl(GradleStartCommon common, Set<String> extraTweakers, URL url,
+            AtRegistrar atRegistrar)
             throws IOException, InvocationTargetException, IllegalAccessException, URISyntaxException {
         if (!url.getProtocol().startsWith("file")) // because file urls start with file://
             return; // this isn't a file
@@ -130,6 +132,12 @@ public class GradleForgeHacks {
             if (!Strings.isNullOrEmpty(clazz)) {
                 GradleStartCommon.LOGGER.info("Found and added coremod: " + clazz);
                 coreMap.put(clazz, coreMod);
+            }
+            final String cascadingTweaker = manifest.getMainAttributes().getValue(TWEAKER_MF);
+            if (!Strings.isNullOrEmpty(cascadingTweaker) && extraTweakers.add(cascadingTweaker)) {
+                GradleStartCommon.LOGGER.info("Found and added cascading tweaker: " + cascadingTweaker);
+                common.extras.add("--tweakClass");
+                common.extras.add(cascadingTweaker);
             }
         }
     }
