@@ -96,6 +96,10 @@ public class ModUtils {
             project.getDependencies().getArtifactTypes().getByName("jar").getAttributes()
                     .attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
             project.getConfigurations().configureEach(cfg -> {
+                // Don't add the deobfuscator-transformed attribute to published variants
+                if (cfg.getName().endsWith("Elements") || cfg.getName().endsWith("ElementsForTest")) {
+                    return;
+                }
                 ObfuscationAttribute requiredObfuscation = cfg.getAttributes()
                         .getAttribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE);
                 if (requiredObfuscation.getName().equals(ObfuscationAttribute.MCP)) {
