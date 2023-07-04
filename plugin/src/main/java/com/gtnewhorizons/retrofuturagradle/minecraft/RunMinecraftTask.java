@@ -24,6 +24,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.JavaExec;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.work.DisableCachingByDefault;
 
@@ -57,6 +58,16 @@ public abstract class RunMinecraftTask extends JavaExec {
 
     @Input
     public abstract ListProperty<String> getExtraArgs();
+
+    @Input
+    @Optional
+    @Option(option = "mcArgs", description = "Arguments to pass to Minecraft on startup")
+    public abstract ListProperty<String> getCmdlineArgs();
+
+    @Input
+    @Optional
+    @Option(option = "mcJvmArgs", description = "Arguments to pass to Minecraft's JVM on startup")
+    public abstract ListProperty<String> getCmdlineJvmArgs();
 
     @Input
     public abstract Property<Integer> getLwjglVersion();
@@ -156,6 +167,9 @@ public abstract class RunMinecraftTask extends JavaExec {
             args.add(tweakClass);
         }
         args.addAll(getExtraArgs().get());
+        if (getCmdlineArgs().isPresent()) {
+            args.addAll(getCmdlineArgs().get());
+        }
         return args;
     }
 
@@ -164,6 +178,9 @@ public abstract class RunMinecraftTask extends JavaExec {
         ArrayList<String> args = new ArrayList<>();
         args.addAll(getExtraJvmArgs().get());
         args.addAll(mcExt.getExtraRunJvmArguments().get());
+        if (getCmdlineJvmArgs().isPresent()) {
+            args.addAll(getCmdlineJvmArgs().get());
+        }
         return args;
     }
 
