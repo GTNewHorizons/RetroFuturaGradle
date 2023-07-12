@@ -1,20 +1,39 @@
 package com.gtnewhorizons.retrofuturagradle.minecraft;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileTree;
-import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskAction;
 import org.gradle.internal.os.OperatingSystem;
 
-public class ExtractNativesTask extends Copy {
+public abstract class ExtractNativesTask extends DefaultTask {
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NAME_ONLY)
+    public abstract ConfigurableFileCollection getNatives();
+
+    @OutputDirectory
+    public abstract DirectoryProperty getDestinationFolder();
 
     public void configureMe(Project project, File targetDirectory, Configuration lwjglConfiguration,
             Configuration vanillaMcConfiguration) {
-        this.from(project.provider(() -> {
+        this.getNatives().from(project.provider(() -> {
             final OperatingSystem os = OperatingSystem.current();
             final String twitchNatives;
             final String lwjglNatives = (String) project.getExtensions().getByName("lwjglNatives");
@@ -38,7 +57,36 @@ public class ExtractNativesTask extends Copy {
             }
             return trees;
         }));
-        this.exclude("META-INF/**", "META-INF");
-        this.into(targetDirectory);
+        // this.exclude("META-INF/**", "META-INF");
+        this.getDestinationFolder().set(targetDirectory);
+    }
+
+    @TaskAction
+    public void extract() throws IOException {
+        final Path destFolder = getDestinationFolder().get().getAsFile().toPath();
+        for (final File sourceFile : getNatives()) {
+            final Path source = sourceFile.toPath();
+            String path = sourceFile.getPath();
+            // If there's someone out there who has a username of META-INF, this will have to be changed
+            if (path.contains("META-INF")) {
+                continue;
+            }
+            final Path destination = destFolder.resolve(source.getFileName());
+            boolean update = true;
+            if (Files.exists(destination)) {
+                final byte[] srcBytes = Files.readAllBytes(source);
+                final byte[] dstBytes = Files.readAllBytes(destination);
+                if (!Arrays.equals(srcBytes, dstBytes)) {
+                    update = false;
+                }
+            }
+            if (update) {
+                Files.copy(
+                        source,
+                        destination,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES);
+            }
+        }
     }
 }
