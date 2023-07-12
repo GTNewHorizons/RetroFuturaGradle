@@ -112,6 +112,10 @@ public abstract class ReobfuscatedJar extends Jar {
             mapping.loadMappings(srg);
             mapping.loadMappings(extraSrg);
             for (File file : getExtraSrgFiles()) {
+                if (!file.isFile()) {
+                    getLogger().warn("SRG file {} does not exist", file);
+                    continue;
+                }
                 mapping.loadMappings(file);
             }
             final JarRemapper remapper = new JarRemapper(null, mapping);
