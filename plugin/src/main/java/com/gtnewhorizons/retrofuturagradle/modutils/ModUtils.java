@@ -10,6 +10,8 @@ import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.gradle.api.Action;
+import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
@@ -19,12 +21,16 @@ import org.gradle.api.attributes.CompatibilityCheckDetails;
 import org.gradle.api.file.*;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
+import org.gradle.api.plugins.scala.ScalaPlugin;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.kotlin.gradle.plugin.KaptExtension;
 
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
@@ -33,6 +39,8 @@ import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
 import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
+
+import kotlin.Unit;
 
 /**
  * Gradle utilities for developing mods
@@ -150,9 +158,39 @@ public class ModUtils {
                     compilerArgs.add("-AoutSrgFile=" + mixinSrg);
                     compilerArgs.add("-AoutRefMapFile=" + mixinRefMapFile);
                 });
+                // Keep as class instead of lambda to ensure it works even if the plugin is not loaded into the
+                // classpath
+                // noinspection rawtypes
+                project.getPlugins().withId("org.jetbrains.kotlin.kapt", new Action<Plugin>() {
+
+                    @Override
+                    public void execute(@NotNull Plugin rawPlugin) {
+                        KaptExtension kapt = project.getExtensions().getByType(KaptExtension.class);
+                        kapt.setCorrectErrorTypes(true);
+                        kapt.javacOptions(jco -> {
+                            jco.option("-AoutSrgFile=" + mixinSrg);
+                            jco.option("-AoutRefMapFile=" + mixinRefMapFile);
+                            // This is lazily evaluated by the kapt plugin
+                            Provider<String> reobfSrg = reobfJarTask.map(ReobfuscatedJar::getSrg)
+                                    .map(RegularFileProperty::get).map(RegularFile::getAsFile)
+                                    .map(f -> "-AreobfSrgFile=" + f);
+                            if (reobfSrg.isPresent()) {
+                                jco.option(reobfSrg.get());
+                            }
+                            return Unit.INSTANCE;
+                        });
+                        project.getTasks().configureEach(task -> {
+                            if (task.getName().equals("kaptKotlin")) {
+                                task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs());
+                            }
+                        });
+                    }
+                });
                 project.getTasks().named("processResources", ProcessResources.class).configure(task -> {
                     task.from(mixinRefMapFile);
                     task.dependsOn("compileJava");
+                    project.getPlugins().withType(ScalaPlugin.class, scp -> { task.dependsOn("compileScala"); });
+                    project.getPlugins().withId("org.jetbrains.kotlin.jvm", p -> { task.dependsOn("compileKotlin"); });
                 });
             }
         });

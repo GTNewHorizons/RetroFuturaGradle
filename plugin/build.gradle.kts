@@ -109,6 +109,7 @@ dependencies {
       group = "de.undercouch.download",
       name = "de.undercouch.download.gradle.plugin",
       version = "5.4.0")
+  compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0")
   // JSON handling for Minecraft manifests etc.
   implementation("com.google.code.gson:gson:2.10")
   // Forge utilities (to be merged into the source tree in the future)
