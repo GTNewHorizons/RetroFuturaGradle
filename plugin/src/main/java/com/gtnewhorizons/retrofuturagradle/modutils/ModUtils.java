@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -90,6 +91,10 @@ public class ModUtils {
         this.depModulesToDeobf = objects.setProperty(String.class);
         this.mixinRefMap = objects.property(String.class);
 
+        final boolean disableDependencyDeobfuscation = Boolean.parseBoolean(
+                Optional.ofNullable(project.findProperty("rfg.disableDependencyDeobfuscation")).orElse("false")
+                        .toString());
+
         project.getTasks().register("applyDecompilerCleanupToMain", ApplyDecompCleanupTask.class, task -> {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription(
@@ -102,42 +107,44 @@ public class ModUtils {
                     "Updates dependencies described at dependencies.gradle. Currently only supports GTNH repositories.");
         });
 
-        project.getDependencies().getAttributesSchema().attribute(DEOBFUSCATOR_TRANSFORMED, ams -> {
-            ams.getCompatibilityRules().add(DeobfuscatorTransformerCompatRules.class);
-            ams.getDisambiguationRules().pickFirst(Comparator.nullsFirst(Comparator.naturalOrder()));
-        });
-
-        // Dependency deobfuscation utilities, see comment on deobfuscate
-        deps.registerTransform(DependencyDeobfuscationTransform.class, spec -> {
-            spec.getFrom().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
-            spec.getTo().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.TRUE);
-            final DependencyDeobfuscationTransform.Parameters params = spec.getParameters();
-            params.getFieldsCsv()
-                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getFieldsCsv));
-            params.getMethodsCsv()
-                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
-            params.getFilesToDeobf().from(depFilesToDeobf);
-            params.getModulesToDeobf().set(depModulesToDeobf);
-        });
-
-        project.afterEvaluate(_p -> {
-            project.getDependencies().getArtifactTypes().getByName("jar").getAttributes()
-                    .attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
-            project.getConfigurations().configureEach(cfg -> {
-                // Don't add the deobfuscator-transformed attribute to published variants
-                if (cfg.isCanBeConsumed() && !cfg.isCanBeResolved()) {
-                    return;
-                }
-                if (cfg.getName().endsWith("Elements") || cfg.getName().endsWith("ElementsForTest")) {
-                    return;
-                }
-                ObfuscationAttribute requiredObfuscation = cfg.getAttributes()
-                        .getAttribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE);
-                if (requiredObfuscation.getName().equals(ObfuscationAttribute.MCP)) {
-                    cfg.getAttributes().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.TRUE);
-                }
+        if (!disableDependencyDeobfuscation) {
+            project.getDependencies().getAttributesSchema().attribute(DEOBFUSCATOR_TRANSFORMED, ams -> {
+                ams.getCompatibilityRules().add(DeobfuscatorTransformerCompatRules.class);
+                ams.getDisambiguationRules().pickFirst(Comparator.nullsFirst(Comparator.naturalOrder()));
             });
-        });
+
+            // Dependency deobfuscation utilities, see comment on deobfuscate
+            deps.registerTransform(DependencyDeobfuscationTransform.class, spec -> {
+                spec.getFrom().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
+                spec.getTo().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.TRUE);
+                final DependencyDeobfuscationTransform.Parameters params = spec.getParameters();
+                params.getFieldsCsv()
+                        .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getFieldsCsv));
+                params.getMethodsCsv()
+                        .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
+                params.getFilesToDeobf().from(depFilesToDeobf);
+                params.getModulesToDeobf().set(depModulesToDeobf);
+            });
+
+            project.afterEvaluate(_p -> {
+                project.getDependencies().getArtifactTypes().getByName("jar").getAttributes()
+                        .attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.FALSE);
+                project.getConfigurations().configureEach(cfg -> {
+                    // Don't add the deobfuscator-transformed attribute to published variants
+                    if (cfg.isCanBeConsumed() && !cfg.isCanBeResolved()) {
+                        return;
+                    }
+                    if (cfg.getName().endsWith("Elements") || cfg.getName().endsWith("ElementsForTest")) {
+                        return;
+                    }
+                    ObfuscationAttribute requiredObfuscation = cfg.getAttributes()
+                            .getAttribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE);
+                    if (requiredObfuscation.getName().equals(ObfuscationAttribute.MCP)) {
+                        cfg.getAttributes().attribute(DEOBFUSCATOR_TRANSFORMED, Boolean.TRUE);
+                    }
+                });
+            });
+        }
 
         project.afterEvaluate(_p -> {
             if (this.mixinRefMap.isPresent()) {
