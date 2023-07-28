@@ -832,7 +832,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaServerLocation());
             task.classpath(patchedConfiguration);
-            task.getMainClass().set("cpw.mods.fml.relauncher.ServerLaunchWrapper");
+            task.getMainClass().set(
+                    mcExt.getMinorMcVersion().map(
+                            v -> (v <= 7) ? "cpw.mods.fml.relauncher.ServerLaunchWrapper"
+                                    : "net.minecraftforge.fml.relauncher.ServerLaunchWrapper"));
             task.getTweakClasses().set(Collections.emptyList());
         });
 
