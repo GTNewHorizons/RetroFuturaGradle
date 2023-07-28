@@ -191,16 +191,15 @@ public abstract class RunMinecraftTask extends JavaExec {
             args(calculateArgs(project));
             jvmArgs(calculateJvmArgs(project));
             if (side == Distribution.DEDICATED_SERVER) {
+                final File properties = new File(getWorkingDir(), "server.properties");
+                if (!properties.exists()) {
+                    final String data = "online-mode=" + consolePrompt("Do you want to start the server in online-mode? Type 'y' to do so");
+                    FileUtils.write(properties, data, StandardCharsets.UTF_8);
+                }
+
                 final File eula = new File(getWorkingDir(), "eula.txt");
                 if (!eula.exists()) {
-                    getLogger().warn(
-                            "Do you accept the minecraft EULA? Say 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula");
-                    final String userInput;
-                    try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
-                            BufferedReader reader = new BufferedReader(isr)) {
-                        userInput = Strings.nullToEmpty(reader.readLine()).trim();
-                    }
-                    if (userInput.startsWith("y") || userInput.startsWith("Y")) {
+                    if (consolePrompt("Do you accept the minecraft EULA? Type 'y' if you accept the terms at https://account.mojang.com/documents/minecraft_eula")) {
                         FileUtils.write(eula, "eula=true", StandardCharsets.UTF_8);
                     } else {
                         getLogger().error("EULA not accepted!");
@@ -210,6 +209,16 @@ public abstract class RunMinecraftTask extends JavaExec {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private boolean consolePrompt(String message) throws IOException {
+        getLogger().warn(message);
+        final String userInput;
+        try (InputStreamReader isr = new InputStreamReader(CloseShieldInputStream.wrap(System.in));
+             BufferedReader reader = new BufferedReader(isr)) {
+            userInput = Strings.nullToEmpty(reader.readLine()).trim();
+            return userInput.startsWith("y") || userInput.startsWith("Y");
         }
     }
 
