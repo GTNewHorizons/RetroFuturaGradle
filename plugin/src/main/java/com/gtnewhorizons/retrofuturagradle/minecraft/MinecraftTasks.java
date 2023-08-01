@@ -8,12 +8,17 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ComponentMetadataSupplier;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
@@ -266,7 +271,8 @@ public final class MinecraftTasks {
     }
 
     private void applyMcDependencies() {
-        RepositoryHandler repos = project.getRepositories();
+        final RepositoryHandler repos = project.getRepositories();
+        final ObjectFactory objects = project.getObjects();
         repos.maven(mvn -> {
             mvn.setName("mojang");
             mvn.setUrl(Constants.URL_MOJANG_LIBRARIES_MAVEN);
@@ -292,14 +298,52 @@ public final class MinecraftTasks {
                 content.includeGroup("org.scala-lang");
             });
             // Allow pom-less artifacts (e.g. MCP data zips)
-            mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
+            mvn.getMetadataSources().artifact();
         });
         repos.maven(mvn -> {
             mvn.setName("sponge");
             mvn.setUrl(Constants.URL_SPONGEPOWERED_MAVEN);
             mvn.mavenContent(content -> { content.includeGroup("lzma"); });
             // Allow pom-less artifacts (e.g. MCP data zips)
-            mvn.metadataSources(MavenArtifactRepository.MetadataSources::artifact);
+            mvn.getMetadataSources().artifact();
+        });
+        repos.exclusiveContent(ec -> {
+            ec.forRepository(() -> repos.ivy(ivy -> {
+                ivy.setName("lwjgl2-osx-arm64-natives");
+                ivy.artifactPattern(
+                        "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar");
+                ivy.ivyPattern(
+                        "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.xml");
+                ivy.getMetadataSources().artifact();
+                ivy.setMetadataSupplier(((ComponentMetadataSupplier) cmsd -> {
+                    AttributeContainer attrs = cmsd.getResult().getAttributes();
+                    attrs.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
+                    attrs.attribute(
+                            LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                            objects.named(LibraryElements.class, LibraryElements.JAR));
+                    attrs.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_API));
+                }).getClass());
+            }));
+            ec.filter(content -> { content.includeModule("org.lwjgl.lwjgl", "lwjgl-platform-natives-osx-arm64"); });
+        });
+        repos.exclusiveContent(ec -> {
+            ec.forRepository(() -> repos.ivy(ivy -> {
+                ivy.setName("jinput-osx-arm64-natives");
+                ivy.artifactPattern(
+                        "https://github.com/r58Playz/jinput-m1/raw/main/plugins/OSX/bin/jinput-platform-2.0.5.jar");
+                ivy.ivyPattern(
+                        "https://github.com/r58Playz/jinput-m1/raw/main/plugins/OSX/bin/jinput-platform-2.0.5.xml");
+                ivy.getMetadataSources().artifact();
+                ivy.setMetadataSupplier(((ComponentMetadataSupplier) cmsd -> {
+                    AttributeContainer attrs = cmsd.getResult().getAttributes();
+                    attrs.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
+                    attrs.attribute(
+                            LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                            objects.named(LibraryElements.class, LibraryElements.JAR));
+                    attrs.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_API));
+                }).getClass());
+            }));
+            ec.filter(content -> { content.includeModule("net.java.jinput", "jinput-platform-natives-osx-arm64"); });
         });
         repos.mavenCentral().mavenContent(content -> {
             content.excludeGroup("com.mojang");
@@ -309,17 +353,17 @@ public final class MinecraftTasks {
         });
 
         final OperatingSystem os = OperatingSystem.current();
+        final String osArch = System.getProperty("os.arch");
         final String lwjgl2Natives;
         if (os.isWindows()) {
             lwjgl2Natives = "natives-windows";
         } else if (os.isMacOsX()) {
-            lwjgl2Natives = "natives-osx";
+            lwjgl2Natives = (osArch.startsWith("aarch64")) ? "natives-osx-arm64" : "natives-osx";
         } else {
             lwjgl2Natives = "natives-linux";
         }
 
         final String lwjgl3Natives;
-        final String osArch = System.getProperty("os.arch");
         if (os.isMacOsX()) {
             lwjgl3Natives = (osArch.startsWith("aarch64")) ? "natives-macos-arm64" : "natives-macos";
         } else if (os.isWindows()) {
@@ -428,9 +472,17 @@ public final class MinecraftTasks {
                 }
 
                 final String LWJGL2_CFG = lwjgl2Configuration.getName();
+                lwjgl2Configuration.setTransitive(false);
                 deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl:" + lwjgl2Version);
                 deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl_util:" + lwjgl2Version);
-                deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl-platform:" + lwjgl2Version + ":" + lwjgl2Natives);
+                // Hack to download arm64 macOS natives from a different repository
+                if (lwjgl2Natives.equals("natives-osx-arm64")) {
+                    deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl-platform-natives-osx-arm64:" + lwjgl2Version);
+                    deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput-platform-natives-osx-arm64:2.0.5");
+                } else {
+                    deps.add(LWJGL2_CFG, "org.lwjgl.lwjgl:lwjgl-platform:" + lwjgl2Version + ":" + lwjgl2Natives);
+                    deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput-platform:2.0.5:" + lwjgl2Natives);
+                }
 
                 final String LWJGL3_CFG = lwjgl3Configuration.getName();
                 deps.add(LWJGL3_CFG, deps.platform("org.lwjgl:lwjgl-bom:" + lwjgl3Version));
@@ -449,7 +501,6 @@ public final class MinecraftTasks {
                 deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjgl3Version + ":" + lwjgl3Natives);
                 deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjgl3Version + ":" + lwjgl3Natives);
 
-                deps.add(VANILLA_MC_CFG, "net.java.jinput:jinput-platform:2.0.5:" + lwjgl2Natives);
                 if (mcMinor <= 8) {
                     deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");
                     if (os.isWindows()) {

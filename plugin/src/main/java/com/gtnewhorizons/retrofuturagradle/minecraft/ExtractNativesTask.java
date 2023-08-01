@@ -44,13 +44,16 @@ public abstract class ExtractNativesTask extends DefaultTask {
             } else {
                 twitchNatives = "natives-linux"; // don't actually exist
             }
-            final FileCollection lwjglZips = lwjglConfiguration
-                    .filter(f -> f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives));
+            final FileCollection lwjglZips = lwjglConfiguration.filter(
+                    f -> f.getName().contains("lwjgl-platform")
+                            || (f.getName().contains("lwjgl") && f.getName().contains(lwjglNatives)));
             final FileCollection twitchZips = vanillaMcConfiguration
                     .filter(f -> f.getName().contains("twitch") && f.getName().contains(twitchNatives));
             final FileCollection ttsZips = vanillaMcConfiguration
                     .filter(f -> f.getName().contains("text2speech") && f.getName().contains("natives"));
-            final FileCollection zips = lwjglZips.plus(twitchZips).plus(ttsZips);
+            final FileCollection jinputZips = vanillaMcConfiguration
+                    .filter(f -> f.getName().contains("jinput-platform"));
+            final FileCollection zips = lwjglZips.plus(twitchZips).plus(ttsZips).plus(jinputZips);
             final ArrayList<FileTree> trees = new ArrayList<>();
             for (File zip : zips) {
                 trees.add(project.zipTree(zip));
@@ -76,7 +79,7 @@ public abstract class ExtractNativesTask extends DefaultTask {
             if (Files.exists(destination)) {
                 final byte[] srcBytes = Files.readAllBytes(source);
                 final byte[] dstBytes = Files.readAllBytes(destination);
-                if (!Arrays.equals(srcBytes, dstBytes)) {
+                if (Arrays.equals(srcBytes, dstBytes)) {
                     update = false;
                 }
             }
