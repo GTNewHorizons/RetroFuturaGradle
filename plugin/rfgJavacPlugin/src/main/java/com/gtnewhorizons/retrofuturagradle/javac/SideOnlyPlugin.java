@@ -76,7 +76,23 @@ public class SideOnlyPlugin extends AbstractProcessor {
         Element enclElement = element.getEnclosingElement();
         if (enclElement instanceof TypeElement) {
             TypeElement typeElement = (TypeElement) enclElement; // will be a class
-            for (TypeMirror mirror : typeElement.getInterfaces()) { // todo need to also go up the superclass tree
+
+            // check super class methods
+            while (typeElement.getSuperclass().getKind() != TypeKind.NONE) {
+                TypeElement superClassElement = (TypeElement) typeUtils.asElement(typeElement.getSuperclass());
+                for (Element enclosedElement : superClassElement.getEnclosedElements()) {
+                    if (enclosedElement.getKind() == ElementKind.METHOD
+                            && elementUtils.overrides(element, (ExecutableElement) enclosedElement, typeElement)) {
+                        if (!enclosedElement.getAnnotation(sideOnlyClass).equals(element.getAnnotation(sideOnlyClass))) {
+                            return true;
+                        }
+                    }
+                }
+                typeElement = superClassElement;
+            }
+
+            // check interface methods
+            for (TypeMirror mirror : typeElement.getInterfaces()) {
                 TypeElement mirrorElement = (TypeElement) typeUtils.asElement(mirror);
                 for (Element enclosedElement : mirrorElement.getEnclosedElements()) {
                     if (enclosedElement.getKind() == ElementKind.METHOD
