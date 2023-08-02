@@ -13,13 +13,16 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.lang.annotation.Annotation;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @AutoService(Processor.class)
+@SupportedAnnotationTypes("*")
 public class SideOnlyPlugin extends AbstractProcessor {
+
+    static final String SIDE_ONLY_1_7 = "cpw.mods.fml.relauncher.SideOnly";
+    static final String SIDE_ONLY_1_12 = "net.minecraftforge.fml.relauncher.SideOnly";
 
     Types typeUtils;
     Elements elementUtils;
@@ -32,15 +35,6 @@ public class SideOnlyPlugin extends AbstractProcessor {
         typeUtils = processingEnv.getTypeUtils();
         elementUtils = processingEnv.getElementUtils();
         messager = processingEnv.getMessager();
-        try {
-            sideOnlyClass = (Class<? extends Annotation>) Class.forName("cpw.mods.fml.relauncher.SideOnly");
-        } catch (ClassNotFoundException e1) {
-            try {
-                sideOnlyClass = (Class<? extends Annotation>) Class.forName("net.minecraftforge.fml.relauncher.SideOnly");
-            } catch (ClassNotFoundException e2) {
-                throw new RuntimeException("Could not initialize SideOnly scanner, SideOnly annotation not found!");
-            }
-        }
     }
 
     @Override
@@ -48,31 +42,45 @@ public class SideOnlyPlugin extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        Set<String> annotations = new LinkedHashSet<>();
-        annotations.add("cpw.mods.fml.relauncher.SideOnly"); // 1.7.10
-        annotations.add("net.minecraftforge.fml.relauncher.SideOnly"); // 1.12.2
-        return annotations;
+    private Class<? extends Annotation> getSideOnlyClass() {
+        if (sideOnlyClass == null) {
+            try {
+                sideOnlyClass = (Class<? extends Annotation>) Class.forName(SIDE_ONLY_1_7);
+            } catch (ClassNotFoundException e1) {
+                try {
+                    sideOnlyClass = (Class<? extends Annotation>) Class.forName(SIDE_ONLY_1_12);
+                } catch (ClassNotFoundException e2) {
+                    throw new RuntimeException("Could not initialize SideOnly scanner, SideOnly annotation not found!");
+                }
+            }
+        }
+        return sideOnlyClass;
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        for (Element annotatedElement : roundEnv.getElementsAnnotatedWith(sideOnlyClass)) {
-            if (annotatedElement.getKind() == ElementKind.METHOD) {
-                ExecutableElement methodElement = (ExecutableElement) annotatedElement;
-                if (checkOverrides(methodElement)) {
-                    messager.printMessage(
-                            Diagnostic.Kind.WARNING,
-                            "Method '" + getDetail(methodElement) + "' overrides a super method with @SideOnly and does not include the annotation."
-                    );
+        for (Element element : roundEnv.getRootElements()) {
+            if (element.getKind() == ElementKind.METHOD) {
+                ExecutableElement methodElement = (ExecutableElement) element;
+                if (!doesMethodHaveAnnotation(methodElement)) {
+                    // This method does not have @SideOnly, so make sure super methods do not have it either
+                    if (doesOverriddenMethodHaveAnnotation(methodElement)) {
+                        messager.printMessage(
+                                Diagnostic.Kind.WARNING,
+                                "Method '" + getDetail(methodElement) + "' overrides a super method with @SideOnly and does not include the annotation."
+                        );
+                    }
                 }
             }
         }
         return true;
     }
 
-    private boolean checkOverrides(ExecutableElement element) {
+    private boolean doesMethodHaveAnnotation(ExecutableElement methodElement) {
+        return methodElement.getAnnotation(getSideOnlyClass()) != null;
+    }
+
+    private boolean doesOverriddenMethodHaveAnnotation(ExecutableElement element) {
         Element enclElement = element.getEnclosingElement();
         if (enclElement instanceof TypeElement) {
             TypeElement typeElement = (TypeElement) enclElement; // will be a class
@@ -83,7 +91,7 @@ public class SideOnlyPlugin extends AbstractProcessor {
                 for (Element enclosedElement : superClassElement.getEnclosedElements()) {
                     if (enclosedElement.getKind() == ElementKind.METHOD
                             && elementUtils.overrides(element, (ExecutableElement) enclosedElement, typeElement)) {
-                        if (!enclosedElement.getAnnotation(sideOnlyClass).equals(element.getAnnotation(sideOnlyClass))) {
+                        if (doesMethodHaveAnnotation((ExecutableElement) enclosedElement)) {
                             return true;
                         }
                     }
@@ -97,7 +105,7 @@ public class SideOnlyPlugin extends AbstractProcessor {
                 for (Element enclosedElement : mirrorElement.getEnclosedElements()) {
                     if (enclosedElement.getKind() == ElementKind.METHOD
                             && elementUtils.overrides(element, (ExecutableElement) enclosedElement, typeElement)) {
-                        if (!enclosedElement.getAnnotation(sideOnlyClass).equals(element.getAnnotation(sideOnlyClass))) {
+                        if (doesMethodHaveAnnotation((ExecutableElement) enclosedElement)) {
                             return true;
                         }
                     }
