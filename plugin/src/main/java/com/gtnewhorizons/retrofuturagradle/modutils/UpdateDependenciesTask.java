@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,8 @@ public class UpdateDependenciesTask extends DefaultTask {
 
     private static final Pattern GTNH_DEPENDENCY = Pattern
             .compile("com\\.github\\.GTNewHorizons:([^:]+):([^:'\"]+)(:[^:'\"]+)?");
+
+    private static final List<String> TAG_SUFFIX_DENYLIST = Arrays.asList("-pre", "-snapshot");
 
     @Inject
     public UpdateDependenciesTask() {
@@ -70,7 +73,7 @@ public class UpdateDependenciesTask extends DefaultTask {
                 if (currentVersionIndex == -1 && versionCandidate.equals(currentVersion)) {
                     currentVersionIndex = i;
                 }
-                if (latestVersionIndex == -1 && !versionCandidate.endsWith("-pre")) {
+                if (latestVersionIndex == -1 && TAG_SUFFIX_DENYLIST.stream().noneMatch(versionCandidate::endsWith)) {
                     latestVersionIndex = i;
                 }
             }
