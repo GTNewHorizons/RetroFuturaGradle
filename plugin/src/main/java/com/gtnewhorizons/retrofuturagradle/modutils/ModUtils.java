@@ -1,13 +1,17 @@
 package com.gtnewhorizons.retrofuturagradle.modutils;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -203,6 +207,62 @@ public class ModUtils {
         });
 
         deps.getExtensions().add("rfg", new RfgDependencyExtension());
+    }
+
+    /**
+     * Tries to connect to a set of URLs in parallel, returning the first URL that responds with a success HTTP code.
+     * 
+     * @param timeoutMillis Timeout for connections made
+     * @param mirrors       The list of mirror URLs to try
+     * @return The live URL
+     * @throws RuntimeException If none of the URLs are live
+     */
+    public String getLiveMirrorURL(int timeoutMillis, String... mirrors) {
+        final AtomicReference<String> successUrl = new AtomicReference<>(null);
+        final ArrayList<Thread> threads = new ArrayList<>(mirrors.length);
+        for (final String rawUrl : mirrors) {
+            final String url = rawUrl.replaceFirst("^https", "http");
+            try {
+                final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+                connection.setConnectTimeout(timeoutMillis);
+                connection.setReadTimeout(timeoutMillis);
+                connection.setRequestMethod("HEAD");
+                final Thread thread = new Thread("rfg-mirror-checker") {
+
+                    @Override
+                    public void run() {
+                        try {
+                            int response = connection.getResponseCode();
+                            if (response >= 200 && response <= 399) {
+                                successUrl.set(url);
+                                successUrl.notifyAll();
+                            }
+                        } catch (IOException e) {
+                            project.getLogger().info("RFG mirror {} failed: {}", url, e.getMessage());
+                        }
+                    }
+                };
+                thread.setDaemon(true);
+                threads.add(thread);
+                thread.start();
+            } catch (IOException e) {
+                continue;
+            }
+        }
+        try {
+            successUrl.wait(timeoutMillis);
+        } catch (InterruptedException e) {
+            // cancel
+        }
+        final String liveUrl = successUrl.get();
+        for (final Thread t : threads) {
+            t.interrupt();
+        }
+        if (liveUrl == null) {
+            throw new RuntimeException("None of the given URL mirrors are live: " + StringUtils.join(mirrors));
+        } else {
+            return liveUrl;
+        }
     }
 
     /**
