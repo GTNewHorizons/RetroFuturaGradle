@@ -59,6 +59,7 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.scala.ScalaCompile;
 import org.gradle.jvm.tasks.Jar;
+import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.language.base.plugins.LifecycleBasePlugin;
 
 import com.google.common.collect.ImmutableMap;
@@ -222,6 +223,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             .file(mcExt.getMinorMcVersion().map(mcVer -> (mcVer <= 8) ? fernflowerLocation : null)));
             task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
             task.getClasspath().from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
+            task.getJvmVendor().set(mcExt.getJavaToolchain().flatMap(JavaToolchainSpec::getVendor));
         });
         decompiledMcChain.addTask(taskDecompileSrgJar);
         taskCleanupDecompSrgJar = project.getTasks()

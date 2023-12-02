@@ -24,6 +24,7 @@ import org.gradle.api.tasks.CompileClasspath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
@@ -68,6 +69,9 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
     @InputFiles
     @CompileClasspath
     public abstract ConfigurableFileCollection getClasspath();
+
+    @Internal
+    public abstract Property<JvmVendorSpec> getJvmVendor();
 
     @Inject
     public DecompileTask() {
@@ -152,7 +156,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
             JavaToolchainService jts = project.getExtensions().findByType(JavaToolchainService.class);
             final String javaExe = jts.launcherFor(toolchain -> {
                 toolchain.getLanguageVersion().set(JavaLanguageVersion.of(17));
-                toolchain.getVendor().set(JvmVendorSpec.AZUL);
+                toolchain.getVendor().set(this.getJvmVendor());
             }).get().getExecutablePath().getAsFile().getAbsolutePath();
             exec.executable(javaExe);
         }).assertNormalExitValue();
@@ -168,7 +172,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
             final String javaExe = jts.launcherFor(toolchain -> {
                 // Using Java 17 leads to different resulting decompiled files
                 toolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
-                toolchain.getVendor().set(JvmVendorSpec.AZUL);
+                toolchain.getVendor().set(this.getJvmVendor());
             }).get().getExecutablePath().getAsFile().getAbsolutePath();
             // We can't use Java 17 so at least use some tuning options that are the defaults in newer versions
             fork.jvmArgs("-XX:+UnlockExperimentalVMOptions", "-XX:+UseG1GC", "-XX:+AggressiveOpts");

@@ -1,16 +1,18 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import java.util.Objects;
+
 import org.apache.commons.lang3.StringUtils;
+import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
-import org.gradle.jvm.toolchain.JvmVendorSpec;
-import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec;
 
 import com.google.common.collect.Lists;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -96,7 +98,9 @@ public interface IMinecraftyExtension {
      */
     public abstract Property<Integer> getMainLwjglVersion();
 
-    default void applyMinecraftyConventions(ObjectFactory objects, Gradle gradle) {
+    default void applyMinecraftyConventions(Project project) {
+        final ObjectFactory objects = project.getObjects();
+        final Gradle gradle = project.getGradle();
         getMcVersion().convention("1.7.10");
         getMcVersion().finalizeValueOnRead();
         getUsername().convention("Developer");
@@ -110,9 +114,11 @@ public interface IMinecraftyExtension {
         getJavaCompatibilityVersion().convention(8);
         getJavaCompatibilityVersion().finalizeValueOnRead();
         {
-            final JavaToolchainSpec defaultToolchain = new DefaultToolchainSpec(objects);
+            final JavaToolchainSpec defaultToolchain = objects.newInstance(JavaToolchainSpec.class);
             defaultToolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
-            defaultToolchain.getVendor().set(JvmVendorSpec.AZUL);
+            defaultToolchain.getVendor().set(
+                    Objects.requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class)).getToolchain()
+                            .getVendor());
             getJavaToolchain().convention(defaultToolchain);
             getJavaToolchain().finalizeValueOnRead();
         }
