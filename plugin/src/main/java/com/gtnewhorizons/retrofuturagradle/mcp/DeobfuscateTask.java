@@ -13,7 +13,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -66,6 +65,7 @@ import com.gtnewhorizons.retrofuturagradle.fg23shadow.de.oceanlabs.mcp.mcinjecto
 import com.gtnewhorizons.retrofuturagradle.json.MCInjectorStruct;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
+import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMapFG12;
 import com.gtnewhorizons.retrofuturagradle.util.RenamedAccessMapFG23;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -110,16 +110,15 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
     public abstract Property<Integer> getMinorMcVersion();
 
     @Override
-    public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getAccessTransformerFiles());
-        HashUtils.addPropertyToHash(digest, getSrgFile());
-        HashUtils.addPropertyToHash(digest, getFieldCsv());
-        HashUtils.addPropertyToHash(digest, getMethodCsv());
-        HashUtils.addPropertyToHash(digest, getExceptorCfg());
-        HashUtils.addPropertyToHash(digest, getExceptorJson());
-        HashUtils.addPropertyToHash(digest, getIsApplyingMarkers());
-        HashUtils.addPropertyToHash(digest, getIsStrippingSynthetics());
-        HashUtils.addPropertyToHash(digest, getMinorMcVersion());
+    public MessageDigestConsumer hashInputs() {
+        return HashUtils.addPropertyToHash(getAccessTransformerFiles())
+                .andThen(HashUtils.addPropertyToHash(getSrgFile())).andThen(HashUtils.addPropertyToHash(getFieldCsv()))
+                .andThen(HashUtils.addPropertyToHash(getMethodCsv()))
+                .andThen(HashUtils.addPropertyToHash(getExceptorCfg()))
+                .andThen(HashUtils.addPropertyToHash(getExceptorJson()))
+                .andThen(HashUtils.addPropertyToHash(getIsApplyingMarkers()))
+                .andThen(HashUtils.addPropertyToHash(getIsStrippingSynthetics()))
+                .andThen(HashUtils.addPropertyToHash(getMinorMcVersion()));
     }
 
     private File taskTempDir;

@@ -15,6 +15,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.Action;
 import org.gradle.api.Task;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.TaskProvider;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
@@ -25,6 +26,9 @@ import com.gtnewhorizons.retrofuturagradle.Constants;
 public class JarChain {
 
     private List<TaskProvider<? extends IJarOutputTask>> taskChain = new ArrayList<>();
+    private boolean eager = false;
+    private List<RegularFileProperty> taskChainOutputs = new ArrayList<>();
+    private List<MessageDigestConsumer> taskChainHashers = new ArrayList<>();
 
     private boolean wasUpToDate = false;
     private long lastUpToDateCheck = -1;
@@ -37,8 +41,16 @@ public class JarChain {
         return taskChain.isEmpty() ? null : taskChain.get(taskChain.size() - 1);
     }
 
+    private RegularFileProperty getLastTaskOutput() {
+        return taskChainOutputs.isEmpty() ? null : taskChainOutputs.get(taskChainOutputs.size() - 1);
+    }
+
     public void addTask(@Nonnull TaskProvider<? extends IJarOutputTask> newTask) {
         taskChain.add(newTask);
+        // It has to be eager to avoid having to serialize the TaskProvider :(
+        final IJarOutputTask eagerTask = newTask.get();
+        taskChainOutputs.add(eagerTask.getOutputJar());
+        taskChainHashers.add(eagerTask.hashInputs());
         newTask.configure(task -> {
             task.getOutputs().upToDateWhen(ignored -> this.isUpToDate());
             task.onlyIf(ignored -> !this.isUpToDate());
@@ -46,8 +58,11 @@ public class JarChain {
     }
 
     public void finish() {
-        taskChain = Collections.unmodifiableList(taskChain);
+        if (taskChain.isEmpty()) {
+            return;
+        }
         getLastTask().configure(lastTask -> { lastTask.doLast("Jar Chain finalizer", new FinalizerAction()); });
+        taskChain = Collections.emptyList(); // Don't persistently store full Task references
     }
 
     private class FinalizerAction implements Action<Task> {
@@ -56,9 +71,8 @@ public class JarChain {
         public void execute(Task ignored) {
             saveUpToDateDigest();
 
-            for (int i = 0; i < taskChain.size() - 1; i++) {
-                IJarOutputTask task = taskChain.get(i).get();
-                File outJar = task.getOutputJar().get().getAsFile();
+            for (int i = 0; i < taskChainOutputs.size() - 1; i++) {
+                File outJar = taskChainOutputs.get(i).get().getAsFile();
                 if (!Constants.DEBUG_NO_TMP_CLEANUP) {
                     FileUtils.deleteQuietly(outJar);
                 }
@@ -71,11 +85,7 @@ public class JarChain {
         if (now - lastUpToDateCheck < 10_000) {
             return wasUpToDate;
         }
-        final TaskProvider<? extends IJarOutputTask> lastTask = getLastTask();
-        if (lastTask == null) {
-            return true;
-        }
-        final File outputFileLocation = lastTask.get().getOutputJar().getAsFile().get();
+        final File outputFileLocation = getLastTaskOutput().getAsFile().get();
         if (!outputFileLocation.isFile()) {
             return false;
         }
@@ -105,11 +115,7 @@ public class JarChain {
     private void saveUpToDateDigest() {
         wasUpToDate = true;
         lastUpToDateCheck = System.currentTimeMillis();
-        final TaskProvider<? extends IJarOutputTask> lastTask = getLastTask();
-        if (lastTask == null) {
-            return;
-        }
-        final File outputFileLocation = lastTask.get().getOutputJar().getAsFile().get();
+        final File outputFileLocation = getLastTaskOutput().getAsFile().get();
         if (!outputFileLocation.isFile()) {
             return;
         }
@@ -128,13 +134,12 @@ public class JarChain {
             new Throwable().printStackTrace(System.err);
         }
         final MessageDigest inputsHasher = DigestUtils.getSha256Digest();
-        for (TaskProvider<? extends IJarOutputTask> t : taskChain) {
+        for (MessageDigestConsumer t : taskChainHashers) {
             if (HashUtils.DEBUG_LOG) {
-                System.err.println(" * task hash: " + t.getName());
+                System.err.println(" * task hash");
             }
-            t.get().hashInputs(inputsHasher);
+            t.accept(inputsHasher);
         }
-        taskChain.forEach(t -> t.get().hashInputs(inputsHasher));
         final byte[] digest = inputsHasher.digest();
         return Hex.encodeHexString(digest).trim();
     }

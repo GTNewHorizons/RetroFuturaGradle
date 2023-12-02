@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -56,6 +55,7 @@ import com.google.common.base.Strings;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.JavadocAdder;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
+import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 @CacheableTask
@@ -95,18 +95,15 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
     public abstract Property<Boolean> getAddDummyJavadocs();
 
     @Override
-    public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getFieldCsv());
-        HashUtils.addPropertyToHash(digest, getMethodCsv());
-        HashUtils.addPropertyToHash(digest, getParamCsv());
-        HashUtils.addPropertyToHash(digest, getExtraParamsCsvs());
-        HashUtils.addPropertyToHash(digest, getGenericFieldsCsvName());
-        if (getGenericFieldsCsvName().isPresent() && !getGenericFieldsCsvName().get().isEmpty()) {
-            // [UPDATE] Generics version number
-            HashUtils.addToHash(digest, 2);
-        }
-        HashUtils.addPropertyToHash(digest, getAddJavadocs());
-        HashUtils.addPropertyToHash(digest, getAddDummyJavadocs());
+    public MessageDigestConsumer hashInputs() {
+        return HashUtils.addPropertyToHash(getFieldCsv()).andThen(HashUtils.addPropertyToHash(getMethodCsv()))
+                .andThen(HashUtils.addPropertyToHash(getParamCsv()))
+                .andThen(HashUtils.addPropertyToHash(getExtraParamsCsvs()))
+                .andThen(HashUtils.addPropertyToHash(getGenericFieldsCsvName())).andThen(
+                        // [UPDATE] Generics version number
+                        HashUtils.addToHash(2))
+                .andThen(HashUtils.addPropertyToHash(getAddJavadocs()))
+                .andThen(HashUtils.addPropertyToHash(getAddDummyJavadocs()));
     }
 
     public RemapSourceJarTask() {

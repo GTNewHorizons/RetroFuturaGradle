@@ -2,17 +2,26 @@ package com.gtnewhorizons.retrofuturagradle;
 
 import java.util.Objects;
 
+import javax.inject.Inject;
+
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Project;
+import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.FileSystemOperations;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
+import org.gradle.jvm.toolchain.JavaCompiler;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.jvm.toolchain.JavaToolchainSpec;
+import org.gradle.jvm.toolchain.JavaLauncher;
+import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.process.ExecOperations;
 
 import com.google.common.collect.Lists;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
@@ -23,16 +32,16 @@ public interface IMinecraftyExtension {
     /**
      * MC version to download and use, only 1.7.10 is supported now and it is the default.
      */
-    public abstract Property<String> getMcVersion();
+    Property<String> getMcVersion();
 
-    public abstract Property<String> getUsername();
+    Property<String> getUsername();
 
-    public abstract Property<String> getUserUUID();
+    Property<String> getUserUUID();
 
     /**
      * Whether to add all of MC's dependencies automatically as dependencies of your project, default is true.
      */
-    public abstract Property<Boolean> getApplyMcDependencies();
+    Property<Boolean> getApplyMcDependencies();
 
     @Deprecated
     default Property<String> getLwjglVersion() {
@@ -42,61 +51,97 @@ public interface IMinecraftyExtension {
     /**
      * LWJGL 2 version to use. Default is 2.9.4-nightly-20150209
      */
-    public abstract Property<String> getLwjgl2Version();
+    Property<String> getLwjgl2Version();
 
     /**
      * LWJGL 3 version to use. Default is 3.3.1
      */
-    public abstract Property<String> getLwjgl3Version();
+    Property<String> getLwjgl3Version();
 
     /**
      * Java version to provide source/target compatibility for. Default is 8.
      */
-    public abstract Property<Integer> getJavaCompatibilityVersion();
+    Property<Integer> getJavaCompatibilityVersion();
 
     /**
-     * The JDK to use for compiling and running the mod
+     * @return The JVM language version to use for Minecraft (de)compilation tasks. Default is 8.
      */
-    public abstract Property<JavaToolchainSpec> getJavaToolchain();
+    Property<JavaLanguageVersion> getJvmLanguageVersion();
 
     // MCP configs
 
     /**
      * stable/snapshot
      */
-    public abstract Property<String> getMcpMappingChannel();
+    Property<String> getMcpMappingChannel();
 
     /**
      * From <a href="https://maven.minecraftforge.net/de/oceanlabs/mcp/versions.json">the MCP versions.json file</a>
      */
-    public abstract Property<String> getMcpMappingVersion();
+    Property<String> getMcpMappingVersion();
 
     /**
      * Whether to use the mappings embedded in Forge for methods and fields (params are taken from MCP because Forge
      * doesn't have any) Default: true.
      */
-    public abstract Property<Boolean> getUseForgeEmbeddedMappings();
+    Property<Boolean> getUseForgeEmbeddedMappings();
 
     /**
      * A list of additional params.csv-style mappings for method parameter renaming.
      */
-    public abstract ConfigurableFileCollection getExtraParamsCsvs();
+    ConfigurableFileCollection getExtraParamsCsvs();
 
     /**
      * Whether to use the generics map to add missing generic parameters to non-private types in the decompiled source
      * code. Default: false. (This is new in RFG compared to FG)
      */
-    public abstract Property<Boolean> getInjectMissingGenerics();
+    Property<Boolean> getInjectMissingGenerics();
 
     /**
      * Fernflower args, default is "-din=1","-rbr=0","-dgs=1","-asc=1","-log=ERROR"
      */
-    public abstract ListProperty<String> getFernflowerArguments();
+    ListProperty<String> getFernflowerArguments();
 
     /**
      * @return The major version of LWJGL (2 or 3) used by the main and test source sets. Default: 2
      */
-    public abstract Property<Integer> getMainLwjglVersion();
+    Property<Integer> getMainLwjglVersion();
+
+    /**
+     * @return An auto-injected gradle service handle.
+     */
+    @Inject
+    FileSystemOperations getFileSystemOperations();
+
+    /**
+     * @return An auto-injected gradle service handle.
+     */
+    @Inject
+    ArchiveOperations getArchiveOperations();
+
+    /**
+     * @return An auto-injected gradle service handle.
+     */
+    @Inject
+    ProviderFactory getProviderFactory();
+
+    /**
+     * @return An auto-injected gradle service handle.
+     */
+    @Inject
+    ExecOperations getExecOperations();
+
+    /**
+     * @return An auto-injected gradle service handle.
+     */
+    @Inject
+    ProjectLayout getProjectLayout();
+
+    /**
+     * @return An auto-injected gradle service handle.
+     */
+    @Inject
+    ObjectFactory getObjectFactory();
 
     default void applyMinecraftyConventions(Project project) {
         final ObjectFactory objects = project.getObjects();
@@ -113,15 +158,7 @@ public interface IMinecraftyExtension {
         getLwjgl2Version().finalizeValueOnRead();
         getJavaCompatibilityVersion().convention(8);
         getJavaCompatibilityVersion().finalizeValueOnRead();
-        {
-            final JavaPluginExtension java = Objects
-                    .requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class));
-            final JavaToolchainSpec defaultToolchain = objects.newInstance(java.getToolchain().getClass());
-            defaultToolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
-            defaultToolchain.getVendor().set(java.getToolchain().getVendor());
-            getJavaToolchain().convention(defaultToolchain);
-            getJavaToolchain().finalizeValueOnRead();
-        }
+        getJvmLanguageVersion().convention(JavaLanguageVersion.of(8));
 
         getMcpMappingChannel().convention("stable");
         getMcpMappingChannel().finalizeValueOnRead();
@@ -164,4 +201,43 @@ public interface IMinecraftyExtension {
                 minecraftVersion -> Integer
                         .parseInt(StringUtils.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10));
     }
+
+    default Provider<JavaLauncher> getToolchainLauncher(Project project) {
+        final JavaToolchainService jts = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        final JavaPluginExtension jext = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class));
+        final Property<JavaLanguageVersion> jvmLanguageVersion = getJvmLanguageVersion();
+        return jts.launcherFor(spec -> {
+            spec.getLanguageVersion().set(jvmLanguageVersion);
+            spec.getVendor().set(jext.getToolchain().getVendor());
+            spec.getImplementation().set(jext.getToolchain().getImplementation());
+        });
+    }
+
+    default Provider<JavaLauncher> getToolchainLauncher(Project project, int languageVersion) {
+        final JavaToolchainService jts = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        final JavaPluginExtension jext = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class));
+        return jts.launcherFor(spec -> {
+            spec.getLanguageVersion().set(JavaLanguageVersion.of(languageVersion));
+            spec.getVendor().set(jext.getToolchain().getVendor());
+            spec.getImplementation().set(jext.getToolchain().getImplementation());
+        });
+    }
+
+    default Provider<JavaCompiler> getToolchainCompiler(Project project) {
+        final JavaToolchainService jts = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
+        final JavaPluginExtension jext = Objects
+                .requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class));
+        final Property<JavaLanguageVersion> jvmLanguageVersion = getJvmLanguageVersion();
+        return jts.compilerFor(spec -> {
+            spec.getLanguageVersion().set(jvmLanguageVersion);
+            spec.getVendor().set(jext.getToolchain().getVendor());
+            spec.getImplementation().set(jext.getToolchain().getImplementation());
+        });
+    }
+
 }

@@ -19,10 +19,14 @@ import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DuplicatesStrategy;
+import org.gradle.api.file.FileSystemOperations;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.TaskContainer;
@@ -45,7 +49,6 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
     public static final String SOURCE_SET_PATCHED_MC = "patchedMc";
     public static final String SOURCE_SET_LAUNCHER = "mcLauncher";
 
-    protected final Project project;
     protected final McExtType mcExt;
     protected final MinecraftTasks mcTasks;
 
@@ -62,9 +65,15 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
     protected final TaskProvider<Download> taskDownloadFernflower;
 
     public SharedMCPTasks(Project project, McExtType mcExt, MinecraftTasks mcTasks) {
-        this.project = project;
         this.mcExt = mcExt;
         this.mcTasks = mcTasks;
+
+        // Extract specific factories instead of using `project` to avoid serializing Project in the configuration
+        // cache.
+        final FileSystemOperations fso = mcExt.getFileSystemOperations();
+        final ProviderFactory providers = mcExt.getProviderFactory();
+        final ArchiveOperations archives = mcExt.getArchiveOperations();
+        final ProjectLayout layout = mcExt.getProjectLayout();
 
         mcpMappingDataConfiguration = project.getConfigurations().create("mcpMappingData");
         mcpMappingDataConfiguration.setCanBeConsumed(false);
@@ -78,7 +87,8 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.src(Constants.URL_FERNFLOWER_1);
-            task.onlyIf(t -> mcExt.getMinorMcVersion().get() <= 8 && !fernflowerLocation.exists());
+            final Provider<Integer> minorMcVersion = mcExt.getMinorMcVersion();
+            task.onlyIf(t -> minorMcVersion.get() <= 8 && !fernflower1Location.exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
@@ -89,7 +99,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 }
                 try (final FileInputStream fis = new FileInputStream(fernflower1DownloadLocation);
                         final ZipInputStream zis = new ZipInputStream(fis);
-                        final FileOutputStream fos = new FileOutputStream(fernflowerLocation)) {
+                        final FileOutputStream fos = new FileOutputStream(fernflower1Location)) {
                     ZipEntry entry;
                     while ((entry = zis.getNextEntry()) != null) {
                         if (entry.getName().toLowerCase(Locale.ROOT).endsWith("fernflower.jar")) {
@@ -101,7 +111,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     throw new RuntimeException(e);
                 }
             });
-            task.getOutputs().file(fernflowerLocation);
+            task.getOutputs().file(fernflower1Location);
         });
 
         final File mcpRoot = Utilities.getRawCacheDir(project, "minecraft", "de", "oceanlabs", "mcp");
@@ -125,9 +135,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);
             task.from(
-                    project.provider(
+                    providers.provider(
                             () -> mcpMappingDataConfiguration.fileCollection(Specs.SATISFIES_ALL).getFiles().stream()
-                                    .map(project::zipTree).collect(Collectors.toList())));
+                                    .map(archives::zipTree).collect(Collectors.toList())));
             task.into(mcpExtractRoot);
             task.doFirst(new MkdirAction(mcpExtractRoot));
         });
@@ -144,7 +154,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             task.setEnabled(false); // Enabled as needed in MCPTasks
             task.onlyIf(t -> {
                 final File root = userdevExtractRoot.get().getAsFile();
-                return !forgeUserdevConfiguration.isEmpty()
+                return !t.getInputs().getFiles().isEmpty()
                         && !(root.isDirectory() && new File(root, "dev.json").isFile());
             });
             task.getOutputs().upToDateWhen(t -> {
@@ -153,9 +163,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
             });
             task.setGroup(TASK_GROUP_INTERNAL);
             task.from(
-                    project.provider(
-                            () -> forgeUserdevConfiguration.isEmpty() ? project.files()
-                                    : project.zipTree(
+                    providers.provider(
+                            () -> forgeUserdevConfiguration.isEmpty() ? layout.files()
+                                    : archives.zipTree(
                                             forgeUserdevConfiguration.fileCollection(Specs.SATISFIES_ALL)
                                                     .getSingleFile())));
             task.into(userdevExtractRoot);
@@ -169,15 +179,15 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 final File srcMainRes = FileUtils.getFile(srcMain, "resources");
                 if (srcZip.exists()) {
                     srcMainJava.mkdirs();
-                    project.copy(copy -> {
-                        copy.from(project.zipTree(srcZip));
+                    fso.copy(copy -> {
+                        copy.from(archives.zipTree(srcZip));
                         copy.into(srcMainJava);
                     });
                 }
                 if (resZip.exists()) {
                     srcMainRes.mkdirs();
-                    project.copy(copy -> {
-                        copy.from(project.zipTree(resZip));
+                    fso.copy(copy -> {
+                        copy.from(archives.zipTree(resZip));
                         copy.into(srcMainRes);
                     });
                 }
@@ -191,8 +201,9 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
+                    final Provider<Directory> srgLocation = forgeSrgLocation; // configuration cache fix
                     task.onlyIf(t -> {
-                        File root = forgeSrgLocation.get().getAsFile();
+                        File root = srgLocation.get().getAsFile();
                         return !(root.isDirectory() && new File(root, "notch-srg.srg").isFile());
                     });
                     // inputs
@@ -223,7 +234,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         // Set up dependencies across the cache-writing tasks to suppress Gradle errors about this.
         // The tasks are idempotent, but there's no way to tell this to the validation layer.
         project.afterEvaluate(p -> {
-            final Project rootProject = project.getRootProject();
+            final Project rootProject = p.getRootProject();
             final Set<String> tasksToOrder = new HashSet<>();
             tasksToOrder.add(taskDownloadFernflower.getName());
             tasksToOrder.add(taskExtractMcpData.getName());
@@ -250,8 +261,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     if (lastTask != null) {
                         final TaskProvider<?> dependency = lastTask.getValue();
                         task.getValue().configure(t -> { t.mustRunAfter(dependency); });
-                        project.getLogger()
-                                .debug("Added false dependency {} -> {}\n", lastTask.getKey(), task.getKey());
+                        p.getLogger().debug("Added false dependency {} -> {}\n", lastTask.getKey(), task.getKey());
                     }
                     lastTask = task;
                 }
@@ -260,20 +270,22 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
     }
 
     public Provider<RegularFile> mcpFile(String path) {
-        return project.getLayout().file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+        return mcExt.getProjectLayout()
+                .file(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
     public Provider<Directory> mcpDir(String path) {
-        return project.getLayout().dir(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
+        return mcExt.getProjectLayout()
+                .dir(taskExtractMcpData.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
     public Provider<RegularFile> userdevFile(String path) {
-        return project.getLayout()
+        return mcExt.getProjectLayout()
                 .file(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 
     public Provider<Directory> userdevDir(String path) {
-        return project.getLayout()
+        return mcExt.getProjectLayout()
                 .dir(taskExtractForgeUserdev.map(Copy::getDestinationDir).map(d -> new File(d, path)));
     }
 

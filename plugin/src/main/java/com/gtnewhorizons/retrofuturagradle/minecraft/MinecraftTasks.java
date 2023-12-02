@@ -2,6 +2,7 @@ package com.gtnewhorizons.retrofuturagradle.minecraft;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -20,7 +21,9 @@ import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.os.OperatingSystem;
 
@@ -30,6 +33,7 @@ import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 import de.undercouch.gradle.tasks.download.Download;
+import de.undercouch.gradle.tasks.download.DownloadExtension;
 
 /**
  * Registers vanilla Minecraft-related gradle tasks
@@ -43,10 +47,6 @@ public final class MinecraftTasks {
     private final IMinecraftyExtension mcExt;
 
     private final File allVersionsManifestLocation;
-    private final TaskProvider<Download> taskDownloadLauncherAllVersionsManifest;
-
-    private final File versionManifestLocation;
-    private final TaskProvider<Download> taskDownloadLauncherVersionManifest;
 
     private final Provider<RegularFile> assetManifestLocation;
     private final TaskProvider<Download> taskDownloadAssetManifest;
@@ -73,74 +73,80 @@ public final class MinecraftTasks {
     private final Configuration lwjgl2Configuration;
     private final Configuration lwjgl3Configuration;
 
+    private static LauncherManifest getLauncherManifest(File cacheDir, File allVersionsManifestLocation,
+            String mcVersion, DownloadExtension download) {
+        final File location = new File(cacheDir, "manifest_" + mcVersion + ".json");
+        if (!location.exists()) {
+            final String allVersionsManifestJson;
+            try {
+                allVersionsManifestJson = FileUtils
+                        .readFileToString(allVersionsManifestLocation, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            final String url = LauncherManifest.getVersionManifestUrl(allVersionsManifestJson, mcVersion);
+            download.run(task -> {
+                try {
+                    task.src(url);
+                } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                }
+                task.overwrite(false);
+                task.onlyIfModified(true);
+                task.dest(location);
+            });
+        }
+        return LauncherManifest.read(location);
+    }
+
     public MinecraftTasks(Project project, IMinecraftyExtension mcExt) {
         this.project = project;
         this.mcExt = mcExt;
+        final DownloadExtension download = new DownloadExtension(project);
         allVersionsManifestLocation = Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, "all_versions_manifest.json");
-        taskDownloadLauncherAllVersionsManifest = project.getTasks()
-                .register("downloadLauncherAllVersionsManifest", Download.class, task -> {
-                    task.setGroup(TASK_GROUP_INTERNAL);
-                    task.src(Constants.URL_LAUNCHER_VERSION_MANIFEST);
-                    task.onlyIf(t -> !allVersionsManifestLocation.exists());
-                    task.overwrite(false);
-                    task.onlyIfModified(true);
-                    task.useETag(true);
-                    task.dest(allVersionsManifestLocation);
-                });
+        final File allVersionsManifest = allVersionsManifestLocation;
+        final File manifestCacheDir = Utilities.getCacheDir(project, MC_DOWNLOAD_PATH);
 
-        versionManifestLocation = FileUtils
-                .getFile(project.getBuildDir(), MC_DOWNLOAD_PATH, "mc_version_manifest.json");
-        taskDownloadLauncherVersionManifest = project.getTasks()
-                .register("downloadLauncherVersionManifest", Download.class, task -> {
-                    task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskDownloadLauncherAllVersionsManifest);
-                    task.src(project.getProviders().provider(() -> {
-                        final String mcVersion = mcExt.getMcVersion().get();
-                        final String allVersionsManifestJson;
-                        try {
-                            allVersionsManifestJson = FileUtils
-                                    .readFileToString(allVersionsManifestLocation, StandardCharsets.UTF_8);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        return LauncherManifest.getVersionManifestUrl(allVersionsManifestJson, mcVersion);
-                    }));
-                    task.onlyIf(t -> !versionManifestLocation.exists());
-                    task.overwrite(false);
-                    task.onlyIfModified(true);
-                    task.useETag(true);
-                    task.dest(versionManifestLocation);
-                    task.doLast("parseLauncherManifestJson", (_t) -> {
-                        final String versionManifestJson;
-                        try {
-                            versionManifestJson = FileUtils
-                                    .readFileToString(versionManifestLocation, StandardCharsets.UTF_8);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                });
+        if (!allVersionsManifestLocation.exists()) {
+            project.getLogger().info("Downloading the all versions manifest: {}", allVersionsManifestLocation);
+            download.run(task -> {
+                try {
+                    task.src(Constants.URL_LAUNCHER_VERSION_MANIFEST);
+                } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                }
+                task.overwrite(false);
+                task.onlyIfModified(true);
+                task.dest(allVersionsManifestLocation);
+            });
+        }
 
         assetManifestLocation = project.getLayout().file(
                 mcExt.getMcVersion()
                         .map(mcVer -> Utilities.getCacheDir(project, "assets", "indexes", mcVer + ".json")));
+        final ProviderFactory providers = mcExt.getProviderFactory();
         taskDownloadAssetManifest = project.getTasks().register("downloadAssetManifest", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskDownloadLauncherVersionManifest);
-            task.src(project.getProviders().provider(() -> {
-                final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
-                return manifest.getAssetIndexUrl();
-            }));
-            task.onlyIf(t -> !assetManifestLocation.get().getAsFile().exists());
+            final Property<String> mcVersion = mcExt.getMcVersion();
+            task.src(
+                    mcVersion.map(
+                            ver -> getLauncherManifest(manifestCacheDir, allVersionsManifest, ver, download)
+                                    .getAssetIndexUrl()));
+            final Provider<RegularFile> assetManifest = assetManifestLocation;
+            task.onlyIf(t -> !assetManifest.get().getAsFile().exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
-            task.dest(assetManifestLocation);
+            task.dest(assetManifest);
             task.doLast("parseAssetManifestJson", (_t) -> {
-                final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
+                final LauncherManifest manifest = getLauncherManifest(
+                        manifestCacheDir,
+                        allVersionsManifest,
+                        mcVersion.get(),
+                        null);
                 final byte[] assetManifestJsonRaw;
                 try {
-                    assetManifestJsonRaw = FileUtils.readFileToByteArray(assetManifestLocation.get().getAsFile());
+                    assetManifestJsonRaw = FileUtils.readFileToByteArray(assetManifest.get().getAsFile());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -160,27 +166,35 @@ public final class MinecraftTasks {
                         .map(mcVer -> Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, mcVer, "server.jar")));
         taskDownloadVanillaJars = project.getTasks().register("downloadVanillaJars", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskDownloadLauncherVersionManifest);
-            task.doFirst((_t) -> { vanillaClientLocation.get().getAsFile().getParentFile().mkdirs(); });
-            task.src(project.getProviders().provider(() -> {
-                final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
+            final Provider<RegularFile> vanillaClient = vanillaClientLocation;
+            final Provider<RegularFile> vanillaServer = vanillaClientLocation;
+            final Property<String> mcVersion = mcExt.getMcVersion();
+            task.doFirst((_t) -> { vanillaClient.get().getAsFile().getParentFile().mkdirs(); });
+            task.src(mcVersion.map(ver -> {
+                final LauncherManifest manifest = getLauncherManifest(
+                        manifestCacheDir,
+                        allVersionsManifest,
+                        ver,
+                        download);
                 return new String[] { manifest.getClientUrl(), manifest.getServerUrl() };
             }));
-            task.onlyIf(
-                    t -> !vanillaClientLocation.get().getAsFile().exists()
-                            || !vanillaServerLocation.get().getAsFile().exists());
+            task.onlyIf(t -> !vanillaClient.get().getAsFile().exists() || !vanillaServer.get().getAsFile().exists());
             task.overwrite(false);
             task.onlyIfModified(true);
             task.useETag(true);
-            task.dest(vanillaClientLocation.map(f -> f.getAsFile().getParentFile()));
+            task.dest(vanillaClient.map(f -> f.getAsFile().getParentFile()));
             task.doLast("verifyVanillaJars", (_t) -> {
-                final LauncherManifest manifest = LauncherManifest.read(versionManifestLocation);
+                final LauncherManifest manifest = getLauncherManifest(
+                        manifestCacheDir,
+                        allVersionsManifest,
+                        mcVersion.get(),
+                        null);
                 final String realClientSha1, realServerSha1;
                 try {
                     realClientSha1 = new DigestUtils(DigestUtils.getSha1Digest())
-                            .digestAsHex(vanillaClientLocation.get().getAsFile());
+                            .digestAsHex(vanillaClient.get().getAsFile());
                     realServerSha1 = new DigestUtils(DigestUtils.getSha1Digest())
-                            .digestAsHex(vanillaServerLocation.get().getAsFile());
+                            .digestAsHex(vanillaServer.get().getAsFile());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -537,18 +551,6 @@ public final class MinecraftTasks {
 
     public File getAllVersionsManifestLocation() {
         return allVersionsManifestLocation;
-    }
-
-    public TaskProvider<Download> getTaskDownloadLauncherAllVersionsManifest() {
-        return taskDownloadLauncherAllVersionsManifest;
-    }
-
-    public File getVersionManifestLocation() {
-        return versionManifestLocation;
-    }
-
-    public TaskProvider<Download> getTaskDownloadLauncherVersionManifest() {
-        return taskDownloadLauncherVersionManifest;
     }
 
     public Provider<RegularFile> getAssetManifestLocation() {

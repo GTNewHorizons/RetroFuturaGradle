@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -45,150 +44,168 @@ public class HashUtils {
     private static DigestUtils utils = new DigestUtils(DigestUtils.getSha256Digest());
     private static Map<File, FileHashCacheEntry> fileHashCache = new HashMap<>();
 
-    public static void addToHash(MessageDigest digest, String value) {
+    public static MessageDigestConsumer addToHash(String value) {
         if (DEBUG_LOG) {
             System.err.println("hash str {" + value + "}");
         }
-        digest.update(value.getBytes(StandardCharsets.UTF_8));
+        return digest -> digest.update(value.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static void addToHash(MessageDigest digest, int value) {
+    public static MessageDigestConsumer addToHash(int value) {
         if (DEBUG_LOG) {
             System.err.println("hash int {" + value + "}");
         }
-        digest.update(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array());
+        return digest -> digest.update(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array());
     }
 
-    public static void addToHash(MessageDigest digest, long value) {
+    public static MessageDigestConsumer addToHash(long value) {
         if (DEBUG_LOG) {
             System.err.println("hash long {" + value + "}");
         }
-        digest.update(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(value).array());
+        return digest -> digest.update(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(value).array());
     }
 
-    public static void addFileContentsToHash(MessageDigest digest, File file) {
+    public static MessageDigestConsumer addFileContentsToHash(File file) {
         if (DEBUG_LOG) {
             System.err.println("hash file {" + file + "}");
         }
-        if (!file.exists()) {
-            if (DEBUG_LOG) {
-                System.err.println(" = not exists (0)");
-            }
-            addToHash(digest, 0);
-            return;
-        }
-        file = file.getAbsoluteFile();
-        final FileHashCacheEntry cacheEntry = fileHashCache.compute(file, (f, fhce) -> {
-            if (fhce == null || fhce.lastModified < f.lastModified()) {
-                try {
-                    return new FileHashCacheEntry(f.lastModified(), utils.digest(f));
-                } catch (IOException e) {
-                    throw new RuntimeException("Could not hash file " + f, e);
+        return digest -> {
+            if (!file.exists()) {
+                if (DEBUG_LOG) {
+                    System.err.println(" = not exists (0)");
                 }
-            } else {
-                return fhce;
+                addToHash(0).accept(digest);
+                return;
             }
-        });
-        digest.update(cacheEntry.digest);
-        if (DEBUG_LOG) {
-            System.err.println(" = " + Hex.encodeHexString(cacheEntry.digest));
-        }
+            final File absoluteFile = file.getAbsoluteFile();
+            final FileHashCacheEntry cacheEntry = fileHashCache.compute(absoluteFile, (f, fhce) -> {
+                if (fhce == null || fhce.lastModified < f.lastModified()) {
+                    try {
+                        return new FileHashCacheEntry(f.lastModified(), utils.digest(f));
+                    } catch (IOException e) {
+                        throw new RuntimeException("Could not hash file " + f, e);
+                    }
+                } else {
+                    return fhce;
+                }
+            });
+            digest.update(cacheEntry.digest);
+            if (DEBUG_LOG) {
+                System.err.println(" = " + Hex.encodeHexString(cacheEntry.digest));
+            }
+        };
     }
 
-    public static void addDirContentsToHash(MessageDigest digest, File dir) {
+    public static MessageDigestConsumer addDirContentsToHash(File dir) {
         if (DEBUG_LOG) {
             System.err.println("hash dir {" + dir + "}");
         }
-        if (!dir.exists()) {
-            addToHash(digest, 0);
-            return;
-        }
-        List<File> files = new ArrayList<>();
-        files.addAll(CollectionUtils.collect(FileUtils.iterateFiles(dir, null, true), o -> o));
-        files.sort(Comparator.naturalOrder());
-        files.forEach(f -> addFileContentsToHash(digest, f));
+        return digest -> {
+            if (!dir.exists()) {
+                addToHash(0).accept(digest);
+                return;
+            }
+            List<File> files = new ArrayList<>();
+            files.addAll(CollectionUtils.collect(FileUtils.iterateFiles(dir, null, true), o -> o));
+            files.sort(Comparator.naturalOrder());
+            files.forEach(f -> addFileContentsToHash(f).accept(digest));
+        };
     }
 
-    public static void addFileCollectionToHash(MessageDigest digest, FileCollection fc) {
+    public static MessageDigestConsumer addFileCollectionToHash(FileCollection fc) {
         if (DEBUG_LOG) {
             System.err.println("hash fc");
         }
-        List<File> files = new ArrayList<>();
-        files.addAll(fc.getFiles());
-        files.sort(Comparator.naturalOrder());
-        files.forEach(f -> addFileContentsToHash(digest, f));
+        return digest -> {
+            List<File> files = new ArrayList<>();
+            files.addAll(fc.getFiles());
+            files.sort(Comparator.naturalOrder());
+            files.forEach(f -> addFileContentsToHash(f).accept(digest));
+        };
     }
 
-    public static void addPropertyToHash(MessageDigest digest, RegularFileProperty prop) {
+    public static MessageDigestConsumer addPropertyToHash(RegularFileProperty prop) {
         if (DEBUG_LOG) {
             System.err.println("hash rfp");
         }
-        prop.finalizeValue();
-        if (prop.isPresent()) {
-            addFileContentsToHash(digest, prop.get().getAsFile());
-        } else {
-            addToHash(digest, 0);
-        }
+        return digest -> {
+            prop.finalizeValue();
+            if (prop.isPresent()) {
+                addFileContentsToHash(prop.get().getAsFile()).accept(digest);
+            } else {
+                addToHash(0).accept(digest);
+            }
+        };
     }
 
-    public static void addPropertyToHash(MessageDigest digest, DirectoryProperty prop) {
+    public static MessageDigestConsumer addPropertyToHash(DirectoryProperty prop) {
         if (DEBUG_LOG) {
             System.err.println("hash dp");
         }
-        prop.finalizeValue();
-        if (prop.isPresent()) {
-            addDirContentsToHash(digest, prop.get().getAsFile());
-        } else {
-            addToHash(digest, 0);
-        }
+        return digest -> {
+            prop.finalizeValue();
+            if (prop.isPresent()) {
+                addDirContentsToHash(prop.get().getAsFile()).accept(digest);
+            } else {
+                addToHash(0).accept(digest);
+            }
+        };
     }
 
-    public static void addPropertyToHash(MessageDigest digest, ConfigurableFileTree prop) {
+    public static MessageDigestConsumer addPropertyToHash(ConfigurableFileTree prop) {
         if (DEBUG_LOG) {
             System.err.println("hash cft");
         }
-        if (!prop.isEmpty()) {
-            addDirContentsToHash(digest, prop.getDir());
-        } else {
-            addToHash(digest, 0);
-        }
+        return digest -> {
+            if (!prop.isEmpty()) {
+                addDirContentsToHash(prop.getDir()).accept(digest);
+            } else {
+                addToHash(0).accept(digest);
+            }
+        };
     }
 
-    public static void addPropertyToHash(MessageDigest digest, ConfigurableFileCollection prop) {
+    public static MessageDigestConsumer addPropertyToHash(ConfigurableFileCollection prop) {
         if (DEBUG_LOG) {
             System.err.println("hash cfc");
         }
-        prop.finalizeValue();
-        if (!prop.isEmpty()) {
-            addFileCollectionToHash(digest, prop);
-        } else {
-            addToHash(digest, 0);
-        }
+        return digest -> {
+            prop.finalizeValue();
+            if (!prop.isEmpty()) {
+                addFileCollectionToHash(prop).accept(digest);
+            } else {
+                addToHash(0).accept(digest);
+            }
+        };
     }
 
-    public static void addPropertyToHash(MessageDigest digest, Property<?> prop) {
+    public static MessageDigestConsumer addPropertyToHash(Property<?> prop) {
         if (DEBUG_LOG) {
             System.err.println("hash prop " + prop.getOrNull());
         }
-        prop.finalizeValue();
-        if (prop.isPresent()) {
-            addToHash(digest, prop.get().toString());
-        } else {
-            addToHash(digest, 0);
-        }
+        return digest -> {
+            prop.finalizeValue();
+            if (prop.isPresent()) {
+                addToHash(prop.get().toString()).accept(digest);
+            } else {
+                addToHash(0).accept(digest);
+            }
+        };
     }
 
-    public static void addPropertyToHash(MessageDigest digest, ListProperty<?> prop) {
+    public static MessageDigestConsumer addPropertyToHash(ListProperty<?> prop) {
         if (DEBUG_LOG) {
             System.err.println("hash list of " + prop.getOrElse(Collections.emptyList()).size());
         }
-        prop.finalizeValue();
-        if (prop.isPresent()) {
-            for (Object elem : prop.get()) {
-                addToHash(digest, elem.toString());
+        return digest -> {
+            prop.finalizeValue();
+            if (prop.isPresent()) {
+                for (Object elem : prop.get()) {
+                    addToHash(elem.toString()).accept(digest);
+                }
+            } else {
+                addToHash(0).accept(digest);
             }
-        } else {
-            addToHash(digest, 0);
-        }
+        };
     }
 }

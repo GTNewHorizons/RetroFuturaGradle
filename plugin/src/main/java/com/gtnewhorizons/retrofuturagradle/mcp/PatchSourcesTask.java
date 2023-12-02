@@ -8,7 +8,6 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +32,7 @@ import org.gradle.api.tasks.TaskAction;
 import com.cloudbees.diff.PatchException;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
+import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 
@@ -63,13 +63,14 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
     public abstract FileOperations getFileOperations();
 
     @Override
-    public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getPatches());
-        getInjectionDirectories().finalizeValue();
-        for (File dir : getInjectionDirectories().getFiles()) {
-            HashUtils.addDirContentsToHash(digest, dir);
-        }
-        HashUtils.addPropertyToHash(digest, getMaxFuzziness());
+    public MessageDigestConsumer hashInputs() {
+        final ConfigurableFileCollection injectionDirectories = getInjectionDirectories();
+        return HashUtils.addPropertyToHash(getPatches()).andThen(digest -> {
+            injectionDirectories.finalizeValue();
+            for (File dir : injectionDirectories.getFiles()) {
+                HashUtils.addDirContentsToHash(dir).accept(digest);
+            }
+        }).andThen(HashUtils.addPropertyToHash(getMaxFuzziness()));
     }
 
     private final Map<String, byte[]> loadedResources = new HashMap<>();

@@ -71,8 +71,8 @@ val runtimeOnlyNonPublishable by configurations.creating {
 configurations.runtimeClasspath.configure { extendsFrom(runtimeOnlyNonPublishable) }
 
 dependencies {
-  shadow(localGroovy())
-  shadow(gradleApi())
+  compileOnly(localGroovy())
+  compileOnly(gradleApi())
 
   annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
   // workaround for https://github.com/bsideup/jabel/issues/174
@@ -179,7 +179,7 @@ tasks.withType<Javadoc>().configureEach {
 }
 
 tasks.shadowJar {
-  from("LICENSE", "docs")
+  from("LICENSE", "docs", tasks.named("classes"))
   val oldAsmJarTask = project(":oldasmwrapper").tasks.named<Jar>("allJar")
   dependsOn(oldAsmJarTask)
   from(zipTree(oldAsmJarTask.get().archiveFile)) // cheaper shadow of an already shaded jar

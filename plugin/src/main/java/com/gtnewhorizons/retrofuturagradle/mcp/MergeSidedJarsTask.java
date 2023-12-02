@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -52,6 +51,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.retrofuturagradle.util.Distribution;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
+import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 @CacheableTask
@@ -82,12 +82,11 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
     private Enum<?> sideClient, sideServer;
 
     @Override
-    public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getMergeConfigFile());
-        HashUtils.addPropertyToHash(digest, getMergeConfig());
-        HashUtils.addPropertyToHash(digest, getClientJar());
-        HashUtils.addPropertyToHash(digest, getServerJar());
-        HashUtils.addPropertyToHash(digest, getMcVersion());
+    public MessageDigestConsumer hashInputs() {
+        return HashUtils.addPropertyToHash(getMergeConfigFile()).andThen(HashUtils.addPropertyToHash(getMergeConfig()))
+                .andThen(HashUtils.addPropertyToHash(getClientJar()))
+                .andThen(HashUtils.addPropertyToHash(getServerJar()))
+                .andThen(HashUtils.addPropertyToHash(getMcVersion()));
     }
 
     @TaskAction

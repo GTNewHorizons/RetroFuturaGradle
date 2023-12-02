@@ -1,18 +1,11 @@
 package com.gtnewhorizons.retrofuturagradle;
 
-import java.util.Objects;
-
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
-import org.gradle.jvm.toolchain.JavaCompiler;
-import org.gradle.jvm.toolchain.JavaLauncher;
-import org.gradle.jvm.toolchain.JavaToolchainService;
-import org.gradle.jvm.toolchain.JavaToolchainSpec;
 
 import com.google.common.collect.Lists;
 
@@ -21,10 +14,7 @@ import com.google.common.collect.Lists;
  */
 public abstract class MinecraftExtension implements IMinecraftyExtension {
 
-    private final Project project;
-
     public MinecraftExtension(Project project) {
-        this.project = project;
         getSkipSlowTasks().convention(false);
         applyMinecraftyConventions(project);
 
@@ -44,46 +34,6 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
      * development of the plugin.
      */
     public abstract Property<Boolean> getSkipSlowTasks();
-
-    // Vanilla configs
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<String> getMcVersion();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<Boolean> getApplyMcDependencies();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<String> getLwjgl2Version();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<Integer> getJavaCompatibilityVersion();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<JavaToolchainSpec> getJavaToolchain();
-
-    // MCP configs
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<String> getMcpMappingChannel();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<String> getMcpMappingVersion();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract Property<Boolean> getUseForgeEmbeddedMappings();
-
-    /** {@inheritDoc} */
-    @Override
-    public abstract ListProperty<String> getFernflowerArguments();
 
     // Forge configs
 
@@ -137,18 +87,6 @@ public abstract class MinecraftExtension implements IMinecraftyExtension {
      * {@link ConfigurableFileCollection#setFrom(Object...)} if you want to replace it with something else.
      */
     public abstract ConfigurableFileCollection getDependenciesForAccessTransformerScan();
-
-    public Provider<JavaLauncher> getToolchainLauncher() {
-        JavaToolchainService jts = Objects
-                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
-        return getJavaToolchain().flatMap(jts::launcherFor);
-    }
-
-    public Provider<JavaCompiler> getToolchainCompiler() {
-        JavaToolchainService jts = Objects
-                .requireNonNull(project.getExtensions().findByType(JavaToolchainService.class));
-        return getJavaToolchain().flatMap(jts::compilerFor);
-    }
 
     // FG compatibility shims for changes that can cause confusing behaviour
     /** @deprecated Use {@link MinecraftExtension#getMcVersion()} instead */

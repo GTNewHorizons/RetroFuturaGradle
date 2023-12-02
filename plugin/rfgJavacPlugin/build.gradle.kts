@@ -40,7 +40,7 @@ spotless {
 
 dependencies {
   // Get JDK_ROOT/lib/tools.jar
-  shadow(
+  compileOnly(
       files(
           javaToolchains.compilerFor(java.toolchain).map { tc ->
             File(tc.executablePath.asFile.parentFile.parentFile, "lib/tools.jar")

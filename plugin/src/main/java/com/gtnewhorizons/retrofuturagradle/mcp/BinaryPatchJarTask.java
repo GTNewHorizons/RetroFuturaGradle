@@ -7,7 +7,6 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +42,7 @@ import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizons.retrofuturagradle.fg12shadow.com.nothome.delta.GDiffPatcher;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
+import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 
 import lzma.sdk.lzma.Decoder;
 import lzma.streams.LzmaInputStream;
@@ -66,10 +66,9 @@ public abstract class BinaryPatchJarTask extends DefaultTask implements IJarTran
     protected abstract FileOperations getFileOperations();
 
     @Override
-    public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getPatchesLzma());
-        HashUtils.addPropertyToHash(digest, getExtraClassesJar());
-        HashUtils.addPropertyToHash(digest, getExtraResourcesTree());
+    public MessageDigestConsumer hashInputs() {
+        return HashUtils.addPropertyToHash(getPatchesLzma()).andThen(HashUtils.addPropertyToHash(getExtraClassesJar()))
+                .andThen(HashUtils.addPropertyToHash(getExtraResourcesTree()));
     }
 
     @TaskAction

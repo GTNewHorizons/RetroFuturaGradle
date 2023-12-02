@@ -6,7 +6,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,6 +44,7 @@ import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanupFg12;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanupFg23;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
+import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.gtnewhorizons.retrofuturagradle.util.patching.ContextualPatch;
 
@@ -70,11 +70,10 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
     public abstract DirectoryProperty getPatchesInjectDir();
 
     @Override
-    public void hashInputs(MessageDigest digest) {
-        HashUtils.addPropertyToHash(digest, getPatches());
-        HashUtils.addPropertyToHash(digest, getAstyleConfig());
-        HashUtils.addPropertyToHash(digest, getMinorMcVersion());
-        HashUtils.addPropertyToHash(digest, getPatchesInjectDir());
+    public MessageDigestConsumer hashInputs() {
+        return HashUtils.addPropertyToHash(getPatches()).andThen(HashUtils.addPropertyToHash(getAstyleConfig()))
+                .andThen(HashUtils.addPropertyToHash(getMinorMcVersion()))
+                .andThen(HashUtils.addPropertyToHash(getPatchesInjectDir()));
     }
 
     private File taskTempDir;

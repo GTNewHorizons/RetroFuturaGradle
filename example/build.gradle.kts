@@ -56,10 +56,11 @@ tasks.injectTags.configure {
 
 // Put the version from gradle into mcmod.info
 tasks.processResources.configure {
-  inputs.property("version", project.version)
+  val projVersion = project.version.toString() // Needed for configuration cache to work
+  inputs.property("version", projVersion)
 
   filesMatching("mcmod.info") {
-    expand(mapOf("modVersion" to project.version))
+    expand(mapOf("modVersion" to projVersion))
   }
 }
 
@@ -85,9 +86,6 @@ repositories {
   maven {
     name = "OvermindDL1 Maven"
     url = uri("https://gregtech.overminddl1.com/")
-    mavenContent {
-      excludeGroup("net.minecraftforge") // missing the `universal` artefact
-    }
   }
   maven {
     name = "GTNH Maven"

@@ -102,7 +102,7 @@ public abstract class RunMinecraftTask extends JavaExec {
         getLwjglVersion().convention(mcExt.getMainLwjglVersion());
 
         systemProperty("fml.ignoreInvalidMinecraftCertificates", true);
-        getJavaLauncher().convention(mcExt.getToolchainLauncher());
+        getJavaLauncher().convention(mcExt.getToolchainLauncher(project));
         if (side == Distribution.CLIENT) {
             dependsOn(mcTasks.getTaskExtractNatives(getLwjglVersion()));
 
