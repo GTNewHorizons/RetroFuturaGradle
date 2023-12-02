@@ -10,6 +10,7 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ComponentMetadataSupplier;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.DependencySubstitutions;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
@@ -345,6 +346,28 @@ public final class MinecraftTasks {
             }));
             ec.filter(content -> { content.includeModule("net.java.jinput", "jinput-platform-natives-osx-arm64"); });
         });
+        // Log4shell fix
+        repos.exclusiveContent(ec -> {
+            ec.forRepository(() -> repos.maven(maven -> {
+                maven.setName("log4j2beta9fixed");
+                maven.setUrl("https://files.prismlauncher.org/maven/");
+                maven.getMetadataSources().artifact();
+            }));
+            ec.filter(content -> {
+                content.includeVersion("org.apache.logging.log4j", "log4j-core", "2.0-beta9-fixed");
+                content.includeVersion("org.apache.logging.log4j", "log4j-api", "2.0-beta9-fixed");
+            });
+        });
+        project.getConfigurations().all(cfg -> {
+            final DependencySubstitutions sub = cfg.getResolutionStrategy().getDependencySubstitution();
+            sub.substitute(sub.module("org.apache.logging.log4j:log4j-core:2.0-beta9")).withoutClassifier()
+                    .using(sub.module("org.apache.logging.log4j:log4j-core:2.0-beta9-fixed"))
+                    .because("To fix log4shell");
+            sub.substitute(sub.module("org.apache.logging.log4j:log4j-api:2.0-beta9")).withoutClassifier()
+                    .using(sub.module("org.apache.logging.log4j:log4j-api:2.0-beta9-fixed"))
+                    .because("To fix log4shell");
+        });
+
         repos.mavenCentral().mavenContent(content -> {
             content.excludeGroup("com.mojang");
             content.excludeGroup("net.minecraftforge");
