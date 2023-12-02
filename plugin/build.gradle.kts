@@ -115,7 +115,8 @@ dependencies {
   // Forge utilities (to be merged into the source tree in the future)
 
   // Use JUnit Jupiter for testing.
-  testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
+  testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
   constraints {
     implementation("org.apache.logging.log4j:log4j-core") {
@@ -254,6 +255,7 @@ tasks.jar.configure {
 }
 
 configurations["functionalTestImplementation"].extendsFrom(configurations["testImplementation"])
+configurations["functionalTestRuntimeOnly"].extendsFrom(configurations["testRuntimeOnly"])
 configurations["functionalTestAnnotationProcessor"].extendsFrom(configurations["testAnnotationProcessor"])
 
 // Add a task to run the functional tests

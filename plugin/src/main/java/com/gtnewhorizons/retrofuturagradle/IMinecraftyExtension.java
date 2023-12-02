@@ -114,11 +114,11 @@ public interface IMinecraftyExtension {
         getJavaCompatibilityVersion().convention(8);
         getJavaCompatibilityVersion().finalizeValueOnRead();
         {
-            final JavaToolchainSpec defaultToolchain = objects.newInstance(JavaToolchainSpec.class);
+            final JavaPluginExtension java = Objects
+                    .requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class));
+            final JavaToolchainSpec defaultToolchain = objects.newInstance(java.getToolchain().getClass());
             defaultToolchain.getLanguageVersion().set(JavaLanguageVersion.of(8));
-            defaultToolchain.getVendor().set(
-                    Objects.requireNonNull(project.getExtensions().findByType(JavaPluginExtension.class)).getToolchain()
-                            .getVendor());
+            defaultToolchain.getVendor().set(java.getToolchain().getVendor());
             getJavaToolchain().convention(defaultToolchain);
             getJavaToolchain().finalizeValueOnRead();
         }
