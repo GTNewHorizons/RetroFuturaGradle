@@ -167,7 +167,7 @@ public final class MinecraftTasks {
         taskDownloadVanillaJars = project.getTasks().register("downloadVanillaJars", Download.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
             final Provider<RegularFile> vanillaClient = vanillaClientLocation;
-            final Provider<RegularFile> vanillaServer = vanillaClientLocation;
+            final Provider<RegularFile> vanillaServer = vanillaServerLocation;
             final Property<String> mcVersion = mcExt.getMcVersion();
             task.doFirst((_t) -> { vanillaClient.get().getAsFile().getParentFile().mkdirs(); });
             task.src(mcVersion.map(ver -> {

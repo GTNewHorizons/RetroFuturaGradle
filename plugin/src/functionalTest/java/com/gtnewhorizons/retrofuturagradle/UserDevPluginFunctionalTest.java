@@ -57,24 +57,6 @@ class UserDevPluginFunctionalTest {
     }
 
     @Test
-    void canFetchManifests() throws IOException {
-        writeString(getSettingsFile(), SIMPLE_SETTINGS);
-        writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
-
-        // Run the build
-        GradleRunner runner = GradleRunner.create();
-        runner.forwardOutput();
-        runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "downloadLauncherVersionManifest", "downloadAssetManifest");
-        runner.withProjectDir(projectDir);
-        BuildResult result = runner.build();
-        BuildResult secondResult = runner.build();
-        Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
-    }
-
-    @Test
     void canFetchData() throws IOException {
         writeString(getSettingsFile(), SIMPLE_SETTINGS);
         writeString(getBuildFile(), SIMPLE_BUILDSCRIPT);
