@@ -100,7 +100,7 @@ public class UpdateDependenciesTask extends DefaultTask {
         // Currently works only with GTNH repositories
         URL url;
         String urlString = String.format(
-                "http://jenkins.usrv.eu:8081/nexus/content/groups/public/com/github/GTNewHorizons/%s/maven-metadata.xml",
+                "https://nexus.gtnewhorizons.com/repository/public/com/github/GTNewHorizons/%s/maven-metadata.xml",
                 modName);
         try {
             url = new URL(urlString);

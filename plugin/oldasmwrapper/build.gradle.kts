@@ -53,8 +53,7 @@ repositories {
     }
     maven {
         name = "gtnh"
-        isAllowInsecureProtocol = true
-        url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
+        url = uri("https://nexus.gtnewhorizons.com/repository/public/")
     }
     mavenCentral {}
 }

@@ -89,8 +89,7 @@ repositories {
   }
   maven {
     name = "GTNH Maven"
-    url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
-    isAllowInsecureProtocol = true
+    url = uri("https://nexus.gtnewhorizons.com/repository/public/")
   }
 }
 
@@ -113,8 +112,7 @@ publishing {
   repositories {
     // Example: publishing to the GTNH Maven repository
     maven {
-      url = uri("http://jenkins.usrv.eu:8081/nexus/content/repositories/releases")
-      isAllowInsecureProtocol = true
+      url = uri("https://nexus.gtnewhorizons.com/repository/releases/")
       credentials {
         username = System.getenv("MAVEN_USER") ?: "NONE"
         password = System.getenv("MAVEN_PASSWORD") ?: "NONE"

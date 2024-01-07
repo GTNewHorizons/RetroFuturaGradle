@@ -45,8 +45,7 @@ repositories {
   }
   maven {
     name = "gtnh"
-    isAllowInsecureProtocol = true
-    url = uri("http://jenkins.usrv.eu:8081/nexus/content/groups/public/")
+    url = uri("https://nexus.gtnewhorizons.com/repository/public/")
   }
   mavenCentral {}
   gradlePluginPortal()
@@ -327,8 +326,7 @@ publishing {
 
   repositories {
     maven {
-      url = uri("http://jenkins.usrv.eu:8081/nexus/content/repositories/releases")
-      isAllowInsecureProtocol = true
+      url = uri("https://nexus.gtnewhorizons.com/repository/releases/")
       credentials {
         username = System.getenv("MAVEN_USER") ?: "NONE"
         password = System.getenv("MAVEN_PASSWORD") ?: "NONE"
