@@ -234,8 +234,10 @@ public class ModUtils {
                         try {
                             int response = connection.getResponseCode();
                             if (response >= 200 && response <= 399) {
-                                successUrl.set(url);
-                                successUrl.notifyAll();
+                                synchronized (successUrl) {
+                                    successUrl.set(url);
+                                    successUrl.notifyAll();
+                                }
                             }
                         } catch (IOException e) {
                             project.getLogger().info("RFG mirror {} failed: {}", url, e.getMessage());
@@ -250,7 +252,9 @@ public class ModUtils {
             }
         }
         try {
-            successUrl.wait(timeoutMillis);
+            synchronized (successUrl) {
+                successUrl.wait(timeoutMillis);
+            }
         } catch (InterruptedException e) {
             // cancel
         }

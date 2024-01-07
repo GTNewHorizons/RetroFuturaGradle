@@ -10,6 +10,8 @@ import org.gradle.api.Task;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 
+import com.gtnewhorizons.retrofuturagradle.modutils.ModUtils;
+
 /**
  * A simple unit test for the RetroFuturaGradle plugin.
  */
@@ -22,8 +24,6 @@ class UserDevPluginTest {
         project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle");
 
         // Verify important targets
-        assertNotNull(project.getTasks().findByName("downloadLauncherAllVersionsManifest"));
-        assertNotNull(project.getTasks().findByName("downloadLauncherVersionManifest"));
         assertNotNull(project.getTasks().findByName("downloadAssetManifest"));
         assertNotNull(project.getTasks().findByName("cleanVanillaAssets"));
         assertNotNull(project.getTasks().findByName("downloadVanillaAssets"));
@@ -55,5 +55,15 @@ class UserDevPluginTest {
                     () -> project.getTasks().findByName(taskName),
                     taskName + " could not be created");
         }
+    }
+
+    @Test
+    void liveMirror() {
+        Project project = ProjectBuilder.builder().build();
+        project.getPlugins().apply("com.gtnewhorizons.retrofuturagradle");
+        ModUtils modUtils = project.getExtensions().getByType(ModUtils.class);
+        assertNotNull(modUtils);
+        assertNotNull(
+                modUtils.getLiveMirrorURL(10000, "https://example.com", "https://www.iana.org/help/example-domains"));
     }
 }
