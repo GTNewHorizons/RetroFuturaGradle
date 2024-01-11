@@ -235,12 +235,12 @@ public class ModUtils {
                             int response = connection.getResponseCode();
                             if (response >= 200 && response <= 399) {
                                 synchronized (successUrl) {
-                                    successUrl.set(url);
+                                    successUrl.set(rawUrl);
                                     successUrl.notifyAll();
                                 }
                             }
                         } catch (IOException e) {
-                            project.getLogger().info("RFG mirror {} failed: {}", url, e.getMessage());
+                            project.getLogger().info("RFG mirror {} failed: {}", rawUrl, e.getMessage());
                         }
                     }
                 };

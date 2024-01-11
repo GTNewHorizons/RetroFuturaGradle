@@ -334,8 +334,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final Configuration cfgCompileOnlyApi = project.getConfigurations().getByName("compileOnlyApi");
         final SourceSet apiSet = javaExt.getSourceSets().create("api", set -> {
             set.setCompileClasspath(
-                    set.getCompileClasspath().plus(patchedConfiguration).plus(patchedMcSources.getOutput()));
-            set.setRuntimeClasspath(set.getRuntimeClasspath().plus(patchedConfiguration));
+                    set.getCompileClasspath().plus(patchedConfiguration).plus(patchedMcSources.getOutput())
+                            .plus(mcTasks.getLwjgl2Configuration()));
+            set.setRuntimeClasspath(
+                    set.getRuntimeClasspath().plus(patchedConfiguration).plus(mcTasks.getLwjgl2Configuration()));
         });
         mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
         mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(apiSet.getOutput()));
