@@ -1066,10 +1066,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             ((ModuleDependency) deps
                     .add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-plugin_2.11.1:1.0.2"))
                             .setTransitive(false);
-            ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-library:2.11.1")).setTransitive(false);
+            ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-library:2.11.5")).setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-parser-combinators_2.11:1.0.1"))
                     .setTransitive(false);
-            ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-reflect:2.11.1")).setTransitive(false);
+            ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-reflect:2.11.5")).setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-swing_2.11:1.0.1")).setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-xml_2.11:1.0.2")).setTransitive(false);
             deps.add(PATCHED_MC_CFG, "lzma:lzma:0.0.1");
