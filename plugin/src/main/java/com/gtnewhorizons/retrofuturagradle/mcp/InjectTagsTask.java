@@ -96,8 +96,8 @@ public abstract class InjectTagsTask extends DefaultTask {
                 final String eType, eJava;
                 final String identifier = entry.getKey();
                 if (!isValidJavaIdentifier(identifier)) {
-                    throw new InvalidUserDataException("Tag injection identifier " + identifier
-                            + "is not a valid Java identifier!");
+                    throw new InvalidUserDataException(
+                            "Tag injection identifier " + identifier + "is not a valid Java identifier!");
                 }
                 if (e instanceof Integer) {
                     eType = "int";
