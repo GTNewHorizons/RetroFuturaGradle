@@ -11,6 +11,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.internal.file.FileOperations;
@@ -93,6 +94,11 @@ public abstract class InjectTagsTask extends DefaultTask {
             for (Map.Entry<String, Object> entry : replacements.entrySet()) {
                 final Object e = entry.getValue();
                 final String eType, eJava;
+                final String identifier = entry.getKey();
+                if (!isValidJavaIdentifier(identifier)) {
+                    throw new InvalidUserDataException("Tag injection identifier " + identifier
+                            + "is not a valid Java identifier!");
+                }
                 if (e instanceof Integer) {
                     eType = "int";
                     eJava = Integer.toString((Integer) e);
@@ -103,7 +109,7 @@ public abstract class InjectTagsTask extends DefaultTask {
                 outWriter.append("    /** Auto-generated tag from RetroFuturaGradle */\n    public static final ");
                 outWriter.append(eType);
                 outWriter.append(' ');
-                outWriter.append(entry.getKey());
+                outWriter.append(identifier);
                 outWriter.append(" = ");
                 outWriter.append(eJava);
                 outWriter.append(";\n");
@@ -111,5 +117,20 @@ public abstract class InjectTagsTask extends DefaultTask {
             outWriter.append("}\n");
             FileUtils.writeStringToFile(outFile, outWriter.toString(), StandardCharsets.UTF_8);
         }
+    }
+
+    private static boolean isValidJavaIdentifier(final String s) {
+        if (s.isEmpty()) {
+            return false;
+        }
+        if (!Character.isJavaIdentifierStart(s.charAt(0))) {
+            return false;
+        }
+        for (int i = 1; i < s.length(); i++) {
+            if (!Character.isJavaIdentifierPart(s.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }
