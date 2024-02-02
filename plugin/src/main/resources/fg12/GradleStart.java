@@ -42,12 +42,12 @@ public class GradleStart extends GradleStartCommon {
 
     @Override
     protected String getBounceClass() {
-        return "@@BOUNCERCLIENT@@";
+        return System.getProperty("gradlestart.bouncerClient", "@@BOUNCERCLIENT@@");
     }
 
     @Override
     protected String getTweakClass() {
-        return "@@CLIENTTWEAKER@@";
+        return System.getProperty("gradlestart.clientTweaker", "@@CLIENTTWEAKER@@");
     }
 
     @Override

@@ -11,12 +11,12 @@ public class GradleStartServer extends GradleStartCommon {
 
     @Override
     protected String getTweakClass() {
-        return "@@TWEAKERSERVER@@";
+        return System.getProperty("gradlestart.serverTweaker", "@@TWEAKERSERVER@@");
     }
 
     @Override
     protected String getBounceClass() {
-        return "@@BOUNCERSERVER@@";
+        return System.getProperty("gradlestart.bouncerServer", "@@BOUNCERSERVER@@");
     }
 
     @Override
