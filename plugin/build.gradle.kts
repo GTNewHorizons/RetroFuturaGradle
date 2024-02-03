@@ -73,29 +73,30 @@ dependencies {
   compileOnly(localGroovy())
   compileOnly(gradleApi())
 
-  annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
+  annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
   // workaround for https://github.com/bsideup/jabel/issues/174
   annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
-  testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0")
-  compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.0") { isTransitive = false }
+  testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
+  compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1") { isTransitive = false }
 
   // Apache Commons utilities
-  implementation("org.apache.commons:commons-lang3:3.12.0")
-  implementation("commons-io:commons-io:2.11.0")
-  implementation("commons-codec:commons-codec:1.15")
-  implementation("org.apache.commons:commons-compress:1.22")
+  implementation("org.apache.commons:commons-lang3:3.14.0")
+  implementation("org.apache.commons:commons-text:1.11.0")
+  implementation("commons-io:commons-io:2.15.1")
+  implementation("commons-codec:commons-codec:1.16.0")
+  implementation("org.apache.commons:commons-compress:1.25.0")
   // Guava utilities
-  implementation("com.google.guava:guava:31.1-jre")
+  implementation("com.google.guava:guava:33.0.0-jre")
   // CSV reader, also used by SpecialSource
   implementation("com.opencsv:opencsv:5.7.1")
   // Diffing&Patching
-  implementation("org.ow2.asm:asm:9.4")
+  implementation("org.ow2.asm:asm:9.6")
   implementation("com.cloudbees:diff4j:1.1")
   implementation("com.github.jponge:lzma-java:1.3")
-  implementation("net.md-5:SpecialSource:1.11.0")
+  implementation("net.md-5:SpecialSource:1.11.3")
   // Java source manipulation
-  implementation("com.github.javaparser:javaparser-core:3.24.10")
-  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.24.10")
+  implementation("com.github.javaparser:javaparser-core:3.25.8")
+  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.8")
   // "MCP stuff", shaded manually later
   compileOnly(project(":oldasmwrapper", "fullyShadedElements"))
   testImplementation(project(":oldasmwrapper", "fullyShadedElements"))
@@ -107,10 +108,10 @@ dependencies {
   implementation(
       group = "de.undercouch.download",
       name = "de.undercouch.download.gradle.plugin",
-      version = "5.4.0")
+      version = "5.5.0")
   compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0")
   // JSON handling for Minecraft manifests etc.
-  implementation("com.google.code.gson:gson:2.10")
+  implementation("com.google.code.gson:gson:2.10.1")
   // Forge utilities (to be merged into the source tree in the future)
 
   // Use JUnit Jupiter for testing.
