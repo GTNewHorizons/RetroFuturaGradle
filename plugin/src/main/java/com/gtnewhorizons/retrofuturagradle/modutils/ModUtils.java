@@ -105,12 +105,6 @@ public class ModUtils {
                     "Apply MCP decompiler cleanup to the main source set, doing things like replacing numerical OpenGL constants with their names");
         });
 
-        project.getTasks().register("updateDependencies", UpdateDependenciesTask.class, task -> {
-            task.setGroup(TASK_GROUP_USER);
-            task.setDescription(
-                    "Updates dependencies described at dependencies.gradle. Currently only supports GTNH repositories.");
-        });
-
         if (!disableDependencyDeobfuscation) {
             project.getDependencies().getAttributesSchema().attribute(DEOBFUSCATOR_TRANSFORMED, ams -> {
                 ams.getCompatibilityRules().add(DeobfuscatorTransformerCompatRules.class);
