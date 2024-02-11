@@ -49,6 +49,20 @@ repositories {
     name = "gtnh"
     url = uri("https://nexus.gtnewhorizons.com/repository/public/")
   }
+  maven {
+    name = "paper"
+    url = uri("https://papermc.io/repo/repository/maven-snapshots/")
+    mavenContent {
+      includeGroup("org.cadixdev")
+    }
+  }
+  maven {
+    name = "sonatype"
+    url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
+    mavenContent {
+      includeGroup("org.cadixdev")
+    }
+  }
   mavenCentral {}
   gradlePluginPortal()
 }
@@ -116,6 +130,10 @@ dependencies {
   implementation("com.google.code.gson:gson:2.10.1")
   // Forge utilities (to be merged into the source tree in the future)
 
+  // Source remapping
+  // We use Paper's Mercury fork because it both supports Java 17 and is binary compatible with mercurymixin.
+  implementation("org.cadixdev:mercury:0.1.2-paperweight-SNAPSHOT")
+  implementation("org.cadixdev:mercurymixin:0.1.0-SNAPSHOT")
   // Use JUnit Jupiter for testing.
   testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")

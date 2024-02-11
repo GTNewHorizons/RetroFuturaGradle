@@ -105,6 +105,12 @@ public class ModUtils {
                     "Apply MCP decompiler cleanup to the main source set, doing things like replacing numerical OpenGL constants with their names");
         });
 
+        project.getTasks().register("migrateMappings", MigrateMappingsTask.class, task -> {
+            task.setGroup(TASK_GROUP_USER);
+            task.setDescription(
+                    "Migrate main source set to a new set of mappings");
+        });
+
         if (!disableDependencyDeobfuscation) {
             project.getDependencies().getAttributesSchema().attribute(DEOBFUSCATOR_TRANSFORMED, ams -> {
                 ams.getCompatibilityRules().add(DeobfuscatorTransformerCompatRules.class);
