@@ -109,6 +109,10 @@ public class ModUtils {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription(
                     "Migrate main source set to a new set of mappings");
+            task.dependsOn(project.getTasks().getByName("taskExtractMcpData"));
+            task.dependsOn(project.getTasks().getByName("taskExtractForgeUserdev"));
+            task.dependsOn(project.getTasks().getByName("packagePatchedMc"));
+            task.dependsOn(project.getTasks().getByName("injectTags"));
         });
 
         if (!disableDependencyDeobfuscation) {
