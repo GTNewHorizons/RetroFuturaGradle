@@ -39,17 +39,17 @@ public class MigrateMappingsTask extends DefaultTask {
 
     @Option(option = "mcpDir", description = "The directory containing the mappings to migrate to, using MCP's fields.csv and methods.csv format.")
     public void setMcpDir(String mcpDir) {
-        this.mcpDir = new File(mcpDir);
+        this.mcpDir = new File(getProject().getProjectDir(), mcpDir);
     }
 
     @Option(option = "inputDir", description = "The directory containing the source code to migrate.")
     public void setInputDir(String inputDir) {
-        this.inputDir = new File(inputDir);
+        this.inputDir = new File(getProject().getProjectDir(), inputDir);
     }
 
     @Option(option = "outputDir", description = "The directory the migrated source code should be written to.")
     public void setOutputDir(String outputDir) {
-        this.outputDir = new File(outputDir);
+        this.outputDir = new File(getProject().getProjectDir(), outputDir);
     }
     
     @TaskAction
