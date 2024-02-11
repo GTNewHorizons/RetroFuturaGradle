@@ -9,7 +9,9 @@ import org.apache.commons.io.FileUtils;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.MappingFormats;
 import org.cadixdev.lorenz.io.MappingsWriter;
+import org.cadixdev.lorenz.model.ClassMapping;
 import org.cadixdev.lorenz.model.FieldMapping;
+import org.cadixdev.lorenz.model.InnerClassMapping;
 import org.cadixdev.lorenz.model.MethodMapping;
 import org.cadixdev.lorenz.model.TopLevelClassMapping;
 import org.cadixdev.mercury.Mercury;
@@ -25,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class MigrateMappingsTask extends DefaultTask {
 
@@ -98,70 +101,84 @@ public class MigrateMappingsTask extends DefaultTask {
     }
 
     /** Returns the difference between two mappings of the same root.
-     * 
+     *
      * @param mappingsA Mappings from O to A.
      * @param mappingsB Mappings from O to B.
      * @return Mappings from A to B.
      */
     private MappingSet diff(MappingSet mappingsA, MappingSet mappingsB) {
         MappingSet diff = MappingSet.create();
-        
-        for(TopLevelClassMapping topLevelClassA : mappingsA.getTopLevelClassMappings()) {
-            TopLevelClassMapping topLevelClassB = mappingsB.getTopLevelClassMapping(topLevelClassA.getFullObfuscatedName()).get();
-            TopLevelClassMapping topLevelClassDiff = diff.createTopLevelClassMapping(
-                    topLevelClassA.getFullDeobfuscatedName(),
-                    topLevelClassB.getFullDeobfuscatedName());
-            
-            for(FieldMapping fieldA : topLevelClassA.getFieldMappings()) {
-                FieldMapping fieldB = topLevelClassB.getFieldMapping(fieldA.getObfuscatedName()).get();
-                
-                topLevelClassDiff.createFieldMapping(
-                        fieldA.getDeobfuscatedName())
-                .setDeobfuscatedName(
-                        fieldB.getDeobfuscatedName());
+
+        forEachClassMapping(mappingsA, classA -> {
+            ClassMapping<?, ?> classB = mappingsB.getClassMapping(classA.getFullObfuscatedName()).get();
+            ClassMapping<?, ?> classDiff = diff.getOrCreateClassMapping(
+                    classA.getFullDeobfuscatedName());
+
+            for(FieldMapping fieldA : classA.getFieldMappings()) {
+                FieldMapping fieldB = classB.getFieldMapping(fieldA.getObfuscatedName()).get();
+
+                classDiff.createFieldMapping(
+                                fieldA.getDeobfuscatedName())
+                        .setDeobfuscatedName(
+                                fieldB.getDeobfuscatedName());
             }
-            
-            for(MethodMapping methodA : topLevelClassA.getMethodMappings()) {
-                MethodMapping methodB = topLevelClassB.getMethodMapping(methodA.getObfuscatedName(), methodA.getObfuscatedDescriptor()).get();
-                
-                topLevelClassDiff.createMethodMapping(
-                        methodA.getDeobfuscatedName(),
-                        methodA.getDeobfuscatedDescriptor())
-                .setDeobfuscatedName(
-                        methodB.getDeobfuscatedName());
+
+            for(MethodMapping methodA : classA.getMethodMappings()) {
+                MethodMapping methodB = classB.getMethodMapping(methodA.getObfuscatedName(), methodA.getObfuscatedDescriptor()).get();
+
+                classDiff.createMethodMapping(
+                                methodA.getDeobfuscatedName(),
+                                methodA.getDeobfuscatedDescriptor())
+                        .setDeobfuscatedName(
+                                methodB.getDeobfuscatedName());
             }
-        }
-        
+        });
+
         return diff;
     }
 
-    private MappingSet createSrgMcpMappingSet(MappingSet notchSrg, Map<String, String> fields, Map<String, String> methods) {
-        MappingSet mcpSrg = MappingSet.create();
-
-        for(TopLevelClassMapping notchSrgTopLevelClass : notchSrg.getTopLevelClassMappings()) {
-            TopLevelClassMapping srgMcpTopLevelClass = mcpSrg.createTopLevelClassMapping(
-                    notchSrgTopLevelClass.getFullDeobfuscatedName(),
-                    notchSrgTopLevelClass.getFullDeobfuscatedName());
-            
-            for(FieldMapping notchSrgField : notchSrgTopLevelClass.getFieldMappings()) {
-                srgMcpTopLevelClass.createFieldMapping(
-                        notchSrgField.getDeobfuscatedName())
-                .setDeobfuscatedName(fields.getOrDefault(
-                        notchSrgField.getDeobfuscatedName(),
-                        notchSrgField.getDeobfuscatedName()));
+    private void forEachClassMapping(MappingSet mappings, Consumer<ClassMapping<?, ?>> callback) {
+        for(TopLevelClassMapping topLevelClass : mappings.getTopLevelClassMappings()) {
+            callback.accept(topLevelClass);
+            for(InnerClassMapping inner : topLevelClass.getInnerClassMappings()) {
+                forEachClassMappingInner(inner, callback);
             }
-            
+        }
+    }
+
+    private void forEachClassMappingInner(InnerClassMapping inner, Consumer<ClassMapping<?, ?>> callback) {
+        callback.accept(inner);
+        for(InnerClassMapping innerer : inner.getInnerClassMappings()) {
+            forEachClassMappingInner(innerer, callback);
+        }
+    }
+
+    private MappingSet createSrgMcpMappingSet(MappingSet notchSrg, Map<String, String> fields, Map<String, String> methods) {
+        MappingSet srgMcp = MappingSet.create();
+
+        // In 1.7 everything is top level because proguard strips inner class info
+        for(TopLevelClassMapping notchSrgTopLevelClass : notchSrg.getTopLevelClassMappings()) {
+            ClassMapping<?, ?> srgMcpClass = srgMcp.getOrCreateClassMapping(notchSrgTopLevelClass.getFullDeobfuscatedName());
+
+            for(FieldMapping notchSrgField : notchSrgTopLevelClass.getFieldMappings()) {
+                srgMcpClass.createFieldMapping(
+                                notchSrgField.getDeobfuscatedName())
+                        .setDeobfuscatedName(fields.getOrDefault(
+                                notchSrgField.getDeobfuscatedName(),
+                                notchSrgField.getDeobfuscatedName()));
+            }
+
             for(MethodMapping notchSrgMethod : notchSrgTopLevelClass.getMethodMappings()) {
-                srgMcpTopLevelClass.createMethodMapping(
-                        notchSrgMethod.getDeobfuscatedName(),
-                        notchSrgMethod.getDeobfuscatedDescriptor())
-                .setDeobfuscatedName(methods.getOrDefault(
-                        notchSrgMethod.getDeobfuscatedName(),
-                        notchSrgMethod.getDeobfuscatedName()));
+                srgMcpClass.createMethodMapping(
+                                notchSrgMethod.getDeobfuscatedName(),
+                                notchSrgMethod.getDeobfuscatedDescriptor())
+                        .setDeobfuscatedName(methods.getOrDefault(
+                                notchSrgMethod.getDeobfuscatedName(),
+                                notchSrgMethod.getDeobfuscatedName()));
             }
         }
 
-        return mcpSrg;
+        return srgMcp;
     }
 
     private static Map<String, String> readCsv(File csv) throws IOException {
