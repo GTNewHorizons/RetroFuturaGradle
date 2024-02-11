@@ -20,6 +20,8 @@ import java.util.Map;
 
 public class MigrateMappingsTask extends DefaultTask {
 
+    private static final boolean DEBUG_WRITE_DIFF = Boolean.parseBoolean(System.getenv("RFG_DEBUG_WRITE_MAPPING_DIFF"));
+
     private String mcpDir;
 
     @Option(option = "mcpDir", description = "A directory containing the mappings to migrate to, using MCP's fields.csv and methods.csv format.")
@@ -43,9 +45,11 @@ public class MigrateMappingsTask extends DefaultTask {
         MappingSet currentSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(currentFields), readCsv(currentMethods));
         MappingSet targetSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(new File(target, "fields.csv")), readCsv(new File(target, "methods.csv")));
         MappingSet diffMcp = diff(currentSrgMcp, targetSrgMcp);
-        
-        try(MappingsWriter w = MappingFormats.SRG.createWriter(new File("diff.srg").toPath())) {
-            w.write(diffMcp);
+
+        if(DEBUG_WRITE_DIFF) {
+            try (MappingsWriter w = MappingFormats.SRG.createWriter(new File(getProject().getRootDir(), "diff.srg").toPath())) {
+                w.write(diffMcp);
+            }
         }
     }
 
