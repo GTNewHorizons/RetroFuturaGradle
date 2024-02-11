@@ -39,17 +39,17 @@ public class MigrateMappingsTask extends DefaultTask {
 
     @Option(option = "mcpDir", description = "The directory containing the mappings to migrate to, using MCP's fields.csv and methods.csv format.")
     public void setMcpDir(String mcpDir) {
-        this.mcpDir = new File(getProject().getProjectDir(), mcpDir);
+        this.mcpDir = getProject().file(mcpDir);
     }
 
     @Option(option = "inputDir", description = "The directory containing the source code to migrate.")
     public void setInputDir(String inputDir) {
-        this.inputDir = new File(getProject().getProjectDir(), inputDir);
+        this.inputDir = getProject().file(inputDir);
     }
 
     @Option(option = "outputDir", description = "The directory the migrated source code should be written to.")
     public void setOutputDir(String outputDir) {
-        this.outputDir = new File(getProject().getProjectDir(), outputDir);
+        this.outputDir = getProject().file(outputDir);
     }
     
     @TaskAction
@@ -58,10 +58,10 @@ public class MigrateMappingsTask extends DefaultTask {
             throw new IllegalArgumentException("--mcpDir must be provided.");
         }
         if(inputDir == null) {
-            inputDir = new File(getProject().getProjectDir(), "src/main/java");
+            inputDir = getProject().file("src/main/java");
         }
         if(outputDir == null) {
-            outputDir = new File(getProject().getProjectDir(), "src/main/java");
+            outputDir = getProject().file("src/main/java");
         }
         GenSrgMappingsTask genSrgMappings = (GenSrgMappingsTask)getProject().getTasks().getByName("generateForgeSrgMappings");
         File currentFields = genSrgMappings.getFieldsCsv().getAsFile().get();
