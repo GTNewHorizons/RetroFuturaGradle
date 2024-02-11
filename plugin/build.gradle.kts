@@ -263,6 +263,7 @@ val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
     // we're already shading this in combinedShadowJar
     exclude(project(":oldasmwrapper"))
   }
+  mergeServiceFiles()
 }
 
 val mainShadowJar = tasks.register<ShadowJar>("mainShadowJar") {
