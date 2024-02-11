@@ -16,6 +16,7 @@ import org.cadixdev.mercury.Mercury;
 import org.cadixdev.mercury.mixin.MixinRemapper;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.api.tasks.options.Option;
@@ -91,8 +92,7 @@ public class MigrateMappingsTask extends DefaultTask {
         mercury.getProcessors().add(MixinRemapper.create(diffMcp));
         mercury.getProcessors().add(MercuryRemapper.create(diffMcp));
 
-        // TODO actually get this from the project
-        mercury.setSourceCompatibility("17");
+        mercury.setSourceCompatibility(getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceCompatibility().toString());
 
         mercury.rewrite(inputDir.toPath(), outputDir.toPath());
     }
