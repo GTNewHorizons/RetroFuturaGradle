@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle.modutils;
 
+import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.opencsv.CSVReader;
 import org.cadixdev.lorenz.MappingSet;
@@ -10,6 +11,7 @@ import org.cadixdev.lorenz.model.MethodMapping;
 import org.cadixdev.lorenz.model.TopLevelClassMapping;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.options.Option;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,14 +20,27 @@ import java.util.Map;
 
 public class MigrateMappingsTask extends DefaultTask {
 
+    private String mcpDir;
+
+    @Option(option = "mcpDir", description = "A directory containing the mappings to migrate to, using MCP's fields.csv and methods.csv format.")
+    public void setMcpDir(String mcpDir) {
+        this.mcpDir = mcpDir;
+    }
+    
     @TaskAction
     public void migrateMappings() throws IOException {
-        File current = new File(System.getProperty("user.home"), ".gradle/caches/minecraft/net/minecraftforge/forge/1.7.10-10.13.4.1614-1.7.10/unpacked/conf");
-        File target = new File(System.getProperty("user.home"), ".gradle/caches/minecraft/de/oceanlabs/mcp/mcp_stable/12");
-        File srg = new File(System.getProperty("user.home"), ".gradle/caches/minecraft/net/minecraftforge/forge/1.7.10-10.13.4.1614-1.7.10/unpacked/conf/packaged.srg");
+        if(mcpDir == null) {
+            throw new IllegalArgumentException("--mcpDir must be provided.");
+        }
+        GenSrgMappingsTask genSrgMappings = (GenSrgMappingsTask)getProject().getTasks().getByName("generateForgeSrgMappings");
+        File currentFields = genSrgMappings.getFieldsCsv().getAsFile().get();
+        File currentMethods = genSrgMappings.getMethodsCsv().getAsFile().get();
+
+        File target = new File(mcpDir);
+        File srg = genSrgMappings.getInputSrg().getAsFile().get();
 
         MappingSet notchSrg = MappingFormats.SRG.read(srg.toPath());
-        MappingSet currentSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(new File(current, "fields.csv")), readCsv(new File(current, "methods.csv")));
+        MappingSet currentSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(currentFields), readCsv(currentMethods));
         MappingSet targetSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(new File(target, "fields.csv")), readCsv(new File(target, "methods.csv")));
         MappingSet diffMcp = diff(currentSrgMcp, targetSrgMcp);
         
