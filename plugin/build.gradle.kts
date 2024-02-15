@@ -279,9 +279,7 @@ val mainShadowJar = tasks.register<ShadowJar>("mainShadowJar") {
   }
 }
 
-val combinedShadowJar = tasks.register<ShadowJar>("combinedShadowJar") {
-  archiveClassifier.set("")
-
+val combinedShadowJar = tasks.register<Jar>("combinedShadowJar") {
   from("LICENSE", "docs", tasks.named("classes"))
   val oldAsmJarTask = project(":oldasmwrapper").tasks.named<Jar>("allJar")
   dependsOn(oldAsmJarTask)
@@ -300,7 +298,7 @@ val combinedShadowJar = tasks.register<ShadowJar>("combinedShadowJar") {
   exclude("META-INF/LICENSE*")
   exclude("META-INF/NOTICE")
   exclude("META-INF/NOTICE*")
-  exclude("META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "module-info.class") // defaults
+  exclude("META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "module-info.class") // shadowJar defaults
 }
 
 tasks.shadowJar.configure {
