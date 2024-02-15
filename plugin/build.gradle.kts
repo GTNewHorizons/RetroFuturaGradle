@@ -306,7 +306,7 @@ val combinedShadowJar = tasks.register<Jar>("combinedShadowJar") {
 }
 
 tasks.shadowJar.configure {
-  // shadowJar is pre-configured with a "from(sourceSets.main.output)" we don't want, so we create our own shadow task
+  // Jar is slightly faster than shadowJar, so we create our own shadow task
   archiveClassifier.set("")
   enabled = false
   dependsOn(combinedShadowJar)
