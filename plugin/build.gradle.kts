@@ -250,36 +250,38 @@ val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
 val mainShadowJar = tasks.register<ShadowJar>("mainShadowJar") {
   archiveClassifier.set("mainShadow")
 
-  val prefix = "com.gtnewhorizons.retrofuturagradle.shadow"
-
   from(sourceSets.main.get().output)
 
-  // Adapted from Shadow's RelocationUtil.groovy
-  // We want to relocate references to dependencies but not include the dependencies themselves in this jar.
-  // We also don't want to double-shade RFG classes
-  val packages = mutableSetOf<String>()
+  doFirst {
+    // Adapted from Shadow's RelocationUtil.groovy
+    // We want to relocate references to dependencies but not include the dependencies themselves in this jar.
+    // We also don't want to double-shade RFG classes
+    val prefix = "com.gtnewhorizons.retrofuturagradle.shadow"
+    val configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  val configurations = listOf(project.configurations.runtimeClasspath.get())
+    val packages = mutableSetOf<String>()
 
-  configurations.iterator().forEach { configuration ->
-    configuration.files.filter {
-      // we're already shading this in combinedShadowJar
-      f -> f != project(":oldasmwrapper").tasks.named<Jar>("allJar").get().archiveFile.get().asFile
-    }.forEach { jar ->
-      JarFile(jar).use {
-        it.entries().iterator().forEach { entry ->
-          if (entry.name.endsWith(".class") && entry.name != "module-info.class") {
-            val pkg = entry.name.substring(0, entry.name.lastIndexOf('/') - 1).replace('/', '.')
-            if (!pkg.startsWith("com.gtnewhorizons.retrofuturagradle")) {
-              packages.add(pkg)
+    configurations.iterator().forEach { configuration ->
+      configuration.files.filter {
+        // we're already shading this in combinedShadowJar
+        f ->
+        f != project(":oldasmwrapper").tasks.named<Jar>("allJar").get().archiveFile.get().asFile
+      }.forEach { jar ->
+        JarFile(jar).use {
+          it.entries().iterator().forEach { entry ->
+            if (entry.name.endsWith(".class") && entry.name != "module-info.class") {
+              val pkg = entry.name.substring(0, entry.name.lastIndexOf('/') - 1).replace('/', '.')
+              if (!pkg.startsWith("com.gtnewhorizons.retrofuturagradle")) {
+                packages.add(pkg)
+              }
             }
           }
         }
       }
     }
-  }
-  packages.iterator().forEach {
-    relocate(it, "${prefix}.${it}")
+    packages.iterator().forEach {
+      relocate(it, "${prefix}.${it}")
+    }
   }
 }
 
