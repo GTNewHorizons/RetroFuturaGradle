@@ -238,7 +238,7 @@ val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
   relocationPrefix = "com.gtnewhorizons.retrofuturagradle.shadow"
   configurations.add(project.configurations.runtimeClasspath.get())
   dependencies {
-    // we're already shading this elsewhere
+    // we're already shading this in combinedShadowJar
     exclude(project(":oldasmwrapper"))
   }
 }
@@ -252,22 +252,26 @@ val mainShadowJar = tasks.register<ShadowJar>("mainShadowJar") {
 
   // Adapted from Shadow's RelocationUtil.groovy
   // We want to relocate references to dependencies but not include the dependencies themselves in this jar.
+  // We also don't want to double-shade RFG classes
   val packages = mutableSetOf<String>()
 
   val configurations = listOf(project.configurations.runtimeClasspath.get())
 
   configurations.iterator().forEach { configuration ->
-    configuration.files.iterator().forEach { jar ->
-      val jf = JarFile(jar)
-      jf.entries().iterator().forEach { entry ->
-        if (entry.name.endsWith(".class") && entry.name != "module-info.class") {
-          val pkg = entry.name.substring(0, entry.name.lastIndexOf('/') - 1).replace('/', '.')
-          if (!pkg.startsWith("com.gtnewhorizons.retrofuturagradle")) {
-            packages.add(pkg)
+    configuration.files.filter {
+      // we're already shading this in combinedShadowJar
+      f -> f != project(":oldasmwrapper").tasks.named<Jar>("allJar").get().archiveFile.get().asFile
+    }.forEach { jar ->
+      JarFile(jar).use {
+        it.entries().iterator().forEach { entry ->
+          if (entry.name.endsWith(".class") && entry.name != "module-info.class") {
+            val pkg = entry.name.substring(0, entry.name.lastIndexOf('/') - 1).replace('/', '.')
+            if (!pkg.startsWith("com.gtnewhorizons.retrofuturagradle")) {
+              packages.add(pkg)
+            }
           }
         }
       }
-      jf.close()
     }
   }
   packages.iterator().forEach {
