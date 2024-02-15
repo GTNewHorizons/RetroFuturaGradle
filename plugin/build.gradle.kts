@@ -324,6 +324,8 @@ val combinedShadowJar = tasks.register<Jar>("combinedShadowJar") {
   exclude("META-INF/NOTICE")
   exclude("META-INF/NOTICE*")
   exclude("META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "module-info.class") // shadowJar defaults
+  exclude("LICENSE*")
+  exclude(".*", "*.html", "*.profile", "*.jar", "*.properties", "*.xml", "*.list", "META-INF/eclipse.inf") // eclipse stuff
 }
 
 tasks.jar.configure {
