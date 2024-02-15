@@ -231,6 +231,10 @@ java {
   withJavadocJar()
 }
 
+if(project.properties["rfg.skipJavadoc"].toString().toBoolean()) {
+  tasks.named("javadoc").configure { enabled = false }
+}
+
 val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
   archiveClassifier.set("deps")
   archiveVersion.set("0.0") // constant version to prevent task from rerunning when project version changes
