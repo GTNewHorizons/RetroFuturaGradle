@@ -354,7 +354,7 @@ tasks.named<Jar>("javadocJar").configure { from(fileTree("..").include("docs/*")
 publishing {
   publications {
     create<MavenPublication>("retrofuturagradle") {
-      shadow.component(this)
+      artifact(combinedShadowJar)
       artifact(tasks.named("sourcesJar"))
       artifact(tasks.named("javadocJar"))
     }
