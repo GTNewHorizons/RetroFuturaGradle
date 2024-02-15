@@ -33,7 +33,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build the Gradle plugin
-        run: ./gradlew --info --stacktrace retrofuturagradle:shadowJar
+        run: ./gradlew --info --stacktrace retrofuturagradle:jar
 
       - name: Build the javac plugin
         run: ./gradlew --info --stacktrace retrofuturagradle:rfgJavacPlugin:shadowJar

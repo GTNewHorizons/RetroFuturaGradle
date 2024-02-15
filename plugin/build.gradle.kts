@@ -307,16 +307,9 @@ val combinedShadowJar = tasks.register<Jar>("combinedShadowJar") {
   exclude("META-INF/INDEX.LIST", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "module-info.class") // shadowJar defaults
 }
 
-tasks.shadowJar.configure {
-  // Jar is slightly faster than shadowJar, so we create our own shadow task
-  archiveClassifier.set("")
-  enabled = false
-  dependsOn(combinedShadowJar)
-}
-
 tasks.jar.configure {
   enabled = false
-  dependsOn(tasks.shadowJar)
+  dependsOn(combinedShadowJar)
 }
 
 configurations["functionalTestImplementation"].extendsFrom(configurations["testImplementation"])
