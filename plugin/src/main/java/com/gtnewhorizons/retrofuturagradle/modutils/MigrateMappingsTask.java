@@ -63,7 +63,7 @@ public class MigrateMappingsTask extends DefaultTask {
         if(outputDir == null) {
             outputDir = getProject().file("src/main/java");
         }
-        GenSrgMappingsTask genSrgMappings = (GenSrgMappingsTask)getProject().getTasks().getByName("generateForgeSrgMappings");
+        GenSrgMappingsTask genSrgMappings = getProject().getTasks().named("generateForgeSrgMappings", GenSrgMappingsTask.class).get();
         File currentFields = genSrgMappings.getFieldsCsv().getAsFile().get();
         File currentMethods = genSrgMappings.getMethodsCsv().getAsFile().get();
 
@@ -84,8 +84,8 @@ public class MigrateMappingsTask extends DefaultTask {
         final Mercury mercury = new Mercury();
 
         // There's probably a better way to do this
-        mercury.getClassPath().add(((Jar)getProject().getTasks().getByName("packagePatchedMc")).getArchiveFile().get().getAsFile().toPath());
-        mercury.getClassPath().add(((InjectTagsTask)getProject().getTasks().getByName("injectTags")).getOutputDir().getAsFile().get().toPath());
+        mercury.getClassPath().add(getProject().getTasks().named("packagePatchedMc", Jar.class).get().getArchiveFile().get().getAsFile().toPath());
+        mercury.getClassPath().add(getProject().getTasks().named("injectTags", InjectTagsTask.class).get().getOutputDir().getAsFile().get().toPath());
         for (File file : getProject().getConfigurations().getByName("compileClasspath").getFiles()) {
             mercury.getClassPath().add(file.toPath());
         }
