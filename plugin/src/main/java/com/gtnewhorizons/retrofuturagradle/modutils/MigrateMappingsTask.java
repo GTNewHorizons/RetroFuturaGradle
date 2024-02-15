@@ -2,10 +2,8 @@ package com.gtnewhorizons.retrofuturagradle.modutils;
 
 import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.InjectTagsTask;
-import com.gtnewhorizons.retrofuturagradle.mcp.SharedMCPTasks;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.opencsv.CSVReader;
-import org.apache.commons.io.FileUtils;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.MappingFormats;
 import org.cadixdev.lorenz.io.MappingsWriter;
@@ -18,56 +16,59 @@ import org.cadixdev.mercury.Mercury;
 import org.cadixdev.mercury.mixin.MixinRemapper;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.api.tasks.options.Option;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class MigrateMappingsTask extends DefaultTask {
+public abstract class MigrateMappingsTask extends DefaultTask {
 
     private static final boolean DEBUG_WRITE_DIFF = Boolean.parseBoolean(System.getenv("RFG_DEBUG_WRITE_MAPPING_DIFF"));
 
-    private File mcpDir;
-    private File inputDir;
-    private File outputDir;
-
+    @Optional
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
     @Option(option = "mcpDir", description = "The directory containing the mappings to migrate to, using MCP's fields.csv and methods.csv format.")
-    public void setMcpDir(String mcpDir) {
-        this.mcpDir = getProject().file(mcpDir);
-    }
+    public abstract DirectoryProperty getMcpDir();
 
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
     @Option(option = "inputDir", description = "The directory containing the source code to migrate.")
-    public void setInputDir(String inputDir) {
-        this.inputDir = getProject().file(inputDir);
-    }
+    public abstract DirectoryProperty getInputDir();
 
+    @OutputDirectory
     @Option(option = "outputDir", description = "The directory the migrated source code should be written to.")
-    public void setOutputDir(String outputDir) {
-        this.outputDir = getProject().file(outputDir);
+    public abstract DirectoryProperty getOutputDir();
+
+    @Inject
+    public MigrateMappingsTask() {
+        getInputDir().convention(getProject().getLayout().getProjectDirectory().dir("src/main/java"));
+        getOutputDir().convention(getProject().getLayout().getProjectDirectory().dir("src/main/java"));
     }
     
     @TaskAction
     public void migrateMappings() throws Exception {
-        if(mcpDir == null) {
-            throw new IllegalArgumentException("--mcpDir must be provided.");
-        }
-        if(inputDir == null) {
-            inputDir = getProject().file("src/main/java");
-        }
-        if(outputDir == null) {
-            outputDir = getProject().file("src/main/java");
+        if(!getMcpDir().isPresent()) {
+            throw new IllegalArgumentException("A target mapping must be set using --mcpDir.");
         }
         GenSrgMappingsTask genSrgMappings = getProject().getTasks().named("generateForgeSrgMappings", GenSrgMappingsTask.class).get();
         File currentFields = genSrgMappings.getFieldsCsv().getAsFile().get();
         File currentMethods = genSrgMappings.getMethodsCsv().getAsFile().get();
 
-        File target = mcpDir;
+        File target = getMcpDir().get().getAsFile();
         File srg = genSrgMappings.getInputSrg().getAsFile().get();
 
         MappingSet notchSrg = MappingFormats.SRG.read(srg.toPath());
@@ -97,7 +98,7 @@ public class MigrateMappingsTask extends DefaultTask {
 
         mercury.setSourceCompatibility(getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceCompatibility().toString());
 
-        mercury.rewrite(inputDir.toPath(), outputDir.toPath());
+        mercury.rewrite(getInputDir().getAsFile().get().toPath(), getOutputDir().getAsFile().get().toPath());
     }
 
     /** Returns the difference between two mappings of the same root.
