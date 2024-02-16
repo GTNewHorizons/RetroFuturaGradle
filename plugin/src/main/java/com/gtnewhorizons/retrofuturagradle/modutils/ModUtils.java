@@ -107,8 +107,7 @@ public class ModUtils {
 
         project.getTasks().register("migrateMappings", MigrateMappingsTask.class, task -> {
             task.setGroup(TASK_GROUP_USER);
-            task.setDescription(
-                    "Migrate main source set to a new set of mappings");
+            task.setDescription("Migrate main source set to a new set of mappings");
             task.dependsOn("extractMcpData");
             task.dependsOn("extractForgeUserdev");
             task.dependsOn("packagePatchedMc");
