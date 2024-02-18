@@ -201,11 +201,7 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(taskExtractMcpData, taskExtractForgeUserdev);
-                    final Provider<Directory> srgLocation = forgeSrgLocation; // configuration cache fix
-                    task.onlyIf(t -> {
-                        File root = srgLocation.get().getAsFile();
-                        return !(root.isDirectory() && new File(root, "notch-srg.srg").isFile());
-                    });
+                    task.onlyIf(t -> !task.getNotchToSrg().get().getAsFile().isFile());
                     // inputs
                     Provider<Integer> mcVer = mcExt.getMinorMcVersion();
                     task.getInputSrg().set(
@@ -228,7 +224,6 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     task.getMcpToNotch().set(srgFile("mcp-notch.srg"));
                     task.getSrgExc().set(srgFile("srg.exc"));
                     task.getMcpExc().set(srgFile("mcp.exc"));
-                    task.doFirst(new MkdirAction(forgeSrgLocation));
                 });
 
         // Set up dependencies across the cache-writing tasks to suppress Gradle errors about this.
