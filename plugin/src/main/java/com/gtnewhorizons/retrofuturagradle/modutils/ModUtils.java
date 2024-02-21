@@ -33,6 +33,7 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.gradle.plugin.KaptExtension;
@@ -40,6 +41,7 @@ import org.jetbrains.kotlin.gradle.plugin.KaptExtension;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
+import com.gtnewhorizons.retrofuturagradle.mcp.InjectTagsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
 import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
@@ -108,10 +110,23 @@ public class ModUtils {
         project.getTasks().register("migrateMappings", MigrateMappingsTask.class, task -> {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Migrate main source set to a new set of mappings");
-            task.dependsOn("extractMcpData");
-            task.dependsOn("extractForgeUserdev");
-            task.dependsOn("packagePatchedMc");
-            task.dependsOn("injectTags");
+            task.dependsOn("extractMcpData", "extractForgeUserdev", "packagePatchedMc", "injectTags");
+            task.getSourceSrg()
+                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getInputSrg));
+            task.getSourceFieldsCsv()
+                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getFieldsCsv));
+            task.getSourceMethodsCsv()
+                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
+            task.getCompileClasspath().from(
+                    project.getConfigurations().getByName("compileClasspath")
+                            .plus(
+                                    project.files(
+                                            project.getTasks().named("packagePatchedMc", Jar.class)
+                                                    .flatMap(Jar::getArchiveFile)))
+                            .plus(
+                                    project.files(
+                                            project.getTasks().named("injectTags", InjectTagsTask.class)
+                                                    .flatMap(InjectTagsTask::getOutputDir))));
         });
 
         if (!disableDependencyDeobfuscation) {

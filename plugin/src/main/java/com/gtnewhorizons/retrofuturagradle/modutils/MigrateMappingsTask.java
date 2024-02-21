@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -20,19 +21,21 @@ import org.cadixdev.mercury.Mercury;
 import org.cadixdev.mercury.mixin.MixinRemapper;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
-import org.gradle.jvm.tasks.Jar;
 
-import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
-import com.gtnewhorizons.retrofuturagradle.mcp.InjectTagsTask;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 import com.opencsv.CSVReader;
 
@@ -57,6 +60,22 @@ public abstract class MigrateMappingsTask extends DefaultTask {
     @Option(option = "outputDir", description = "The directory the migrated source code should be written to.")
     public abstract DirectoryProperty getOutputDir();
 
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract RegularFileProperty getSourceSrg();
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract RegularFileProperty getSourceFieldsCsv();
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract RegularFileProperty getSourceMethodsCsv();
+
+    @InputFiles
+    @Classpath
+    public abstract ConfigurableFileCollection getCompileClasspath();
+
     @Inject
     public MigrateMappingsTask() {
         getInputDir().convention(getProject().getLayout().getProjectDirectory().dir("src/main/java"));
@@ -68,21 +87,19 @@ public abstract class MigrateMappingsTask extends DefaultTask {
         if (!getMcpDir().isPresent()) {
             throw new IllegalArgumentException("A target mapping must be set using --mcpDir.");
         }
-        GenSrgMappingsTask genSrgMappings = getProject().getTasks()
-                .named("generateForgeSrgMappings", GenSrgMappingsTask.class).get();
-        File currentFields = genSrgMappings.getFieldsCsv().getAsFile().get();
-        File currentMethods = genSrgMappings.getMethodsCsv().getAsFile().get();
+        File sourceFields = getSourceFieldsCsv().getAsFile().get();
+        File sourceMethods = getSourceMethodsCsv().getAsFile().get();
 
         File target = getMcpDir().get().getAsFile();
-        File srg = genSrgMappings.getInputSrg().getAsFile().get();
+        File srg = getSourceSrg().getAsFile().get();
 
         MappingSet notchSrg = MappingFormats.SRG.read(srg.toPath());
-        MappingSet currentSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(currentFields), readCsv(currentMethods));
+        MappingSet sourceSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(sourceFields), readCsv(sourceMethods));
         MappingSet targetSrgMcp = createSrgMcpMappingSet(
                 notchSrg,
                 readCsv(new File(target, "fields.csv")),
                 readCsv(new File(target, "methods.csv")));
-        MappingSet diffMcp = diff(currentSrgMcp, targetSrgMcp);
+        MappingSet diffMcp = diff(sourceSrgMcp, targetSrgMcp);
 
         if (DEBUG_WRITE_DIFF) {
             try (MappingsWriter w = MappingFormats.SRG
@@ -93,16 +110,9 @@ public abstract class MigrateMappingsTask extends DefaultTask {
 
         final Mercury mercury = new Mercury();
 
-        // There's probably a better way to do this
-        mercury.getClassPath().add(
-                getProject().getTasks().named("packagePatchedMc", Jar.class).get().getArchiveFile().get().getAsFile()
-                        .toPath());
-        mercury.getClassPath().add(
-                getProject().getTasks().named("injectTags", InjectTagsTask.class).get().getOutputDir().getAsFile().get()
-                        .toPath());
-        for (File file : getProject().getConfigurations().getByName("compileClasspath").getFiles()) {
-            mercury.getClassPath().add(file.toPath());
-        }
+        mercury.getClassPath()
+                .addAll(getCompileClasspath().getFiles().stream().map(File::toPath).collect(Collectors.toList()));
+
         // Fixes some issues like broken javadoc in Forge, and JDT not understanding Hodgepodge's obfuscated voxelmap
         // targets.
         mercury.setGracefulClasspathChecks(true);
