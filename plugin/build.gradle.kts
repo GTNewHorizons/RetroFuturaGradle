@@ -134,6 +134,7 @@ dependencies {
   // We use Paper's Mercury fork because it both supports Java 17 and is binary compatible with mercurymixin.
   implementation("org.cadixdev:mercury:0.1.2-paperweight-SNAPSHOT")
   implementation("org.cadixdev:mercurymixin:0.1.0-SNAPSHOT")
+  implementation("net.fabricmc:mapping-io:0.5.1")
   // Use JUnit Jupiter for testing.
   testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")

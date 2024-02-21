@@ -1,23 +1,26 @@
 package com.gtnewhorizons.retrofuturagradle.modutils;
 
+import java.io.CharArrayReader;
+import java.io.CharArrayWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import net.fabricmc.mappingio.adapter.MappingNsRenamer;
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
+import net.fabricmc.mappingio.format.srg.SrgFileReader;
+import net.fabricmc.mappingio.format.srg.SrgFileWriter;
+import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import net.fabricmc.mappingio.tree.VisitableMappingTree;
+
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.MappingFormats;
+import org.cadixdev.lorenz.io.MappingsReader;
 import org.cadixdev.lorenz.io.MappingsWriter;
-import org.cadixdev.lorenz.model.ClassMapping;
-import org.cadixdev.lorenz.model.FieldMapping;
-import org.cadixdev.lorenz.model.InnerClassMapping;
-import org.cadixdev.lorenz.model.MethodMapping;
-import org.cadixdev.lorenz.model.TopLevelClassMapping;
 import org.cadixdev.mercury.Mercury;
 import org.cadixdev.mercury.mixin.MixinRemapper;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
@@ -38,7 +41,6 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
 
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
-import com.opencsv.CSVReader;
 
 public abstract class MigrateMappingsTask extends DefaultTask {
 
@@ -94,18 +96,37 @@ public abstract class MigrateMappingsTask extends DefaultTask {
         File target = getMcpDir().get().getAsFile();
         File srg = getSourceSrg().getAsFile().get();
 
-        MappingSet notchSrg = MappingFormats.SRG.read(srg.toPath());
-        MappingSet sourceSrgMcp = createSrgMcpMappingSet(notchSrg, readCsv(sourceFields), readCsv(sourceMethods));
-        MappingSet targetSrgMcp = createSrgMcpMappingSet(
+        MemoryMappingTree notchSrg = new MemoryMappingTree();
+        SrgFileReader.read(Files.newBufferedReader(srg.toPath()), "official", "srg", notchSrg);
+
+        MemoryMappingTree sourceSrgMcp = new MemoryMappingTree();
+        Utilities.loadSrgMcpMappings(sourceSrgMcp, notchSrg, sourceMethods, sourceFields, null, null);
+
+        MemoryMappingTree targetSrgMcp = new MemoryMappingTree();
+        Utilities.loadSrgMcpMappings(
+                targetSrgMcp,
                 notchSrg,
-                readCsv(new File(target, "fields.csv")),
-                readCsv(new File(target, "methods.csv")));
-        MappingSet diffMcp = diff(sourceSrgMcp, targetSrgMcp);
+                new File(target, "methods.csv"),
+                new File(target, "fields.csv"),
+                null,
+                null);
+
+        MemoryMappingTree joinedSrgMcp = new MemoryMappingTree();
+        joinedSrgMcp.setSrcNamespace("srg");
+        sourceSrgMcp.accept(new MappingNsRenamer(joinedSrgMcp, Collections.singletonMap("mcp", "mcpSource")));
+        targetSrgMcp.accept(new MappingNsRenamer(joinedSrgMcp, Collections.singletonMap("mcp", "mcpTarget")));
+
+        MemoryMappingTree diffMcp = new MemoryMappingTree();
+        diffMcp.setSrcNamespace("mcpSource");
+        joinedSrgMcp.accept(new MappingSourceNsSwitch(diffMcp, "mcpSource"));
+        diffMcp.setDstNamespaces(Collections.singletonList("mcpTarget"));
+
+        MappingSet diffMcpLorenz = mappingIoToLorenz(diffMcp);
 
         if (DEBUG_WRITE_DIFF) {
             try (MappingsWriter w = MappingFormats.SRG
                     .createWriter(new File(getProject().getRootDir(), "diff.srg").toPath())) {
-                w.write(diffMcp);
+                w.write(diffMcpLorenz);
             }
         }
 
@@ -119,8 +140,8 @@ public abstract class MigrateMappingsTask extends DefaultTask {
         // targets.
         mercury.setGracefulClasspathChecks(true);
 
-        mercury.getProcessors().add(MixinRemapper.create(diffMcp));
-        mercury.getProcessors().add(MercuryRemapper.create(diffMcp));
+        mercury.getProcessors().add(MixinRemapper.create(diffMcpLorenz));
+        mercury.getProcessors().add(MercuryRemapper.create(diffMcpLorenz));
 
         mercury.setSourceCompatibility(
                 getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceCompatibility().toString());
@@ -128,90 +149,17 @@ public abstract class MigrateMappingsTask extends DefaultTask {
         mercury.rewrite(getInputDir().getAsFile().get().toPath(), getOutputDir().getAsFile().get().toPath());
     }
 
-    /**
-     * Returns the difference between two mappings of the same root.
-     *
-     * @param mappingsA Mappings from O to A.
-     * @param mappingsB Mappings from O to B.
-     * @return Mappings from A to B.
-     */
-    private MappingSet diff(MappingSet mappingsA, MappingSet mappingsB) {
-        MappingSet diff = MappingSet.create();
+    /** Converts a MappingIO mapping to Lorenz's type. May not preserve parameter names and comments. */
+    private static MappingSet mappingIoToLorenz(VisitableMappingTree mappingIoMappings) throws IOException {
+        CharArrayWriter writer = new CharArrayWriter();
+        mappingIoMappings.accept(new SrgFileWriter(writer, false));
+        CharArrayReader reader = new CharArrayReader(writer.toCharArray());
+        MappingSet lorenzMappings = MappingSet.create();
 
-        forEachClassMapping(mappingsA, classA -> {
-            ClassMapping<?, ?> classB = mappingsB.getClassMapping(classA.getFullObfuscatedName()).get();
-            ClassMapping<?, ?> classDiff = diff.getOrCreateClassMapping(classA.getFullDeobfuscatedName());
-
-            for (FieldMapping fieldA : classA.getFieldMappings()) {
-                FieldMapping fieldB = classB.getFieldMapping(fieldA.getObfuscatedName()).get();
-
-                classDiff.createFieldMapping(fieldA.getDeobfuscatedName())
-                        .setDeobfuscatedName(fieldB.getDeobfuscatedName());
-            }
-
-            for (MethodMapping methodA : classA.getMethodMappings()) {
-                MethodMapping methodB = classB
-                        .getMethodMapping(methodA.getObfuscatedName(), methodA.getObfuscatedDescriptor()).get();
-
-                classDiff.createMethodMapping(methodA.getDeobfuscatedName(), methodA.getDeobfuscatedDescriptor())
-                        .setDeobfuscatedName(methodB.getDeobfuscatedName());
-            }
-        });
-
-        return diff;
-    }
-
-    private void forEachClassMapping(MappingSet mappings, Consumer<ClassMapping<?, ?>> callback) {
-        for (TopLevelClassMapping topLevelClass : mappings.getTopLevelClassMappings()) {
-            callback.accept(topLevelClass);
-            for (InnerClassMapping inner : topLevelClass.getInnerClassMappings()) {
-                forEachClassMappingInner(inner, callback);
-            }
+        try (final MappingsReader mappingsReader = MappingFormats.SRG.createReader(reader)) {
+            mappingsReader.read(lorenzMappings);
         }
-    }
-
-    private void forEachClassMappingInner(InnerClassMapping inner, Consumer<ClassMapping<?, ?>> callback) {
-        callback.accept(inner);
-        for (InnerClassMapping innerer : inner.getInnerClassMappings()) {
-            forEachClassMappingInner(innerer, callback);
-        }
-    }
-
-    private MappingSet createSrgMcpMappingSet(MappingSet notchSrg, Map<String, String> fields,
-            Map<String, String> methods) {
-        MappingSet srgMcp = MappingSet.create();
-
-        // In 1.7 everything is top level because proguard strips inner class info
-        for (TopLevelClassMapping notchSrgTopLevelClass : notchSrg.getTopLevelClassMappings()) {
-            ClassMapping<?, ?> srgMcpClass = srgMcp
-                    .getOrCreateClassMapping(notchSrgTopLevelClass.getFullDeobfuscatedName());
-
-            for (FieldMapping notchSrgField : notchSrgTopLevelClass.getFieldMappings()) {
-                srgMcpClass.createFieldMapping(notchSrgField.getDeobfuscatedName()).setDeobfuscatedName(
-                        fields.getOrDefault(notchSrgField.getDeobfuscatedName(), notchSrgField.getDeobfuscatedName()));
-            }
-
-            for (MethodMapping notchSrgMethod : notchSrgTopLevelClass.getMethodMappings()) {
-                srgMcpClass.createMethodMapping(
-                        notchSrgMethod.getDeobfuscatedName(),
-                        notchSrgMethod.getDeobfuscatedDescriptor()).setDeobfuscatedName(
-                                methods.getOrDefault(
-                                        notchSrgMethod.getDeobfuscatedName(),
-                                        notchSrgMethod.getDeobfuscatedName()));
-            }
-        }
-
-        return srgMcp;
-    }
-
-    private static Map<String, String> readCsv(File csv) throws IOException {
-        Map<String, String> names = new HashMap<>(5000);
-        try (CSVReader csvReader = Utilities.createCsvReader(csv)) {
-            for (String[] line : csvReader) {
-                names.put(line[0], line[1]);
-            }
-        }
-        return names;
+        return lorenzMappings;
     }
 
 }

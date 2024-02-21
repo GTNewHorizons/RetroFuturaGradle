@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,10 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import javax.annotation.Nullable;
+
+import net.fabricmc.mappingio.MappedElementKind;
+import net.fabricmc.mappingio.tree.MappingTree;
+import net.fabricmc.mappingio.tree.VisitableMappingTree;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -505,6 +510,65 @@ public final class Utilities {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static void loadSrgMcpMappings(VisitableMappingTree srgMcp, VisitableMappingTree notchSrg, File methodsCsv,
+            File fieldsCsv, @Nullable File paramsCsv, @Nullable Collection<File> extraParamsCsvs) throws IOException {
+        MappingsSet mappings = loadMappingCsvs(methodsCsv, fieldsCsv, paramsCsv, extraParamsCsvs, null);
+
+        do {
+            if (srgMcp.visitHeader()) {
+                srgMcp.visitNamespaces("srg", Collections.singletonList("mcp"));
+            }
+
+            if (srgMcp.visitContent()) {
+                for (MappingTree.ClassMapping notchSrgClass : notchSrg.getClasses()) {
+                    if (srgMcp.visitClass(notchSrgClass.getDstName(0))) {
+                        srgMcp.visitDstName(MappedElementKind.CLASS, 0, notchSrgClass.getDstName(0));
+                        if (srgMcp.visitElementContent(MappedElementKind.CLASS)) {
+                            for (MappingTree.FieldMapping notchSrgField : notchSrgClass.getFields()) {
+                                if (srgMcp.visitField(notchSrgField.getDstName(0), notchSrgField.getDstDesc(0))) {
+                                    Utilities.Mapping mapping = mappings.fieldMappings.get(notchSrgField.getDstName(0));
+                                    srgMcp.visitDstName(
+                                            MappedElementKind.FIELD,
+                                            0,
+                                            mapping != null ? mapping.name : null);
+                                    srgMcp.visitElementContent(MappedElementKind.FIELD);
+                                    // TODO javadoc
+                                }
+                            }
+                            for (MappingTree.MethodMapping notchSrgMethod : notchSrgClass.getMethods()) {
+                                if (srgMcp.visitMethod(notchSrgMethod.getDstName(0), notchSrgMethod.getDstDesc(0))) {
+                                    Utilities.Mapping mapping = mappings.methodMappings
+                                            .get(notchSrgMethod.getDstName(0));
+                                    srgMcp.visitDstName(
+                                            MappedElementKind.METHOD,
+                                            0,
+                                            mapping != null ? mapping.name : null);
+                                    // TODO javadoc
+
+                                    if (srgMcp.visitElementContent(MappedElementKind.METHOD)) {
+                                        for (MappingTree.MethodArgMapping notchSrgArg : notchSrgMethod.getArgs()) {
+                                            String dstName = mappings.paramMappings.get(notchSrgArg.getDstName(0));
+                                            if (srgMcp.visitMethodArg(
+                                                    -1,
+                                                    notchSrgArg.getLvIndex(),
+                                                    notchSrgArg.getSrcName())) {
+                                                if (dstName != null) {
+                                                    srgMcp.visitDstName(MappedElementKind.METHOD_ARG, 0, dstName);
+                                                }
+                                                srgMcp.visitElementContent(MappedElementKind.METHOD_ARG);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        } while (!srgMcp.visitEnd());
     }
 
     /**
