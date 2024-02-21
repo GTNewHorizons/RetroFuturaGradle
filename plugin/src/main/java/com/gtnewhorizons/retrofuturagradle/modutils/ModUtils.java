@@ -26,6 +26,7 @@ import org.gradle.api.attributes.CompatibilityCheckDetails;
 import org.gradle.api.file.*;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.scala.ScalaPlugin;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -41,7 +42,6 @@ import org.jetbrains.kotlin.gradle.plugin.KaptExtension;
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
 import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
-import com.gtnewhorizons.retrofuturagradle.mcp.InjectTagsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
 import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
@@ -117,16 +117,12 @@ public class ModUtils {
                     .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getFieldsCsv));
             task.getSourceMethodsCsv()
                     .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
-            task.getCompileClasspath().from(
-                    project.getConfigurations().getByName("compileClasspath")
-                            .plus(
-                                    project.files(
-                                            project.getTasks().named("packagePatchedMc", Jar.class)
-                                                    .flatMap(Jar::getArchiveFile)))
-                            .plus(
-                                    project.files(
-                                            project.getTasks().named("injectTags", InjectTagsTask.class)
-                                                    .flatMap(InjectTagsTask::getOutputDir))));
+            ConfigurableFileCollection cp = task.getCompileClasspath();
+            cp.from(project.getConfigurations().getByName("compileClasspath"));
+            cp.from(project.files(project.getTasks().named("packagePatchedMc", Jar.class)));
+            cp.from(
+                    project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets()
+                            .getByName("injectedTags").getOutput());
         });
 
         if (!disableDependencyDeobfuscation) {
