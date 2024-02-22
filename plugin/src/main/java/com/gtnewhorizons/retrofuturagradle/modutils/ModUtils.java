@@ -119,7 +119,7 @@ public class ModUtils {
                     .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
             ConfigurableFileCollection cp = task.getCompileClasspath();
             cp.from(project.getConfigurations().getByName("compileClasspath"));
-            cp.from(project.files(project.getTasks().named("packagePatchedMc", Jar.class)));
+            cp.from(project.getTasks().named("packagePatchedMc", Jar.class));
             cp.from(
                     project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets()
                             .getByName("injectedTags").getOutput());
