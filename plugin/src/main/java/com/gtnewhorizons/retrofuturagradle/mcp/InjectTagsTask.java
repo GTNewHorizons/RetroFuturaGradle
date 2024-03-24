@@ -14,7 +14,6 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
@@ -49,9 +48,6 @@ public abstract class InjectTagsTask extends DefaultTask {
      */
     @Input
     public abstract Property<Boolean> getCleanOutputDir();
-
-    @Inject
-    protected abstract FileOperations getFileOperations();
 
     @Inject
     public InjectTagsTask() {

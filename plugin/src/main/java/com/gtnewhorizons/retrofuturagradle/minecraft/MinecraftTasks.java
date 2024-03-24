@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ComponentMetadataSupplier;
@@ -25,7 +26,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.tasks.TaskProvider;
-import org.gradle.internal.os.OperatingSystem;
 
 import com.gtnewhorizons.retrofuturagradle.Constants;
 import com.gtnewhorizons.retrofuturagradle.IMinecraftyExtension;
@@ -389,27 +389,26 @@ public final class MinecraftTasks {
             content.excludeGroup("cpw.mods");
         });
 
-        final OperatingSystem os = OperatingSystem.current();
         final String osArch = System.getProperty("os.arch");
         final String lwjgl2Natives;
-        if (os.isWindows()) {
+        if (SystemUtils.IS_OS_WINDOWS) {
             lwjgl2Natives = "natives-windows";
-        } else if (os.isMacOsX()) {
+        } else if (SystemUtils.IS_OS_MAC) {
             lwjgl2Natives = (osArch.startsWith("aarch64")) ? "natives-osx-arm64" : "natives-osx";
         } else {
             lwjgl2Natives = "natives-linux";
         }
 
         final String lwjgl3Natives;
-        if (os.isMacOsX()) {
+        if (SystemUtils.IS_OS_MAC) {
             lwjgl3Natives = (osArch.startsWith("aarch64")) ? "natives-macos-arm64" : "natives-macos";
-        } else if (os.isWindows()) {
+        } else if (SystemUtils.IS_OS_WINDOWS) {
             if (osArch.contains("64")) {
                 lwjgl3Natives = osArch.startsWith("aarch64") ? "natives-windows-arm64" : "natives-windows";
             } else {
                 lwjgl3Natives = "natives-windows-x86";
             }
-        } else if (os.isLinux() || os.isUnix()) {
+        } else if (SystemUtils.IS_OS_LINUX || SystemUtils.IS_OS_UNIX) {
             if (osArch.startsWith("arm") || osArch.startsWith("aarch64")) {
                 lwjgl3Natives = (osArch.contains("64") || osArch.startsWith("armv8")) ? "natives-linux-arm64"
                         : "natives-linux-arm32";
@@ -498,11 +497,11 @@ public final class MinecraftTasks {
                         deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-api:2.17.1");
                         deps.add(VANILLA_MC_CFG, "org.apache.logging.log4j:log4j-core:2.17.1");
                         deps.add(VANILLA_MC_CFG, "com.mojang:text2speech:1.10.3");
-                        if (os.isWindows()) {
+                        if (SystemUtils.IS_OS_WINDOWS) {
                             deps.add(VANILLA_MC_CFG, "com.mojang:text2speech:1.10.3:natives-windows");
-                        } else if (os.isLinux()) {
+                        } else if (SystemUtils.IS_OS_LINUX) {
                             deps.add(VANILLA_MC_CFG, "com.mojang:text2speech:1.10.3:natives-linux");
-                        } else if (os.isMacOsX()) {
+                        } else if (SystemUtils.IS_OS_MAC) {
                             deps.add(VANILLA_MC_CFG, "ca.weblite:java-objc-bridge:1.0.0");
                         }
                     }
@@ -540,7 +539,7 @@ public final class MinecraftTasks {
 
                 if (mcMinor <= 8) {
                     deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");
-                    if (os.isWindows()) {
+                    if (SystemUtils.IS_OS_WINDOWS) {
                         deps.add(VANILLA_MC_CFG, "tv.twitch:twitch-platform:5.16:natives-windows-64");
                         deps.add(VANILLA_MC_CFG, "tv.twitch:twitch-external-platform:4.5:natives-windows-64");
                     }

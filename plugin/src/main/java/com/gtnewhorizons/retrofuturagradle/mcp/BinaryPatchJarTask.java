@@ -27,10 +27,10 @@ import org.apache.commons.compress.java.util.jar.Pack200;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.ConfigurableFileTree;
 import org.gradle.api.file.FileTree;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
@@ -63,7 +63,7 @@ public abstract class BinaryPatchJarTask extends DefaultTask implements IJarTran
     public abstract ConfigurableFileTree getExtraResourcesTree();
 
     @Inject
-    protected abstract FileOperations getFileOperations();
+    protected abstract ArchiveOperations getArchiveOperations();
 
     @Override
     public MessageDigestConsumer hashInputs() {
@@ -124,7 +124,7 @@ public abstract class BinaryPatchJarTask extends DefaultTask implements IJarTran
             }
             // Copy extra classes
             {
-                final FileTree tree = getFileOperations().zipTree(getExtraClassesJar().getAsFile().get());
+                final FileTree tree = getArchiveOperations().zipTree(getExtraClassesJar().getAsFile().get());
                 tree.visit(fvd -> {
                     if (fvd.isDirectory()) {
                         return;

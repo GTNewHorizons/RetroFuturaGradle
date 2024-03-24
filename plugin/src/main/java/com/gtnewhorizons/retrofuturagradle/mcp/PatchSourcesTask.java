@@ -18,9 +18,10 @@ import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.internal.file.FileOperations;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
@@ -60,7 +61,10 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
     public abstract Property<Integer> getPathComponentsToStrip();
 
     @Inject
-    public abstract FileOperations getFileOperations();
+    public abstract ObjectFactory getObjects();
+
+    @Inject
+    public abstract ArchiveOperations getArchiveOperations();
 
     @Override
     public MessageDigestConsumer hashInputs() {
@@ -128,11 +132,11 @@ public abstract class PatchSourcesTask extends DefaultTask implements IJarTransf
             for (File patchSpec : getPatches()) {
                 final FileCollection patchFiles;
                 if (patchSpec.isDirectory()) {
-                    patchFiles = getFileOperations().fileTree(patchSpec);
+                    patchFiles = getObjects().fileTree().from(patchSpec);
                 } else if (patchSpec.getName().endsWith(".zip") || patchSpec.getName().endsWith(".jar")) {
-                    patchFiles = getFileOperations().zipTree(patchSpec);
+                    patchFiles = getArchiveOperations().zipTree(patchSpec);
                 } else {
-                    patchFiles = getFileOperations().immutableFiles(patchSpec);
+                    patchFiles = getObjects().fileCollection().from(patchSpec);
                 }
                 for (File patchFile : patchFiles) {
                     logStream.printf("Applying patch %s from bundle %s%n", patchFile.getPath(), patchSpec.getPath());

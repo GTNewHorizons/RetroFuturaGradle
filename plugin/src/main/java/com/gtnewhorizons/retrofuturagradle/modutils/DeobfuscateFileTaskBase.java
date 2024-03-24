@@ -7,7 +7,6 @@ import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -62,9 +61,6 @@ public abstract class DeobfuscateFileTaskBase extends DefaultTask {
     @OutputFile
     @Option(option = "output", description = "Where to save the deobfuscated version")
     public abstract RegularFileProperty getOutputFile();
-
-    @Inject
-    protected abstract FileOperations getFileOperations();
 
     @Inject
     protected abstract ObjectFactory getObjectFactory();

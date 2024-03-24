@@ -8,6 +8,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -20,7 +21,6 @@ import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.internal.os.OperatingSystem;
 
 public abstract class ExtractNativesTask extends DefaultTask {
 
@@ -34,12 +34,11 @@ public abstract class ExtractNativesTask extends DefaultTask {
     public void configureMe(Project project, File targetDirectory, Configuration lwjglConfiguration,
             Configuration vanillaMcConfiguration) {
         this.getNatives().from(project.provider(() -> {
-            final OperatingSystem os = OperatingSystem.current();
             final String twitchNatives;
             final String lwjglNatives = (String) project.getExtensions().getByName("lwjglNatives");
-            if (os.isWindows()) {
+            if (SystemUtils.IS_OS_WINDOWS) {
                 twitchNatives = "natives-windows-64";
-            } else if (os.isMacOsX()) {
+            } else if (SystemUtils.IS_OS_MAC) {
                 twitchNatives = "natives-osx";
             } else {
                 twitchNatives = "natives-linux"; // don't actually exist
