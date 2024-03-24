@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,7 +25,6 @@ import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.DependencyArtifact;
 import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
@@ -48,7 +46,6 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
-import org.gradle.api.internal.artifacts.dependencies.DefaultDependencyArtifact;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -663,8 +660,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 final DependencyHandler deps = p.getDependencies();
                 final Configuration parentUnresolved = p.getConfigurations()
                         .getByName(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME);
-                final Configuration parentResolved = p.getConfigurations()
-                        .detachedConfiguration(parentUnresolved.getAllDependencies().toArray(new Dependency[0]));
+                final Configuration parentResolved = p.getConfigurations().create("reobfJarInputConfiguration", cfg -> {
+                    cfg.setCanBeConsumed(false);
+                    cfg.setCanBeResolved(true);
+                    cfg.getDependencies().addAll(parentUnresolved.getAllDependencies());
+                });
                 final AttributeContainer parentAttrs = parentResolved.getAttributes();
                 parentAttrs.attribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, ObfuscationAttribute.getMcp(objects));
                 parentAttrs.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
@@ -672,8 +672,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 parentAttrs.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
 
                 reobfJarConfiguration.withDependencies(depset -> {
-                    parentResolved.setCanBeConsumed(false);
-                    parentResolved.setCanBeResolved(true);
                     parentResolved.resolve();
                     final Set<String> excludedGroups = mcExt.getGroupsToExcludeFromAutoReobfMapping().get();
                     final HashSet<ResolvedDependency> visited = new HashSet<>();
@@ -698,7 +696,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                                         "version",
                                         dep.getModuleVersion()));
                         // The artifacts only exist for dependencies with a classifier (eg :dev)
-                        LinkedHashSet<DependencyArtifact> newArtifacts = new LinkedHashSet<>();
+                        mDep.getArtifacts().clear();
                         for (ResolvedArtifact artifact : dep.getModuleArtifacts()) {
                             String classifier = artifact.getClassifier();
                             if ("dev".equalsIgnoreCase(classifier) || "deobf".equalsIgnoreCase(classifier)) {
@@ -707,17 +705,15 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                             if ("api".equalsIgnoreCase(classifier)) {
                                 continue;
                             }
-                            newArtifacts.add(
-                                    new DefaultDependencyArtifact(
-                                            artifact.getName(),
-                                            artifact.getType(),
-                                            artifact.getExtension(),
-                                            classifier,
-                                            null));
+                            final String resultingClassifier = classifier;
+                            mDep.artifact(da -> {
+                                da.setName(dep.getModuleName());
+                                da.setType(artifact.getType());
+                                da.setClassifier(resultingClassifier);
+                                da.setExtension(artifact.getExtension());
+                            });
                         }
                         mDep.setTransitive(false);
-                        mDep.getArtifacts().clear();
-                        mDep.getArtifacts().addAll(newArtifacts);
                         depset.add(mDep);
                     }
                 });
