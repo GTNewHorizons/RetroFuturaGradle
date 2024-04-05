@@ -25,7 +25,6 @@ import org.gradle.api.Project;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
@@ -70,7 +69,6 @@ import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask;
 import com.gtnewhorizons.retrofuturagradle.util.Distribution;
-import com.gtnewhorizons.retrofuturagradle.util.FileWithSourcesDependency;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.JarChain;
@@ -505,31 +503,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 .configure(task -> task.from(injectedSourceSet.getOutput().getAsFileTree()));
 
         // A dummy source set to satisfy IntelliJ native launch configurations
-        final Configuration cfgBuiltMc = project.getConfigurations().create("builtMinecraft");
-        {
-            cfgBuiltMc.setCanBeResolved(false);
-            cfgBuiltMc.setCanBeConsumed(false);
-            cfgBuiltMc.setVisible(false);
-            DependencySet builtMcDeps = cfgBuiltMc.getDependencies();
-
-            builtMcDeps.addLater(
-                    mcExt.getForgeVersion().map(
-                            forgeVer -> new FileWithSourcesDependency(
-                                    layout.files(taskPackagePatchedMc),
-                                    "rfg",
-                                    "forgeBin",
-                                    forgeVer)));
-            builtMcDeps.addLater(
-                    mcExt.getMcVersion().map(
-                            mcVer -> new FileWithSourcesDependency(
-                                    layout.files(taskPackageMcLauncher),
-                                    "rfg",
-                                    "gradleStart",
-                                    mcVer)));
-        }
         final SourceSet ideMainSet = sourceSets.create("ideVirtualMain", sourceSet -> {
             project.getConfigurations().named(sourceSet.getImplementationConfigurationName()).configure(ideConfig -> {
-                ideConfig.extendsFrom(cfgBuiltMc);
                 ideConfig.extendsFrom(patchedConfiguration);
                 ideConfig.extendsFrom(mcTasks.getLwjgl2Configuration());
                 ideConfig.extendsFrom(
@@ -537,6 +512,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             });
 
             final ConfigurableFileCollection classpath = objects.fileCollection();
+            classpath.from(patchedMcSources.getOutput());
+            classpath.from(launcherSources.getOutput());
             classpath.from(mainSet.getOutput());
             classpath.from(apiSet.getOutput());
 
