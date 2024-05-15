@@ -419,6 +419,10 @@ public final class MinecraftTasks {
             throw new UnsupportedOperationException("Operating system not supported by lwjgl");
         }
 
+        project.getExtensions().add("lwjglNatives", lwjgl2Natives); // deprecated
+        project.getExtensions().add("lwjgl2Natives", lwjgl2Natives);
+        project.getExtensions().add("lwjgl3Natives", lwjgl3Natives);
+
         project.afterEvaluate(_p -> {
             // At afterEvaluate minecraft version should be already set and stable
             final String minecraftVersion = mcExt.getMcVersion().get();
@@ -430,10 +434,6 @@ public final class MinecraftTasks {
                     lwjgl2Version = "2.9.4-nightly-20150209";
                     project.getLogger().warn("LWJGL 3 configuration has been split, update your minecraft block");
                 }
-
-                project.getExtensions().add("lwjglNatives", lwjgl2Natives); // deprecated
-                project.getExtensions().add("lwjgl2Natives", lwjgl2Natives);
-                project.getExtensions().add("lwjgl3Natives", lwjgl3Natives);
 
                 final String VANILLA_MC_CFG = vanillaMcConfiguration.getName();
                 final DependencyHandler deps = project.getDependencies();
