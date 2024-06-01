@@ -28,6 +28,20 @@ buildscript {
                 includeGroup("net.minecraft")
             }
         }
+        maven {
+            name = "paper"
+            url = uri("https://papermc.io/repo/repository/maven-snapshots/")
+            mavenContent {
+                includeGroup("org.cadixdev")
+            }
+        }
+        maven {
+            name = "sonatype"
+            url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
+            mavenContent {
+                includeGroup("org.cadixdev")
+            }
+        }
         mavenCentral {}
     }
 }
