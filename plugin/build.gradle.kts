@@ -13,7 +13,7 @@ import java.util.jar.JarFile
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-gradle-plugin")
-  id("com.github.johnrengelman.shadow") version "8.1.1"
+  id("io.github.goooler.shadow") version "8.1.7"
   id("com.palantir.git-version") version "3.0.0"
   id("maven-publish")
   id("com.diffplug.spotless") version "6.23.1"
@@ -207,7 +207,7 @@ spotless {
     toggleOffOn()
     importOrderFile("../spotless.importorder")
     removeUnusedImports()
-    eclipse("4.19.0").configFile("../spotless.eclipseformat.xml")
+    eclipse("4.19").configFile("../spotless.eclipseformat.xml")
   }
 }
 
