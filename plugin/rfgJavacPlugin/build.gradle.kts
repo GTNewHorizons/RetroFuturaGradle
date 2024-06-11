@@ -1,10 +1,8 @@
-import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec
-
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-library")
   id("scala")
-  id("com.github.johnrengelman.shadow") version "8.1.1"
+  id("io.github.goooler.shadow") version "8.1.7"
   id("com.palantir.git-version") version "3.0.0"
   id("maven-publish")
   id("com.diffplug.spotless") version "6.23.1"
@@ -79,24 +77,25 @@ tasks.jar {
 tasks.addRule("Pattern: runTestWithJava<VERSION>") {
   val taskName = this
   if (startsWith("runTestWithJava")) {
-    val jVersion = taskName.removePrefix("runTestWithJava")
+    val jVersion = JavaLanguageVersion.of(taskName.removePrefix("runTestWithJava"))
     tasks.register<JavaCompile>(taskName) {
       group = "RFG"
       description = "Run javac with the plugin enabled on the test class"
       dependsOn("shadowJar")
       outputs.upToDateWhen { false }
       options.isIncremental = false
-      val toolchain = DefaultToolchainSpec(objects)
-      toolchain.languageVersion.set(JavaLanguageVersion.of(jVersion))
-      toolchain.vendor.set(JvmVendorSpec.AZUL)
-      javaCompiler.set(javaToolchains.compilerFor(toolchain))
+      javaCompiler.set(
+          javaToolchains.compilerFor({
+            languageVersion.set(jVersion)
+            vendor.set(JvmVendorSpec.AZUL)
+          }))
       classpath = project.tasks.named("shadowJar").get().outputs.files
       // Can't escape spaces, so use URL-encoding
       val replacementsFile = project.file("test/replacements.properties").toURI()
       options.compilerArgs.add(
           "-Xplugin:RetrofuturagradleTokenReplacement ${replacementsFile.toASCIIString()}")
       options.isFork = true
-      if (toolchain.languageVersion.get().asInt() > 8) {
+      if (jVersion.asInt() > 8) {
         options.forkOptions.jvmArgs =
             listOf(
                 "--add-exports",
@@ -127,11 +126,12 @@ tasks.register<ScalaCompile>("runTestWithScala") {
   description = "Run scalac with the plugin enabled on the test class"
   dependsOn("shadowJar")
   outputs.upToDateWhen { false }
-  val toolchain = DefaultToolchainSpec(objects)
-  toolchain.languageVersion.set(JavaLanguageVersion.of(8))
-  toolchain.vendor.set(JvmVendorSpec.AZUL)
 
-  javaLauncher.set(javaToolchains.launcherFor(toolchain))
+  javaLauncher.set(
+      javaToolchains.launcherFor({
+        languageVersion.set(JavaLanguageVersion.of(8))
+        vendor.set(JvmVendorSpec.AZUL)
+      }))
   analysisMappingFile.set(
       project.layout.buildDirectory.file("tmp/scala/compilerAnalysis/" + this.name + ".mapping"))
   val incrementalOptions = scalaCompileOptions.incrementalOptions
