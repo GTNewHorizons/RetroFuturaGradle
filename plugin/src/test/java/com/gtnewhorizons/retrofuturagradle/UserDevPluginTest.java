@@ -32,9 +32,6 @@ class UserDevPluginTest {
         assertNotNull(project.getTasks().findByName("runVanillaServer"));
 
         assertNotNull(project.getTasks().findByName("downloadFernflower"));
-        assertNotNull(project.getTasks().findByName("extractForgeUserdev"));
-        assertNotNull(project.getTasks().findByName("extractMcpData"));
-        assertNotNull(project.getTasks().findByName("generateForgeSrgMappings"));
         assertNotNull(project.getTasks().findByName("mergeVanillaSidedJars"));
         assertNotNull(project.getTasks().findByName("deobfuscateMergedJarToSrg"));
         assertNotNull(project.getTasks().findByName("decompileSrgJar"));

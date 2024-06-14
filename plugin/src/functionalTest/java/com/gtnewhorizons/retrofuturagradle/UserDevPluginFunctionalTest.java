@@ -83,7 +83,7 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "downloadFernflower", "extractForgeUserdev", "extractMcpData");
+        runner.withArguments("--stacktrace", "--", "downloadFernflower");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();

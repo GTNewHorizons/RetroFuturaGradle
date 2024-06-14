@@ -143,6 +143,8 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     task.getSrgExc().set(srgFile("srg.exc"));
                     task.getMcpExc().set(srgFile("mcp.exc"));
                     task.doFirst(new MkdirAction(forgeSrgLocation));
+                    task.getCacheService().set(RfgCacheService.lazyAccess(project.getGradle()));
+                    task.usesService(RfgCacheService.lazyAccess(project.getGradle()));
                 });
 
         // Set up dependencies across the cache-writing tasks to suppress Gradle errors about this.

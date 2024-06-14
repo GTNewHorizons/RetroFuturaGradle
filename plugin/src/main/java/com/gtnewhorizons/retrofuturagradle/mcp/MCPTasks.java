@@ -145,6 +145,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final ProviderFactory providers = mcExt.getProviderFactory();
         final ArchiveOperations archives = mcExt.getArchiveOperations();
         final ProjectLayout layout = mcExt.getProjectLayout();
+        final Provider<RfgCacheService> rfgCacheService = RfgCacheService.lazyAccess(project.getGradle());
         // TODO: Make all users of this into providers
         final File buildDir = layout.getBuildDirectory().get().getAsFile();
 
@@ -229,6 +230,8 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getClasspath().from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
             task.getJava8Launcher().set(mcExt.getToolchainLauncher(project, 8));
             task.getJava17Launcher().set(mcExt.getToolchainLauncher(project, 17));
+            task.getCacheService().set(rfgCacheService);
+            task.usesService(rfgCacheService);
         });
         decompiledMcChain.addTask(taskDecompileSrgJar);
         taskCleanupDecompSrgJar = project.getTasks()
