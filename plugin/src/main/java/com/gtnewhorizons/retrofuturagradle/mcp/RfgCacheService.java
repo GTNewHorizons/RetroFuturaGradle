@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -40,13 +41,6 @@ public abstract class RfgCacheService implements BuildService<RfgCacheService.Pa
         DirectoryProperty getGradleCacheDirectory();
     }
 
-    public interface MappingConfiguration {
-    }
-
-    public interface ForgeUserdevMappingConfiguration extends MappingConfiguration {
-
-    }
-
     /**
      * The name you can use in {@link org.gradle.api.services.ServiceReference} to obtain an instance of this service.
      */
@@ -64,13 +58,14 @@ public abstract class RfgCacheService implements BuildService<RfgCacheService.Pa
     public FileLock lockCache(boolean shared) {
         try {
             final FileChannel channel;
+            Path lockFile = null;
             synchronized (this) {
                 if (cacheLockFile == null) {
                     final Path cacheDir = getRfgCachePath();
                     if (!Files.isDirectory(cacheDir)) {
                         Files.createDirectories(cacheDir);
                     }
-                    final Path lockFile = cacheDir.resolve("rfg.lock");
+                    lockFile = cacheDir.resolve("rfg.lock");
                     cacheLockFile = FileChannel.open(
                             lockFile,
                             StandardOpenOption.CREATE,
@@ -79,7 +74,26 @@ public abstract class RfgCacheService implements BuildService<RfgCacheService.Pa
                 }
                 channel = cacheLockFile;
             }
-            return channel.lock(0, Long.MAX_VALUE, shared);
+            FileLock lock = null;
+            int waitCount = 0;
+            int waitTime = 50;
+            while (lock == null) {
+                try {
+                    lock = channel.lock(0, Long.MAX_VALUE, shared);
+                } catch (OverlappingFileLockException ofle) {
+                    waitCount++;
+                    if (waitCount == 5) {
+                        LOGGER.warn("Waiting for the RFG cache lock at {} to get released...", lockFile);
+                    }
+                    try {
+                        Thread.sleep(waitTime);
+                        if (waitTime < 1000) {
+                            waitTime *= 2;
+                        }
+                    } catch (InterruptedException ignored) {}
+                }
+            }
+            return lock;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

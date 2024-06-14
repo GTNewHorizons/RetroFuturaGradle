@@ -18,11 +18,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.options.Option;
@@ -72,6 +74,15 @@ public abstract class RunMinecraftTask extends JavaExec {
     @Input
     public abstract Property<Integer> getLwjglVersion();
 
+    @Internal
+    public abstract DirectoryProperty getAssetsDirectory();
+
+    @Input
+    public abstract Property<String> getMcVersion();
+
+    @Input
+    public abstract ListProperty<String> getMcExtExtraRunJvmArguments();
+
     private final Distribution side;
 
     @Inject
@@ -100,6 +111,9 @@ public abstract class RunMinecraftTask extends JavaExec {
         getTweakClasses().convention(mcExt.getExtraTweakClasses());
         setWorkingDir(mcTasks.getRunDirectory());
         getLwjglVersion().convention(mcExt.getMainLwjglVersion());
+        getAssetsDirectory().set(mcTasks.getVanillaAssetsLocation());
+        getMcVersion().set(mcExt.getMcVersion());
+        getMcExtExtraRunJvmArguments().set(mcExt.getExtraRunJvmArguments());
 
         systemProperty("fml.ignoreInvalidMinecraftCertificates", true);
         getJavaLauncher().convention(mcExt.getToolchainLauncher(project));
@@ -132,13 +146,10 @@ public abstract class RunMinecraftTask extends JavaExec {
         doFirst("setup late-binding arguments", this::setupLateArgs);
     }
 
-    public List<String> calculateArgs(Project project) {
+    public List<String> calculateArgs() {
         ArrayList<String> args = new ArrayList<>();
         if (side == Distribution.CLIENT) {
-            MinecraftExtension mcExt = Objects
-                    .requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
-            MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
-            final String mcVer = mcExt.getMcVersion().get();
+            final String mcVer = getMcVersion().get();
             final String argVer = switch (mcVer) {
                 case "1.12.2" -> "FML_DEV";
                 default -> mcVer;
@@ -152,9 +163,9 @@ public abstract class RunMinecraftTask extends JavaExec {
                             "--gameDir",
                             getWorkingDir().getAbsolutePath(),
                             "--assetsDir",
-                            mcTasks.getVanillaAssetsLocation().getAbsolutePath(),
+                            getAssetsDirectory().get().getAsFile().getAbsolutePath(),
                             "--assetIndex",
-                            mcExt.getMcVersion().get(),
+                            getMcVersion().get(),
                             "--uuid",
                             getUserUUID().get().toString(),
                             "--userProperties",
@@ -173,11 +184,10 @@ public abstract class RunMinecraftTask extends JavaExec {
         return args;
     }
 
-    public List<String> calculateJvmArgs(Project project) {
-        MinecraftExtension mcExt = Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
+    public List<String> calculateJvmArgs() {
         ArrayList<String> args = new ArrayList<>();
         args.addAll(getExtraJvmArgs().get());
-        args.addAll(mcExt.getExtraRunJvmArguments().get());
+        args.addAll(getMcExtExtraRunJvmArguments().get());
         if (getCmdlineJvmArgs().isPresent()) {
             args.addAll(getCmdlineJvmArgs().get());
         }
@@ -186,10 +196,16 @@ public abstract class RunMinecraftTask extends JavaExec {
 
     private void setupLateArgs(Task task) {
         try {
-            Project project = getProject();
             FileUtils.forceMkdir(getWorkingDir());
-            args(calculateArgs(project));
-            jvmArgs(calculateJvmArgs(project));
+            // make args modifiable again if reloaded from configuration cache
+            if (getArgs() != null) {
+                setArgs(new ArrayList<>(getArgs()));
+            }
+            if (getJvmArgs() != null) {
+                setJvmArgs(new ArrayList<>(getJvmArgs()));
+            }
+            args(calculateArgs());
+            jvmArgs(calculateJvmArgs());
             if (side == Distribution.DEDICATED_SERVER) {
                 final File properties = new File(getWorkingDir(), "server.properties");
                 if (!properties.exists()) {
