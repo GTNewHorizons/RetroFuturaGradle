@@ -97,19 +97,19 @@ dependencies {
 
   // Apache Commons utilities
   implementation("org.apache.commons:commons-lang3:3.14.0")
-  implementation("org.apache.commons:commons-text:1.11.0")
-  implementation("commons-io:commons-io:2.15.1")
-  implementation("commons-codec:commons-codec:1.16.0")
-  implementation("org.apache.commons:commons-compress:1.25.0")
+  implementation("org.apache.commons:commons-text:1.12.0")
+  implementation("commons-io:commons-io:2.16.1")
+  implementation("commons-codec:commons-codec:1.17.0")
+  implementation("org.apache.commons:commons-compress:1.26.2")
   // Guava utilities
-  implementation("com.google.guava:guava:33.0.0-jre")
+  implementation("com.google.guava:guava:33.2.1-jre")
   // CSV reader, also used by SpecialSource
-  implementation("com.opencsv:opencsv:5.7.1")
+  implementation("com.opencsv:opencsv:5.9")
   // Diffing&Patching
-  implementation("org.ow2.asm:asm:9.6")
+  implementation("org.ow2.asm:asm:9.7")
   implementation("com.cloudbees:diff4j:1.1")
   implementation("com.github.jponge:lzma-java:1.3")
-  implementation("net.md-5:SpecialSource:1.11.3")
+  implementation("net.md-5:SpecialSource:1.11.4")
   // Java source manipulation
   implementation("com.github.javaparser:javaparser-core:3.25.8")
   implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.8")
@@ -124,7 +124,7 @@ dependencies {
   implementation(
       group = "de.undercouch.download",
       name = "de.undercouch.download.gradle.plugin",
-      version = "5.5.0")
+      version = "5.6.0")
   compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0")
   // JSON handling for Minecraft manifests etc.
   implementation("com.google.code.gson:gson:2.10.1")
