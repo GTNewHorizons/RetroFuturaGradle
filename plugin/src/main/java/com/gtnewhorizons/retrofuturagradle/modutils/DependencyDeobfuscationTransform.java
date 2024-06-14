@@ -1,28 +1,13 @@
 package com.gtnewhorizons.retrofuturagradle.modutils;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.jar.Attributes;
-import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
-import java.util.jar.JarOutputStream;
-import java.util.jar.Manifest;
+import java.util.*;
+import java.util.jar.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
@@ -35,6 +20,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -132,65 +118,112 @@ public abstract class DependencyDeobfuscationTransform
             return;
         }
 
-        final String outFileName = StringUtils.removeEnd(inputLocation.getName(), ".jar") + "-deobf.jar";
-        final String tempCopyName = StringUtils.removeEnd(inputLocation.getName(), ".jar") + "-rfg_tmp_copy.jar";
-        final File outFile = outputs.file(outFileName);
-        final File outputDir = outFile.getParentFile();
-        final File outFileTemp = new File(outputDir, tempCopyName);
-        Logging.getLogger(DependencyDeobfuscationTransform.class)
-                .info("Deobfuscating {} to {}", inputLocation, outFile);
+        Logger logger = Logging.getLogger(DependencyDeobfuscationTransform.class);
+        final Deque<DeobfJob> deobfQueue = new ArrayDeque<>();
+        deobfQueue.add(
+                new DeobfJob(
+                        StringUtils.removeEnd(inputLocation.getName(), ".jar"),
+                        inputLocation,
+                        inputLocation.toString(),
+                        false));
 
-        final File fieldsCsv = parameters.getFieldsCsv().get().getAsFile();
-        final File methodsCsv = parameters.getMethodsCsv().get().getAsFile();
+        DeobfJob job;
+        while ((job = deobfQueue.poll()) != null) {
+            final String outFileName = job.artifactName + "-deobf.jar";
+            final String tempCopyName = job.artifactName + "-rfg_tmp_copy.jar";
+            final File outFile = outputs.file(outFileName);
+            final File outputDir = outFile.getParentFile();
+            final File outFileTemp = new File(outputDir, tempCopyName);
+            logger.info("Deobfuscating {} to {}", job.sourceName, outFile);
 
-        final Utilities.MappingsSet mappings = Utilities.loadMappingCsvs(methodsCsv, fieldsCsv, null, null, null);
-        final Map<String, String> combined = mappings.getCombinedMappings();
+            final File fieldsCsv = parameters.getFieldsCsv().get().getAsFile();
+            final File methodsCsv = parameters.getMethodsCsv().get().getAsFile();
 
-        if (outFile.isFile()) {
-            FileUtils.delete(outFile);
-        }
+            final Utilities.MappingsSet mappings = Utilities.loadMappingCsvs(methodsCsv, fieldsCsv, null, null, null);
+            final Map<String, String> combined = mappings.getCombinedMappings();
 
-        try (final InputStream is = FileUtils.openInputStream(inputLocation);
-                final BufferedInputStream bis = new BufferedInputStream(is);
-                final JarInputStream jis = new JarInputStream(bis, false);
-                final OutputStream os = FileUtils.openOutputStream(outFileTemp, false);
-                final BufferedOutputStream bos = new BufferedOutputStream(os);
-                final JarOutputStream jos = makeTransformerJarOutputStream(jis, bos)) {
-            JarEntry entry;
-            while ((entry = jis.getNextJarEntry()) != null) {
-                if (StringUtils.endsWithIgnoreCase(entry.getName(), ".dsa")
-                        || StringUtils.endsWithIgnoreCase(entry.getName(), ".rsa")
-                        || StringUtils.endsWithIgnoreCase(entry.getName(), ".sf")
-                        || StringUtils.containsIgnoreCase(entry.getName(), "meta-inf/sig-")) {
-                    continue;
-                }
-                jos.putNextEntry(new JarEntry(entry.getName()));
-                if (StringUtils.endsWithIgnoreCase(entry.getName(), ".class")) {
-                    byte[] data = IOUtils.toByteArray(jis);
-                    IOUtils.write(Utilities.simpleRemapClass(data, combined), jos);
-                } else if (StringUtils.endsWith(entry.getName(), "META-INF/MANIFEST.MF")) {
-                    // This if will only trigger if the manifest is not one of the first 2 jar entries
-                    Manifest mf = new Manifest(CloseShieldInputStream.wrap(jis));
-                    transformManifest(mf);
-                    mf.write(jos);
-                } else {
-                    IOUtils.copy(jis, jos);
-                }
-                jos.closeEntry();
+            if (outFile.isFile()) {
+                FileUtils.delete(outFile);
             }
-        }
 
-        Files.move(outFileTemp, outFile);
-    }
+            try (final JarFile ijar = new JarFile(job.sourceFile, false)) {
+                final Manifest mf = ijar.getManifest();
+                Map<String, String> containedDeps = Collections.emptyMap(); // Maps dep path to dep name
+                if (mf != null) {
+                    transformManifest(mf);
+                    final Attributes attrs = mf.getMainAttributes();
 
-    private static JarOutputStream makeTransformerJarOutputStream(JarInputStream jis, OutputStream os)
-            throws IOException {
-        if (jis.getManifest() != null) {
-            final Manifest mf = jis.getManifest();
-            transformManifest(mf);
-            return new JarOutputStream(os, mf);
-        } else {
-            return new JarOutputStream(os);
+                    final String containedDepsAttr = attrs.getValue("ContainedDeps");
+                    if (containedDepsAttr != null) {
+                        containedDeps = new HashMap<>();
+                        for (final String depName : containedDepsAttr.split(" ")) {
+                            if (!depName.endsWith(".jar")) {
+                                logger.warn("Skipping non-jar embedded dependency: {} -> {}", job.sourceFile, depName);
+                                continue;
+                            }
+                            String depPath = depName;
+                            if (ijar.getJarEntry(depPath) == null) {
+                                depPath = "META-INF/libraries/" + depPath;
+                                if (ijar.getJarEntry(depPath) == null) {
+                                    logger.warn(
+                                            "Skipping missing embedded dependency: {} -> {}",
+                                            job.sourceFile,
+                                            depName);
+                                    continue;
+                                }
+                            }
+                            logger.info("Found embedded dependency: {} -> {}", job.sourceFile, depName);
+                            containedDeps.put(depPath, StringUtils.removeEnd(depName, ".jar"));
+                        }
+                    }
+                }
+
+                try (final OutputStream os = FileUtils.openOutputStream(outFileTemp, false);
+                        final BufferedOutputStream bos = new BufferedOutputStream(os);
+                        final JarOutputStream jos = mf != null ? new JarOutputStream(bos, mf)
+                                : new JarOutputStream(bos)) {
+                    final Enumeration<JarEntry> iter = ijar.entries();
+                    while (iter.hasMoreElements()) {
+                        final JarEntry entry = iter.nextElement();
+                        if (StringUtils.endsWith(entry.getName(), "META-INF/MANIFEST.MF")
+                                || StringUtils.endsWithIgnoreCase(entry.getName(), ".dsa")
+                                || StringUtils.endsWithIgnoreCase(entry.getName(), ".rsa")
+                                || StringUtils.endsWithIgnoreCase(entry.getName(), ".sf")
+                                || StringUtils.containsIgnoreCase(entry.getName(), "meta-inf/sig-")) {
+                            continue;
+                        }
+                        try (final InputStream is = ijar.getInputStream(entry);
+                                final BufferedInputStream bis = new BufferedInputStream(is)) {
+                            final String depName = containedDeps.get(entry.getName());
+                            if (depName != null) {
+                                File tempFile = File.createTempFile(depName, "-rfg_tmp_copy.jar", outputDir);
+                                tempFile.deleteOnExit();
+                                try (final OutputStream tos = FileUtils.openOutputStream(tempFile);
+                                        final BufferedOutputStream btos = new BufferedOutputStream(tos)) {
+                                    IOUtils.copy(bis, btos);
+                                }
+                                deobfQueue.add(
+                                        new DeobfJob(depName, tempFile, job.sourceName + "!" + entry.getName(), true));
+                                continue;
+                            }
+
+                            jos.putNextEntry(new JarEntry(entry.getName()));
+                            if (StringUtils.endsWithIgnoreCase(entry.getName(), ".class")) {
+                                byte[] data = IOUtils.toByteArray(bis);
+                                IOUtils.write(Utilities.simpleRemapClass(data, combined), jos);
+                            } else {
+                                IOUtils.copy(bis, jos);
+                            }
+                            jos.closeEntry();
+                        }
+                    }
+                }
+            }
+
+            Files.move(outFileTemp, outFile);
+            if (job.deleteSource) {
+                FileUtils.delete(job.sourceFile);
+            }
         }
     }
 
@@ -211,5 +244,20 @@ public abstract class DependencyDeobfuscationTransform
             }
         }
         entriesToRemove.forEach(mf.getEntries()::remove);
+    }
+
+    private static class DeobfJob {
+
+        final String artifactName;
+        final File sourceFile;
+        final String sourceName;
+        final boolean deleteSource;
+
+        DeobfJob(String artifactName, File sourceFile, String sourceName, boolean deleteSource) {
+            this.artifactName = artifactName;
+            this.sourceFile = sourceFile;
+            this.sourceName = sourceName;
+            this.deleteSource = deleteSource;
+        }
     }
 }
