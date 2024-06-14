@@ -52,7 +52,7 @@ public abstract class RfgCacheService implements BuildService<RfgCacheService.Pa
      */
     public static final String NAME = "rfgCacheService";
 
-    private FileChannel cacheLockFile = null;
+    private transient FileChannel cacheLockFile = null;
 
     /**
      * Acquires a lock on the RFG cache directory.

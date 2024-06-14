@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -87,6 +88,9 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
     @Inject
     abstract public WorkerExecutor getWorkerExecutor();
 
+    @Internal
+    public abstract Property<RfgCacheService> getCacheService();
+
     @TaskAction
     public void decompileAndCleanup() throws IOException {
         final File taskTempDir = getTemporaryDir();
@@ -99,13 +103,15 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         final File cachedOutputFile = new File(
                 getCacheDir().get().getAsFile(),
                 fernflowerChecksum + "-" + inputFileChecksum + ".jar");
-        if (cachedOutputFile.exists()) {
-            getLogger().lifecycle("Using cached decompiled jar from " + cachedOutputFile.getPath());
-            FileUtils.copyFile(cachedOutputFile, getOutputJar().get().getAsFile());
-            return;
-        } else {
-            getLogger().lifecycle(
-                    "Didn't find cached decompiled jar, decompiling and saving to " + cachedOutputFile.getPath());
+        try (final FileLock ignored = getCacheService().get().lockCache(true)) {
+            if (cachedOutputFile.exists()) {
+                getLogger().lifecycle("Using cached decompiled jar from " + cachedOutputFile.getPath());
+                FileUtils.copyFile(cachedOutputFile, getOutputJar().get().getAsFile());
+                return;
+            } else {
+                getLogger().lifecycle(
+                        "Didn't find cached decompiled jar, decompiling and saving to " + cachedOutputFile.getPath());
+            }
         }
 
         getLogger().lifecycle("Decompiling the srg jar with fernflower");
@@ -124,8 +130,10 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         }
         FileUtils.delete(ffinpcopy);
 
-        FileUtils.forceMkdirParent(cachedOutputFile);
-        FileUtils.copyFile(ffoutfile, cachedOutputFile);
+        try (final FileLock ignored = getCacheService().get().lockCache(false)) {
+            FileUtils.forceMkdirParent(cachedOutputFile);
+            FileUtils.copyFile(ffoutfile, cachedOutputFile);
+        }
         FileUtils.copyFile(ffoutfile, getOutputJar().get().getAsFile());
 
         final long postDecompileMs = System.currentTimeMillis();

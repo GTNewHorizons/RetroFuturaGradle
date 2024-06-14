@@ -3,6 +3,7 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileLock;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.Set;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -79,28 +82,34 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getMcpExc();
 
+    @Internal
+    public abstract Property<RfgCacheService> getCacheService();
+
     @TaskAction
     public void generateMappings() throws IOException {
         // SRG->MCP from the MCP csv files
         HashMap<String, String> methods = new HashMap<>(5000);
         HashMap<String, String> fields = new HashMap<>(5000);
 
-        try (CSVReader csvReader = Utilities.createCsvReader(getMethodsCsv().get().getAsFile())) {
-            for (String[] line : csvReader) {
-                methods.put(line[0], line[1]);
-            }
-        }
-        try (CSVReader csvReader = Utilities.createCsvReader(getFieldsCsv().get().getAsFile())) {
-            for (String[] line : csvReader) {
-                fields.put(line[0], line[1]);
-            }
-        }
+        try (final FileLock ignored = getCacheService().get().lockCache(false)) {
 
-        SrgContainer inSrg = new SrgContainer().readSrg(getInputSrg().get().getAsFile());
-        Map<String, String> excRemap = Maps.newHashMap(); // Was a bunch of commented out code in ForgeGradle
-        // Write outputs
-        writeOutSrgs(inSrg, methods, fields);
-        writeOutExcs(excRemap, methods);
+            try (CSVReader csvReader = Utilities.createCsvReader(getMethodsCsv().get().getAsFile())) {
+                for (String[] line : csvReader) {
+                    methods.put(line[0], line[1]);
+                }
+            }
+            try (CSVReader csvReader = Utilities.createCsvReader(getFieldsCsv().get().getAsFile())) {
+                for (String[] line : csvReader) {
+                    fields.put(line[0], line[1]);
+                }
+            }
+
+            SrgContainer inSrg = new SrgContainer().readSrg(getInputSrg().get().getAsFile());
+            Map<String, String> excRemap = Maps.newHashMap(); // Was a bunch of commented out code in ForgeGradle
+            // Write outputs
+            writeOutSrgs(inSrg, methods, fields);
+            writeOutExcs(excRemap, methods);
+        }
     }
 
     // Copied straight from ForgeGradle

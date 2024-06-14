@@ -8,6 +8,7 @@ import org.apache.commons.io.FileUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
@@ -20,6 +21,7 @@ import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.MergeSidedJarsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.PatchSourcesTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.RemapSourceJarTask;
+import com.gtnewhorizons.retrofuturagradle.mcp.RfgCacheService;
 import com.gtnewhorizons.retrofuturagradle.mcp.SharedMCPTasks;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.util.IJarOutputTask;
@@ -31,6 +33,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         super(project, mcExt, mcTasks);
 
         project.afterEvaluate(this::afterEvaluate);
+        final Provider<RfgCacheService> rfgCacheService = RfgCacheService.lazyAccess(project.getGradle());
 
         final File mergedVanillaJarLocation = FileUtils
                 .getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
@@ -74,6 +77,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getOutputJar().set(rawDecompiledSrgLocation);
                     task.getCacheDir().set(Utilities.getCacheDir(project, "fernflower-cache"));
                     task.getFernflower().set(fernflowerLocation);
+                    task.getCacheService().set(rfgCacheService);
+                    task.usesService(rfgCacheService);
                 });
         final TaskProvider<CleanupDecompiledJarTask> taskCleanupDecompSrgJar = project.getTasks()
                 .register("cleanupDecompSrgJar", CleanupDecompiledJarTask.class, task -> {
