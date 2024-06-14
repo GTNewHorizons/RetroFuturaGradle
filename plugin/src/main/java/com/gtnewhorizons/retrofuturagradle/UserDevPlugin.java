@@ -9,6 +9,7 @@ import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.util.GradleVersion;
 
 import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
+import com.gtnewhorizons.retrofuturagradle.mcp.RfgCacheService;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.modutils.ModUtils;
 
@@ -23,6 +24,8 @@ public class UserDevPlugin implements Plugin<Project> {
         if (GradleVersion.current().compareTo(GradleVersion.version("7.6")) < 0) {
             throw new IllegalStateException("Using RetroFuturaGradle requires at least Gradle 7.6.");
         }
+
+        RfgCacheService.register(project.getGradle());
 
         // Register the obfuscation status attribute
         ObfuscationAttribute.configureProject(project);

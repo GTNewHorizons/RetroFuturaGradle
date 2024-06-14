@@ -37,7 +37,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskExtractForgeUserdev, mcTasks.getTaskDownloadVanillaJars());
+                    task.dependsOn(mcTasks.getTaskDownloadVanillaJars());
                     task.onlyIf(t -> !mergedVanillaJarLocation.exists());
                     task.getClientJar().set(mcTasks.getVanillaClientLocation());
                     task.getServerJar().set(mcTasks.getVanillaServerLocation());
@@ -78,7 +78,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         final TaskProvider<CleanupDecompiledJarTask> taskCleanupDecompSrgJar = project.getTasks()
                 .register("cleanupDecompSrgJar", CleanupDecompiledJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskDecompileSrgJar, taskExtractForgeUserdev);
+                    task.dependsOn(taskDecompileSrgJar);
                     task.getInputJar().set(taskDecompileSrgJar.flatMap(DecompileTask::getOutputJar));
                     task.getOutputJar().set(decompiledSrgLocation);
                     task.getPatches().set(userdevDir("conf/minecraft_ff"));
@@ -102,7 +102,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar = project.getTasks()
                 .register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskCleanupDecompSrgJar, taskExtractForgeUserdev, taskExtractMcpData);
+                    task.dependsOn(taskCleanupDecompSrgJar);
                     task.getInputJar().set(taskCleanupDecompSrgJar.flatMap(CleanupDecompiledJarTask::getOutputJar));
                     task.getOutputJar().set(remappedUnpatchedSourcesLocation);
                     task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
@@ -116,7 +116,7 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         final TaskProvider<RemapSourceJarTask> taskRemapPatchedJar = project.getTasks()
                 .register("remapPatchedJar", RemapSourceJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskPatchDecompiledJar, taskExtractForgeUserdev, taskExtractMcpData);
+                    task.dependsOn(taskPatchDecompiledJar);
                     task.getInputJar().set(taskPatchDecompiledJar.flatMap(PatchSourcesTask::getOutputJar));
                     task.getOutputJar().set(remappedPatchedSourcesLocation);
                     task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));

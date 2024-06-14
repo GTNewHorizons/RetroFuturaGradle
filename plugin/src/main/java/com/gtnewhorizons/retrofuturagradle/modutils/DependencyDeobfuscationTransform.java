@@ -36,15 +36,18 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.CompileClasspath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 
 import com.google.common.io.Files;
+import com.gtnewhorizons.retrofuturagradle.mcp.RfgCacheService;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 @CacheableTransform
@@ -53,20 +56,23 @@ public abstract class DependencyDeobfuscationTransform
 
     interface Parameters extends TransformParameters {
 
-        @InputFile
-        @PathSensitive(PathSensitivity.NONE)
-        public abstract RegularFileProperty getFieldsCsv();
+        @Internal
+        Property<RfgCacheService> getMappingService();
 
         @InputFile
         @PathSensitive(PathSensitivity.NONE)
-        public abstract RegularFileProperty getMethodsCsv();
+        RegularFileProperty getFieldsCsv();
+
+        @InputFile
+        @PathSensitive(PathSensitivity.NONE)
+        RegularFileProperty getMethodsCsv();
 
         @InputFile
         @PathSensitive(PathSensitivity.RELATIVE)
-        public abstract ConfigurableFileCollection getFilesToDeobf();
+        ConfigurableFileCollection getFilesToDeobf();
 
         @Input
-        public abstract SetProperty<String> getModulesToDeobf();
+        SetProperty<String> getModulesToDeobf();
     }
 
     @InputArtifact

@@ -16,6 +16,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -38,12 +39,18 @@ import net.fabricmc.mappingio.MappedElementKind;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.VisitableMappingTree;
 
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveException;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.gradle.api.Project;
 import org.gradle.api.invocation.Gradle;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.commons.ClassRemapper;
@@ -68,6 +75,8 @@ import com.opencsv.CSVReaderBuilder;
 public final class Utilities {
 
     public static final Gson GSON;
+    public static final String RFG_CACHE_SUBDIRECTORY = "retro_futura_gradle";
+    private static final Logger LOGGER = Logging.getLogger("RFG");
 
     static {
         GsonBuilder builder = new GsonBuilder();
@@ -96,7 +105,7 @@ public final class Utilities {
     }
 
     public static File getCacheRoot(Gradle gradle) {
-        return FileUtils.getFile(getRawCacheRoot(gradle), "retro_futura_gradle");
+        return FileUtils.getFile(getRawCacheRoot(gradle), RFG_CACHE_SUBDIRECTORY);
     }
 
     public static File getCacheRoot(Project project) {
@@ -265,6 +274,45 @@ public final class Utilities {
             }
         }
         return target;
+    }
+
+    public static void decompressArchive(final ArchiveInputStream<?> stream, final Path destination)
+            throws IOException {
+        ArchiveEntry entry = null;
+        while ((entry = stream.getNextEntry()) != null) {
+            if (!stream.canReadEntryData(entry)) {
+                LOGGER.warn("Could not read entry data: {}", entry.getName());
+                continue;
+            }
+            final Path childPath = entry.resolveIn(destination); // protects against zip slip
+            if (entry.isDirectory()) {
+                Files.createDirectories(childPath);
+            } else {
+                final Path childsParentDir = childPath.getParent();
+                Files.createDirectories(childsParentDir);
+                try (final OutputStream writer = Files
+                        .newOutputStream(childPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                    IOUtils.copy(stream, writer);
+                }
+            }
+        }
+    }
+
+    /**
+     *
+     * @param archiveType One of {@link ArchiveStreamFactory} archive types
+     * @param archivePath Path to the archive
+     * @param destination Destination directory to extract to
+     */
+    public static void decompressArchive(final String archiveType, final Path archivePath, final Path destination) {
+        try (final InputStream fis = Files.newInputStream(archivePath, StandardOpenOption.READ);
+                final BufferedInputStream bis = new BufferedInputStream(fis);
+                final ArchiveInputStream<?> ais = new ArchiveStreamFactory()
+                        .createArchiveInputStream(archiveType, bis)) {
+            Utilities.decompressArchive(ais, destination);
+        } catch (ArchiveException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static URL[] filesToURLArray(Collection<File> cpFiles) throws MalformedURLException {

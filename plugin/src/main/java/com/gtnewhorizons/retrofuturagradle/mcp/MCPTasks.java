@@ -51,7 +51,6 @@ import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
-import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -164,7 +163,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskExtractForgeUserdev, mcTasks.getTaskDownloadVanillaJars());
+                    task.dependsOn(mcTasks.getTaskDownloadVanillaJars());
                     final File mergedVanillaJar = mergedVanillaJarLocation;
                     task.onlyIf(t -> !mergedVanillaJar.exists());
                     task.getClientJar().set(mcTasks.getVanillaClientLocation());
@@ -183,7 +182,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskExtractDependencyATs = project.getTasks()
                 .register("extractDependencyATs", ExtractDependencyATsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskExtractForgeUserdev, taskExtractMcpData);
                     task.onlyIf(
                             "useDependencyAccessTransformers set in minecraft{}",
                             _t -> mcExt.getUseDependencyAccessTransformers().get());
@@ -236,7 +234,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskCleanupDecompSrgJar = project.getTasks()
                 .register("cleanupDecompSrgJar", CleanupDecompiledJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskDecompileSrgJar, taskExtractForgeUserdev);
+                    task.dependsOn(taskDecompileSrgJar);
                     task.getInputJar().set(taskDecompileSrgJar.flatMap(IJarOutputTask::getOutputJar));
                     task.getOutputJar().set(decompiledSrgLocation);
                     task.getPatches().set(
@@ -267,7 +265,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         remappedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskPatchDecompiledJar, taskExtractForgeUserdev, taskExtractMcpData);
+            task.dependsOn(taskPatchDecompiledJar);
             task.getBinaryJar().set(taskDecompileSrgJar.flatMap(IJarTransformTask::getInputJar));
             task.getInputJar().set(taskPatchDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
@@ -368,10 +366,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskCreateLauncherFiles = project.getTasks()
                 .register("createMcLauncherFiles", CreateLauncherFiles.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(
-                            taskExtractMcpData,
-                            taskExtractForgeUserdev,
-                            mcTasks.getTaskExtractNatives(mcExt.getMainLwjglVersion()));
+                    task.dependsOn(mcTasks.getTaskExtractNatives(mcExt.getMainLwjglVersion()));
                     task.getOutputDir().set(launcherSourcesLocation);
 
                     task.addResources("fg[0-9]+/", mcExt.getMinorMcVersion().map(mcMinor -> {
@@ -595,12 +590,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             project.getTasks().register(taskName, ReobfuscatedJar.class, task -> {
                 task.setGroup(TASK_GROUP_USER);
                 task.setDescription("Reobfuscate the output of the `" + subjectTaskName + "` task to SRG mappings");
-                task.dependsOn(
-                        taskExtractMcpData,
-                        taskExtractForgeUserdev,
-                        taskGenerateForgeSrgMappings,
-                        taskPackagePatchedMc,
-                        subjectTask);
+                task.dependsOn(taskGenerateForgeSrgMappings, taskPackagePatchedMc, subjectTask);
 
                 task.setInputJarFromTask(subjectTask);
                 task.getMcVersion().set(mcExt.getMcVersion());
@@ -609,7 +599,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                 task.getExceptorCfg().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getSrgExc));
                 task.getRecompMcJar().set(taskPackagePatchedMc.flatMap(Jar::getArchiveFile));
-                task.getReferenceClasspath().from(runtimeClasspathCfg.fileCollection(Specs.SATISFIES_ALL));
+                task.getReferenceClasspath().from(runtimeClasspathCfg);
                 final ConfigurableFileCollection refCp = task.getReferenceClasspath();
                 refCp.from(taskPackageMcLauncher);
                 refCp.from(taskPackagePatchedMc);
@@ -729,7 +719,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         taskInstallBinaryPatchedVersion = project.getTasks()
                 .register("installBinaryPatchedVersion", BinaryPatchJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskExtractForgeUserdev, taskMergeVanillaSidedJars);
+                    task.dependsOn(taskMergeVanillaSidedJars);
                     task.setDescription("currently unused");
                     task.getInputJar().set(taskMergeVanillaSidedJars.flatMap(IJarOutputTask::getOutputJar));
                     task.getOutputJar().set(binaryPatchedMcLocation);
@@ -858,39 +848,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         // At afterEvaluate minecraft version should be already set and stable
         final int mcMinor = mcExt.getMinorMcVersion().get();
 
-        deps.addProvider(mcpMappingDataConfiguration.getName(), mcExt.mapMcpVersions((mcVer, mcpChan, mcpVer) -> {
-            final String mcpMcVerComponent = switch (mcVer) {
-                case "1.12.2" -> "1.12";
-                case "1.10.2" -> "1.10";
-                default -> mcVer;
-            };
-            return ImmutableMap.of(
-                    "group",
-                    "de.oceanlabs.mcp",
-                    "name",
-                    "mcp_" + mcpChan,
-                    "version",
-                    mcpVer + "-" + mcpMcVerComponent,
-                    "ext",
-                    "zip");
-        }));
-        if (mcMinor > 8) {
-            deps.addProvider(
-                    mcpMappingDataConfiguration.getName(),
-                    mcExt.mapMcpVersions(
-                            (mcVer, mcpChan, mcpVer) -> ImmutableMap.of(
-                                    "group",
-                                    "de.oceanlabs.mcp",
-                                    "name",
-                                    "mcp",
-                                    "version",
-                                    mcVer,
-                                    "classifier",
-                                    "srg",
-                                    "ext",
-                                    "zip")));
-        }
-
         if (mcExt.getSkipSlowTasks().get()) {
             taskDeobfuscateMergedJarToSrg
                     .configure(t -> t.onlyIf("skipping slow task", p -> !t.getOutputJar().get().getAsFile().exists()));
@@ -992,27 +949,17 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         }
 
         if (mcExt.getUsesFml().get()) {
-            deobfuscationATs.builtBy(taskExtractForgeUserdev);
             if (mcMinor <= 8) {
                 deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
             }
 
             if (mcMinor <= 8 || mcExt.getUsesForge().get()) {
-                taskExtractForgeUserdev.configure(t -> t.setEnabled(true));
-
-                deps.addProvider(
-                        forgeUserdevConfiguration.getName(),
-                        mcExt.getForgeVersion()
-                                .map(forgeVer -> String.format("net.minecraftforge:forge:%s:userdev", forgeVer)));
-
                 deps.addProvider(
                         forgeUniversalConfiguration.getName(),
                         mcExt.getForgeVersion()
                                 .map(forgeVer -> String.format("net.minecraftforge:forge:%s:universal", forgeVer)));
 
                 taskPatchDecompiledJar.configure(task -> {
-                    task.getPatches().builtBy(taskExtractForgeUserdev);
-                    task.getInjectionDirectories().builtBy(taskExtractForgeUserdev);
                     if (mcMinor <= 8) {
                         task.getPatches().from(userdevFile("fmlpatches.zip"));
                     }
@@ -1073,14 +1020,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 });
             }
         }
-    }
-
-    public Configuration getForgeUserdevConfiguration() {
-        return forgeUserdevConfiguration;
-    }
-
-    public TaskProvider<Copy> getTaskExtractForgeUserdev() {
-        return taskExtractForgeUserdev;
     }
 
     public TaskProvider<GenSrgMappingsTask> getTaskGenerateForgeSrgMappings() {
