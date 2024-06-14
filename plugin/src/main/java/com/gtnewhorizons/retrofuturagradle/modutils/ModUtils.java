@@ -44,6 +44,7 @@ import com.gtnewhorizons.retrofuturagradle.ObfuscationAttribute;
 import com.gtnewhorizons.retrofuturagradle.mcp.GenSrgMappingsTask;
 import com.gtnewhorizons.retrofuturagradle.mcp.MCPTasks;
 import com.gtnewhorizons.retrofuturagradle.mcp.ReobfuscatedJar;
+import com.gtnewhorizons.retrofuturagradle.mcp.RfgCacheService;
 import com.gtnewhorizons.retrofuturagradle.minecraft.MinecraftTasks;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
@@ -142,6 +143,8 @@ public class ModUtils {
                         .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
                 params.getFilesToDeobf().from(depFilesToDeobf);
                 params.getModulesToDeobf().set(depModulesToDeobf);
+                // can't use a true build service here due to gradle serialization errors
+                params.getMappingService().set(RfgCacheService.lazyAccess(project.getGradle()));
             });
 
             project.afterEvaluate(_p -> {
