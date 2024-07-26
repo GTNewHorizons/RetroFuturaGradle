@@ -32,11 +32,14 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.kotlin.gradle.internal.KaptTask;
 import org.jetbrains.kotlin.gradle.plugin.KaptExtension;
 
 import com.gtnewhorizons.retrofuturagradle.MinecraftExtension;
@@ -65,6 +68,8 @@ public class ModUtils {
     private final ConfigurableFileCollection depFilesToDeobf;
     private final SetProperty<String> depModulesToDeobf;
     private final Property<String> mixinRefMap;
+    /** The source set to enable mixin processing on, defaults to main. */
+    public final Property<SourceSet> mixinSourceSet;
 
     /**
      * Attribute that controls running the deobfuscation artifact transform.
@@ -89,6 +94,10 @@ public class ModUtils {
         this.mcExt = mcExt;
         this.minecraftTasks = minecraftTasks;
         this.mcpTasks = mcpTasks;
+        this.mixinSourceSet = project.getObjects().property(SourceSet.class);
+        final SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class)
+                .getSourceSets();
+        this.mixinSourceSet.convention(sourceSets.named("main"));
 
         final DependencyHandler deps = project.getDependencies();
         final ObjectFactory objects = project.getObjects();
@@ -169,13 +178,15 @@ public class ModUtils {
 
         project.afterEvaluate(_p -> {
             if (this.mixinRefMap.isPresent()) {
-                File tempMixinDir = FileUtils.getFile(project.getBuildDir(), "tmp", "mixins");
+                File tempMixinDir = FileUtils
+                        .getFile(project.getLayout().getBuildDirectory().get().getAsFile(), "tmp", "mixins");
                 File mixinSrg = new File(tempMixinDir, "mixins.srg");
                 File mixinRefMapFile = new File(tempMixinDir, this.mixinRefMap.get());
                 TaskProvider<ReobfuscatedJar> reobfJarTask = project.getTasks()
                         .named("reobfJar", ReobfuscatedJar.class);
                 reobfJarTask.configure(task -> task.getExtraSrgFiles().from(mixinSrg));
-                project.getTasks().named("compileJava", JavaCompile.class).configure(task -> {
+                final SourceSet mixinSourceSet = this.mixinSourceSet.get();
+                project.getTasks().named(mixinSourceSet.getCompileJavaTaskName(), JavaCompile.class).configure(task -> {
                     task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs());
                     ListProperty<String> reobfSrgFile = project.getObjects().listProperty(String.class);
                     reobfSrgFile.add(
@@ -207,19 +218,21 @@ public class ModUtils {
                             }
                             return Unit.INSTANCE;
                         });
-                        project.getTasks().configureEach(task -> {
-                            if (task.getName().equals("kaptKotlin")) {
-                                task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs());
-                            }
-                        });
+                        project.getTasks().withType(KaptTask.class).configureEach(
+                                task -> { task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs()); });
                     }
                 });
-                project.getTasks().named("processResources", ProcessResources.class).configure(task -> {
-                    task.from(mixinRefMapFile);
-                    task.dependsOn("compileJava");
-                    project.getPlugins().withType(ScalaPlugin.class, scp -> { task.dependsOn("compileScala"); });
-                    project.getPlugins().withId("org.jetbrains.kotlin.jvm", p -> { task.dependsOn("compileKotlin"); });
-                });
+                project.getTasks().named(mixinSourceSet.getProcessResourcesTaskName(), ProcessResources.class)
+                        .configure(task -> {
+                            task.from(mixinRefMapFile);
+                            final String compileJava = mixinSourceSet.getCompileJavaTaskName();
+                            task.dependsOn(compileJava);
+                            final String compileScala = StringUtils.removeEnd(compileJava, "Java") + "Scala";
+                            final String compileKotlin = StringUtils.removeEnd(compileJava, "Java") + "Kotlin";
+                            project.getPlugins().withType(ScalaPlugin.class, scp -> { task.dependsOn(compileScala); });
+                            project.getPlugins()
+                                    .withId("org.jetbrains.kotlin.jvm", p -> { task.dependsOn(compileKotlin); });
+                        });
             }
         });
 
