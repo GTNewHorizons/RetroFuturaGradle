@@ -36,7 +36,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
-import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.gradle.internal.KaptTask;
@@ -115,24 +114,6 @@ public class ModUtils {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription(
                     "Apply MCP decompiler cleanup to the main source set, doing things like replacing numerical OpenGL constants with their names");
-        });
-
-        project.getTasks().register("migrateMappings", MigrateMappingsTask.class, task -> {
-            task.setGroup(TASK_GROUP_USER);
-            task.setDescription("Migrate main source set to a new set of mappings");
-            task.dependsOn("extractMcpData", "extractForgeUserdev", "packagePatchedMc", "injectTags");
-            task.getSourceSrg()
-                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getInputSrg));
-            task.getSourceFieldsCsv()
-                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getFieldsCsv));
-            task.getSourceMethodsCsv()
-                    .set(mcpTasks.getTaskGenerateForgeSrgMappings().flatMap(GenSrgMappingsTask::getMethodsCsv));
-            ConfigurableFileCollection cp = task.getCompileClasspath();
-            cp.from(project.getConfigurations().getByName("compileClasspath"));
-            cp.from(project.getTasks().named("packagePatchedMc", Jar.class));
-            cp.from(
-                    project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets()
-                            .getByName("injectedTags").getOutput());
         });
 
         if (!disableDependencyDeobfuscation) {
