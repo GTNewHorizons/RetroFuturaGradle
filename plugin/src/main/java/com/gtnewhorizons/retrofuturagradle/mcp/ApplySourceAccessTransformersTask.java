@@ -57,6 +57,13 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
 
     @TaskAction
     public void applyForgeAccessTransformers() throws IOException {
+
+        if (getAccessTransformerFiles().isEmpty()) {
+            FileUtils.copyFile(getInputJar().get().getAsFile(), getOutputJar().get().getAsFile());
+            return;
+        }
+
+
         final Project project = getProject();
         final Logger logger = getLogger();
         File toolExecutable = resolveTool(getProject(), JST_TOOL_ARTIFACT);
