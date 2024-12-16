@@ -22,7 +22,11 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaLauncher;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -62,9 +66,10 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
         programArgs.add("--enable-accesstransformers");
         final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
         for (File atFile : atFiles) {
-            logger.lifecycle("Applying access transformer: " + atFile);
+            File patched = patchInvalidAccessTransformer(atFile);
+            logger.lifecycle("Applying access transformer: " + patched);
             programArgs.add("--access-transformer");
-            programArgs.add(atFile.getAbsolutePath());
+            programArgs.add(patched.getAbsolutePath());
         }
 
 
@@ -82,7 +87,7 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
             try {
                 exec.setStandardOutput(
                         FileUtils.openOutputStream(
-                                FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "jct_log.log")));
+                                FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "jst_log.log")));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -94,6 +99,28 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
 
         }).assertNormalExitValue();
 
+    }
+
+    private File patchInvalidAccessTransformer(File atFile) {
+        // Fix known invalid AT files shipped by Forge, specifically forge_at.cfg
+        if(!atFile.getName().equals("forge_at.cfg")) {
+            return atFile;
+        }
+
+        final File patched = new File(atFile.getParentFile(), atFile.getName() + ".patched");
+        final String regex = ";\\)$";
+        final String replacement = ";\\)V";
+        try(BufferedReader reader = new BufferedReader(new FileReader(atFile)); BufferedWriter writer = new BufferedWriter(new FileWriter(patched))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                writer.write(line.replaceAll(regex, replacement));
+                writer.newLine();
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return patched;
     }
 
     // Stuff borrowed from NeoGradle to get it to work -- refactor as needed
