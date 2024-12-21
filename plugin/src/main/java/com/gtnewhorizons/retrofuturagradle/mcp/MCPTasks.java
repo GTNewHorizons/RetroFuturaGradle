@@ -102,9 +102,13 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
     private final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar;
     private final File remappedSourcesLocation;
+    private final File remappedSourcesATLocation;
 
     private final TaskProvider<Copy> taskDecompressDecompiledSources;
     private final File decompressedSourcesLocation;
+
+    private final TaskProvider<ApplySourceAccessTransformersTask> taskApplySourceAccessTransformers;
+
     private final Configuration patchedConfiguration;
     private final SourceSet patchedMcSources;
     private final TaskProvider<JavaCompile> taskBuildPatchedMc;
@@ -286,18 +290,34 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getAddJavadocs().set(true);
         });
         decompiledMcChain.addTask(taskRemapDecompiledJar);
+
+        remappedSourcesATLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_minecraft-sources-at.jar");
+        taskApplySourceAccessTransformers = project.getTasks()
+                .register("applySourceAccessTransformers", ApplySourceAccessTransformersTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskRemapDecompiledJar);
+                    task.getInputJar().set(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
+                    task.getOutputJar().set(remappedSourcesATLocation);
+                    task.getJava17Launcher().set(mcExt.getToolchainLauncher(project, 17));
+
+                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
+                    ConfigurableFileCollection cp = task.getCompileClasspath();
+                    cp.from(project.getConfigurations().getByName("compileClasspath"));
+                });
+
+        decompiledMcChain.addTask(taskApplySourceAccessTransformers);
         decompiledMcChain.finish();
 
         decompressedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "minecraft-src");
         taskDecompressDecompiledSources = project.getTasks()
                 .register("decompressDecompiledSources", Copy.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskRemapDecompiledJar);
+                    task.dependsOn(taskApplySourceAccessTransformers);
                     task.from(
-                            archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
+                            archives.zipTree(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar)),
                             subset -> { subset.include("**/*.java"); });
                     task.from(
-                            archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
+                            archives.zipTree(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar)),
                             subset -> { subset.exclude("**/*.java"); });
                     task.eachFile(
                             fcd -> {

@@ -14,6 +14,7 @@ public final class Constants {
     public static final String URL_ASSETS_ROOT = "https://resources.download.minecraft.net/";
     public static final String URL_FERNFLOWER_1 = "https://files.minecraftforge.net/fernflower-fix-1.0.zip";
     public static final String URL_PLAYER_TO_UUID = "https://api.mojang.com/users/profiles/minecraft/";
+    public static final String JST_TOOL_ARTIFACT = "net.neoforged.jst:jst-cli-bundle:1.0.67";
 
     // Well-known paths
     public static final String PATH_USERDEV_FML_ACCESS_TRANFORMER = "src/main/resources/fml_at.cfg";
