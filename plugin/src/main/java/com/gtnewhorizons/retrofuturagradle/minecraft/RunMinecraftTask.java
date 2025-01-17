@@ -105,9 +105,8 @@ public abstract class RunMinecraftTask extends JavaExec {
     /**
      * Run this in the first configuration block of the task, constructors can't register actions so this is necessary
      */
-    public void setup(Project project) {
+    public void setup(Project project, MinecraftTasks mcTasks) {
         MinecraftExtension mcExt = Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
-        MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
         getTweakClasses().convention(mcExt.getExtraTweakClasses());
         setWorkingDir(mcTasks.getRunDirectory());
         getLwjglVersion().convention(mcExt.getMainLwjglVersion());
@@ -144,6 +143,12 @@ public abstract class RunMinecraftTask extends JavaExec {
         }
 
         doFirst("setup late-binding arguments", this::setupLateArgs);
+    }
+
+
+    public void setup(Project project) {
+        MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
+        setup(project, mcTasks);
     }
 
     public List<String> calculateArgs() {
