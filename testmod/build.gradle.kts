@@ -32,7 +32,7 @@ buildscript {
         }
         maven {
             name = "paper"
-            url = uri("https://papermc.io/repo/repository/maven-snapshots/")
+            url = uri("https://repo.papermc.io/repository/maven-public/")
             mavenContent {
                 includeGroup("org.cadixdev")
             }
