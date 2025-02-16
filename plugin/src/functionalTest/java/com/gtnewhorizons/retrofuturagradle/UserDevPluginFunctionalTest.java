@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Arrays;
 import java.util.zip.ZipFile;
 
 import org.gradle.testkit.runner.BuildResult;
@@ -70,8 +71,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
+                new BuildTask[] {},
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]));
     }
 
     @Test
@@ -88,8 +89,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
+                new BuildTask[] {},
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]));
     }
 
     @Test
@@ -106,8 +107,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
+                new BuildTask[] {},
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]));
     }
 
     @Test
@@ -124,8 +125,8 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
+                new BuildTask[] {},
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]));
     }
 
     @Test
@@ -142,8 +143,9 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
+                new BuildTask[] {},
                 secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
+                Arrays.toString(secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0])));
     }
 
     @Test
@@ -169,11 +171,11 @@ class UserDevPluginFunctionalTest {
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
         Assertions.assertArrayEquals(
-                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]),
-                new BuildTask[] {});
+                new BuildTask[] {},
+                secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]));
 
         // Check for the absence of net.minecraftforge packages except net.minecraftforge.fml.relauncher
-        try (final ZipFile jar = new ZipFile(new File(getLocalCacheDir(), "mcp_patched_minecraft-sources.jar"))) {
+        try (final ZipFile jar = new ZipFile(new File(getLocalCacheDir(), "mcp_patched_ated_minecraft-sources.jar"))) {
             Assertions.assertEquals(
                     0,
                     jar.stream().filter(ze -> ze.getName().startsWith("net/minecraftforge"))

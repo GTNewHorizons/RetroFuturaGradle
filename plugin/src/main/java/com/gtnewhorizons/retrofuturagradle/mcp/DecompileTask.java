@@ -31,6 +31,7 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaLauncher;
+import org.gradle.process.ExecOperations;
 import org.gradle.process.JavaForkOptions;
 import org.gradle.work.DisableCachingByDefault;
 import org.gradle.workers.WorkAction;
@@ -87,6 +88,9 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
 
     @Inject
     abstract public WorkerExecutor getWorkerExecutor();
+
+    @Inject
+    protected abstract ExecOperations getExecOperations();
 
     @Internal
     public abstract Property<RfgCacheService> getCacheService();
@@ -145,7 +149,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
     }
 
     private void decompileFg12(Project project, File ffoutdir, File ffinpcopy) {
-        project.javaexec(exec -> {
+        getExecOperations().javaexec(exec -> {
             exec.classpath(getFernflower().get());
             MinecraftExtension mcExt = project.getExtensions().findByType(MinecraftExtension.class);
             List<String> args = new ArrayList<>(Objects.requireNonNull(mcExt).getFernflowerArguments().get());

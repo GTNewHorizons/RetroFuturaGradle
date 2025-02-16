@@ -186,6 +186,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
         RenamedAccessMapFG12 accessMap = new RenamedAccessMapFG12(renames);
         for (File atFile : atFiles) {
             getLogger().info("{}", atFile.getPath());
+            getLogger().lifecycle("Loading AccessTransformer {}", atFile);
             accessMap.loadAccessTransformer(atFile);
         }
         getLogger().lifecycle("Renamed {} AT entries", accessMap.getRenameCount());
