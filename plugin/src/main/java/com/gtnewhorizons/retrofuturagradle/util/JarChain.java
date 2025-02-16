@@ -25,6 +25,20 @@ import com.gtnewhorizons.retrofuturagradle.Constants;
  */
 public class JarChain {
 
+    public enum ChainAction {
+
+        CLEANUP(true, true),
+        NO_CLEANUP(false, true),
+        ONLY_CLEANUP(true, false);
+
+        public final boolean doCleanup, doHooks;
+
+        ChainAction(boolean doCleanup, boolean doHooks) {
+            this.doCleanup = doCleanup;
+            this.doHooks = doHooks;
+        }
+    }
+
     private List<TaskProvider<? extends IJarOutputTask>> taskChain = new ArrayList<>();
     private boolean eager = false;
     private List<RegularFileProperty> taskChainOutputs = new ArrayList<>();
@@ -46,15 +60,23 @@ public class JarChain {
     }
 
     public void addTask(@Nonnull TaskProvider<? extends IJarOutputTask> newTask) {
+        addTask(newTask, ChainAction.CLEANUP);
+    }
+
+    public void addTask(@Nonnull TaskProvider<? extends IJarOutputTask> newTask, ChainAction action) {
         taskChain.add(newTask);
         // It has to be eager to avoid having to serialize the TaskProvider :(
         final IJarOutputTask eagerTask = newTask.get();
-        taskChainOutputs.add(eagerTask.getOutputJar());
-        taskChainHashers.add(eagerTask.hashInputs());
-        newTask.configure(task -> {
-            task.getOutputs().upToDateWhen(ignored -> this.isUpToDate());
-            task.onlyIf(ignored -> !this.isUpToDate());
-        });
+        if (action.doCleanup) {
+            taskChainOutputs.add(eagerTask.getOutputJar());
+        }
+        if (action.doHooks) {
+            taskChainHashers.add(eagerTask.hashInputs());
+            newTask.configure(task -> {
+                task.getOutputs().upToDateWhen(ignored -> this.isUpToDate());
+                task.onlyIf(ignored -> !this.isUpToDate());
+            });
+        }
     }
 
     public void finish() {
