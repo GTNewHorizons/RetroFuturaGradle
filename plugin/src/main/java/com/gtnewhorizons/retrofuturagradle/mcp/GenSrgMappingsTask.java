@@ -176,6 +176,8 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
                 mcpToSrg.write(line);
                 mcpToSrg.newLine();
 
+                line = String.format("CL: %s %s", e.getValue(), e.getKey());
+
                 // output is notch
                 mcpToNotch.write(line);
                 mcpToNotch.newLine();
