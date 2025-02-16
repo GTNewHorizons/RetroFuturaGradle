@@ -2,18 +2,21 @@ package com.gtnewhorizons.retrofuturagradle.mcp;
 
 import static com.gtnewhorizons.retrofuturagradle.Constants.JST_TOOL_ARTIFACT;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import javax.inject.Inject;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.output.TeeOutputStream;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -27,8 +30,8 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaLauncher;
+import org.gradle.process.ExecOperations;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.retrofuturagradle.util.HashUtils;
 import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
@@ -51,55 +54,73 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
     public abstract ConfigurableFileCollection getCompileClasspath();
 
     @Internal
-    public abstract Property<JavaLauncher> getJava17Launcher();
+    public abstract Property<JavaLauncher> getJavaLauncher();
+
+    @Inject
+    protected abstract ExecOperations getExecOperations();
 
     @TaskAction
     public void applyForgeAccessTransformers() throws IOException {
 
         if (getAccessTransformerFiles().isEmpty()) {
-            FileUtils.copyFile(getInputJar().get().getAsFile(), getOutputJar().get().getAsFile());
+            Files.copy(
+                    getInputJar().get().getAsFile().toPath(),
+                    getOutputJar().get().getAsFile().toPath(),
+                    StandardCopyOption.REPLACE_EXISTING);
             return;
         }
 
         final Project project = getProject();
         final Logger logger = getLogger();
-        File toolExecutable = resolveTool(getProject(), JST_TOOL_ARTIFACT);
-        final List<String> jvmArgs = ImmutableList.of("-Xmx4g");
+        final File toolExecutable = resolveTool(getProject(), JST_TOOL_ARTIFACT);
         final List<String> programArgs = new ArrayList<>();
 
         programArgs.add("--enable-accesstransformers");
         final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
+        final List<String> loggedAtFiles = new ArrayList<>(atFiles.size());
         for (File atFile : atFiles) {
-            File patched = patchInvalidAccessTransformer(atFile);
-            logger.lifecycle("Applying access transformer: " + patched);
+            final File patched = patchInvalidAccessTransformer(atFile);
+            loggedAtFiles.add(patched.toString());
             programArgs.add("--access-transformer");
             programArgs.add(patched.getAbsolutePath());
         }
+        logger.lifecycle("Applying access transformers: {}", loggedAtFiles);
 
-        logger.lifecycle("Using JST: " + toolExecutable);
-        File inputJar = getInputJar().get().getAsFile();
-        File outputJar = getOutputJar().get().getAsFile();
+        logger.info("Using JST: {}", toolExecutable);
+        final File inputJar = getInputJar().get().getAsFile();
+        final File outputJar = getOutputJar().get().getAsFile();
+
+        final String libraryPaths = getCompileClasspath().getFiles().stream().map(File::getAbsolutePath)
+                .collect(Collectors.joining(System.lineSeparator()));
+        final File librariesFile = project.getResources().getText().fromString(libraryPaths)
+                .asFile(StandardCharsets.UTF_8.name());
+        programArgs.add("--libraries-list=" + librariesFile.getAbsolutePath());
 
         programArgs.add(inputJar.getAbsolutePath());
         programArgs.add(outputJar.getAbsolutePath());
 
-        logger.lifecycle("Program Args: " + programArgs);
+        logger.info("Program Args: {}", programArgs);
 
-        project.javaexec(exec -> {
+        getExecOperations().javaexec(exec -> {
             exec.classpath(toolExecutable);
             try {
-                exec.setStandardOutput(
-                        FileUtils.openOutputStream(
-                                FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "jst_log.log")));
+                final OutputStream logFileStream = FileUtils.openOutputStream(
+                        FileUtils.getFile(
+                                project.getLayout().getBuildDirectory().get().getAsFile(),
+                                MCPTasks.RFG_DIR,
+                                "jst_log_" + getName() + ".log"));
+                final OutputStream logStream = new TeeOutputStream(logFileStream, System.out);
+                exec.setStandardOutput(logStream);
+                exec.setErrorOutput(logStream);
+                logFileStream
+                        .write(String.format("%s %s%n", toolExecutable, programArgs).getBytes(StandardCharsets.UTF_8));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            exec.setMinHeapSize("4G");
-            exec.setMaxHeapSize("4G");
-            exec.setJvmArgs(jvmArgs);
+            exec.setMinHeapSize("512M");
+            exec.setMaxHeapSize("2G");
             exec.setArgs(programArgs);
-            exec.setExecutable(getJava17Launcher().get().getExecutablePath().toString());
-
+            exec.setExecutable(getJavaLauncher().get().getExecutablePath().toString());
         }).assertNormalExitValue();
 
     }
@@ -111,16 +132,16 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
         }
 
         final File patched = new File(atFile.getParentFile(), atFile.getName() + ".patched");
-        final String regex = ";\\)$";
-        final String replacement = ";\\)V";
-        try (BufferedReader reader = new BufferedReader(new FileReader(atFile));
-                BufferedWriter writer = new BufferedWriter(new FileWriter(patched))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                writer.write(line.replaceAll(regex, replacement));
-                writer.newLine();
+        try {
+            final StringBuilder writer = new StringBuilder((int) Math.max(1024, atFile.length()));
+            for (final String line : Files.readAllLines(atFile.toPath(), StandardCharsets.UTF_8)) {
+                writer.append(line);
+                if (line.endsWith(";)")) {
+                    writer.append('V');
+                }
+                writer.append('\n');
             }
-
+            Files.write(patched.toPath(), writer.toString().getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -130,13 +151,7 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
     // Stuff borrowed from NeoGradle to get it to work -- refactor as needed
 
     public static File resolveTool(final Project project, final String tool) {
-        return resolveTool(
-                () -> project.getConfigurations().detachedConfiguration(project.getDependencies().create(tool))
-                        .getFiles().iterator().next());
-    }
-
-    private static <T> T resolveTool(final Supplier<T> searcher) {
-        // Return the resolved artifact
-        return searcher.get();
+        return project.getConfigurations().detachedConfiguration(project.getDependencies().create(tool)).getFiles()
+                .iterator().next();
     }
 }

@@ -80,7 +80,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
     private final Configuration forgeUniversalConfiguration;
 
-    private final JarChain decompiledMcChain;
+    private final JarChain decompiledMcChain, postprocessedMcChain;
     private final File mergedVanillaJarLocation;
     private final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars;
     /**
@@ -91,7 +91,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final TaskProvider<ExtractDependencyATsTask> taskExtractDependencyATs;
 
     private final TaskProvider<DeobfuscateTask> taskDeobfuscateMergedJarToSrg;
-    private final ConfigurableFileCollection deobfuscationATs;
+    private final ConfigurableFileCollection preDecompATs, deobfuscationATs;
 
     private final TaskProvider<DecompileTask> taskDecompileSrgJar;
     private final TaskProvider<CleanupDecompiledJarTask> taskCleanupDecompSrgJar;
@@ -156,6 +156,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         project.afterEvaluate(this::afterEvaluate);
 
         deobfuscationATs = project.getObjects().fileCollection();
+        preDecompATs = project.getObjects().fileCollection();
 
         decompiledMcChain = new JarChain();
 
@@ -214,10 +215,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     // No fields or methods CSV - passing them in causes ATs to not successfully apply
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
-                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
+                    task.getAccessTransformerFiles().setFrom(preDecompATs);
                     task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
                 });
-        decompiledMcChain.addTask(taskDeobfuscateMergedJarToSrg);
+        decompiledMcChain.addTask(taskDeobfuscateMergedJarToSrg, JarChain.ChainAction.NO_CLEANUP);
 
         decompiledSrgLocation = FileUtils.getFile(buildDir, RFG_DIR, "srg_merged_minecraft-sources.jar");
         final File rawDecompiledSrgLocation = FileUtils
@@ -268,13 +269,31 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getPathComponentsToStrip().set(mcExt.getMinorMcVersion().map(mcVer -> (mcVer <= 8) ? 3 : 1));
         });
         decompiledMcChain.addTask(taskPatchDecompiledJar);
+        decompiledMcChain.finish();
 
-        remappedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_minecraft-sources.jar");
+        postprocessedMcChain = new JarChain();
+
+        remappedSourcesATLocation = FileUtils.getFile(buildDir, RFG_DIR, "srg_patched_ated_minecraft-sources.jar");
+        taskApplySourceAccessTransformers = project.getTasks()
+                .register("applySourceAccessTransformers", ApplySourceAccessTransformersTask.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskPatchDecompiledJar);
+                    task.getInputJar().set(taskPatchDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
+                    task.getOutputJar().set(remappedSourcesATLocation);
+                    task.getJavaLauncher().set(mcExt.getToolchainLauncher(project, 21));
+
+                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
+                    final ConfigurableFileCollection cp = task.getCompileClasspath();
+                    cp.from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
+                });
+        postprocessedMcChain.addTask(taskApplySourceAccessTransformers);
+
+        remappedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_ated_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskPatchDecompiledJar);
+            task.dependsOn(taskApplySourceAccessTransformers);
             task.getBinaryJar().set(taskDecompileSrgJar.flatMap(IJarTransformTask::getInputJar));
-            task.getInputJar().set(taskPatchDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
+            task.getInputJar().set(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
             task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
             task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
@@ -289,35 +308,19 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             }));
             task.getAddJavadocs().set(true);
         });
-        decompiledMcChain.addTask(taskRemapDecompiledJar);
-
-        remappedSourcesATLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_minecraft-sources-at.jar");
-        taskApplySourceAccessTransformers = project.getTasks()
-                .register("applySourceAccessTransformers", ApplySourceAccessTransformersTask.class, task -> {
-                    task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskRemapDecompiledJar);
-                    task.getInputJar().set(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
-                    task.getOutputJar().set(remappedSourcesATLocation);
-                    task.getJava17Launcher().set(mcExt.getToolchainLauncher(project, 17));
-
-                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
-                    ConfigurableFileCollection cp = task.getCompileClasspath();
-                    cp.from(project.getConfigurations().getByName("compileClasspath"));
-                });
-
-        decompiledMcChain.addTask(taskApplySourceAccessTransformers);
-        decompiledMcChain.finish();
+        postprocessedMcChain.addTask(taskRemapDecompiledJar);
+        postprocessedMcChain.finish();
 
         decompressedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "minecraft-src");
         taskDecompressDecompiledSources = project.getTasks()
                 .register("decompressDecompiledSources", Copy.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskApplySourceAccessTransformers);
+                    task.dependsOn(taskRemapDecompiledJar);
                     task.from(
-                            archives.zipTree(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar)),
+                            archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
                             subset -> { subset.include("**/*.java"); });
                     task.from(
-                            archives.zipTree(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar)),
+                            archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
                             subset -> { subset.exclude("**/*.java"); });
                     task.eachFile(
                             fcd -> {
@@ -766,7 +769,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
                     task.getIsApplyingMarkers().set(true);
                     // Configured in afterEvaluate()
-                    task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
+                    task.getAccessTransformerFiles().setFrom(preDecompATs, deobfuscationATs, extractedDependencyATs);
                     task.getMinorMcVersion().set(mcExt.getMinorMcVersion());
                 });
 
@@ -973,7 +976,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         if (mcExt.getUsesFml().get()) {
             if (mcMinor <= 8) {
-                deobfuscationATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
+                preDecompATs.from(userdevFile(Constants.PATH_USERDEV_FML_ACCESS_TRANFORMER));
             }
 
             if (mcMinor <= 8 || mcExt.getUsesForge().get()) {
@@ -1032,7 +1035,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             }
 
             if (mcExt.getUsesForge().get()) {
-                deobfuscationATs.from(userdevDir(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER));
+                preDecompATs.from(userdevDir(Constants.PATH_USERDEV_FORGE_ACCESS_TRANFORMER));
 
                 taskPatchDecompiledJar.configure(task -> {
                     if (mcMinor <= 8) {
@@ -1059,6 +1062,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
     public ConfigurableFileCollection getDeobfuscationATs() {
         return deobfuscationATs;
+    }
+
+    public ConfigurableFileCollection getPreDecompATs() {
+        return preDecompATs;
     }
 
     public TaskProvider<DecompileTask> getTaskDecompileSrgJar() {
