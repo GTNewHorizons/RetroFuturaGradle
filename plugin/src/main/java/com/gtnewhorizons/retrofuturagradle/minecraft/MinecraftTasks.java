@@ -256,7 +256,7 @@ public final class MinecraftTasks {
         taskRunVanillaClient = project.getTasks()
                 .register("runVanillaClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunVanillaClient.configure(task -> {
-            task.setup(project);
+            task.setup(project,this);
             task.setDescription("Runs the vanilla (unmodified) game client, use --debug-jvm for debugging");
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
@@ -272,7 +272,7 @@ public final class MinecraftTasks {
         taskRunVanillaServer = project.getTasks()
                 .register("runVanillaServer", RunMinecraftTask.class, Distribution.DEDICATED_SERVER);
         taskRunVanillaServer.configure(task -> {
-            task.setup(project);
+            task.setup(project,this);
             task.setDescription("Runs the vanilla (unmodified) game server, use --debug-jvm for debugging");
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars);
