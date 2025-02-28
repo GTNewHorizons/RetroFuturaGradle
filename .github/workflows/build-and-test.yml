@@ -7,9 +7,12 @@ on:
   push:
     branches: [ master, main ]
 
+env:
+  GRADLE_OPTS: -Dorg.gradle.console=plain
+
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout repo
       uses: actions/checkout@v3
@@ -23,7 +26,14 @@ jobs:
           8
           17
         distribution: 'zulu'
-        cache: gradle
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        build-scan-publish: true
+        build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
+        build-scan-terms-of-use-agree: "yes"
+        validate-wrappers: true
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
