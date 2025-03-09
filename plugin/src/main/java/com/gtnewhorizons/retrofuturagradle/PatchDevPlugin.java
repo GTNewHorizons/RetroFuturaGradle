@@ -30,8 +30,7 @@ public class PatchDevPlugin implements Plugin<Project> {
         final RfgPatchdevExtension pdExt = project.getExtensions()
                 .create("rfgPatchDev", RfgPatchdevExtension.class, project);
 
-        final MinecraftTasks mcTasks = new MinecraftTasks(project, pdExt);
-        project.getExtensions().add("minecraftTasks", mcTasks);
+        final MinecraftTasks mcTasks = new MinecraftTasks(project, pdExt, "minecraftTasks");
         final PatchDevTasks mcpTasks = new PatchDevTasks(project, pdExt, mcTasks);
         project.getExtensions().add("patchDevTasks", mcpTasks);
     }

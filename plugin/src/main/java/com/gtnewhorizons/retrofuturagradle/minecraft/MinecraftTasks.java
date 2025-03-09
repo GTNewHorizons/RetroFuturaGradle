@@ -99,9 +99,17 @@ public final class MinecraftTasks {
         return LauncherManifest.read(location);
     }
 
+    @Deprecated
     public MinecraftTasks(Project project, IMinecraftyExtension mcExt) {
+        this(project, mcExt, null);
+    }
+
+    public MinecraftTasks(Project project, IMinecraftyExtension mcExt, String registeredName) {
         this.project = project;
         this.mcExt = mcExt;
+        if (registeredName != null) {
+            project.getExtensions().add(MinecraftTasks.class, registeredName, this);
+        }
         final DownloadExtension download = new DownloadExtension(project);
         allVersionsManifestLocation = Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, "all_versions_manifest.json");
         final File allVersionsManifest = allVersionsManifestLocation;

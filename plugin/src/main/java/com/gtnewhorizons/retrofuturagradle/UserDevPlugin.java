@@ -40,8 +40,7 @@ public class UserDevPlugin implements Plugin<Project> {
         // Register the `minecraft {...}` block
         final MinecraftExtension mcExt = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
 
-        final MinecraftTasks mcTasks = new MinecraftTasks(project, mcExt);
-        project.getExtensions().add("minecraftTasks", mcTasks);
+        final MinecraftTasks mcTasks = new MinecraftTasks(project, mcExt, "minecraftTasks");
         final MCPTasks mcpTasks = new MCPTasks(project, mcExt, mcTasks);
         project.getExtensions().add("mcpTasks", mcpTasks);
         final ModUtils modUtils = new ModUtils(project, mcExt, mcTasks, mcpTasks);
