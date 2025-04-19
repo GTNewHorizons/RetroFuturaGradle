@@ -54,6 +54,16 @@ plugins {
 }
 
 repositories {
+    maven {
+        // RetroFuturaGradle
+        name = "GTNH Maven"
+        url = uri("https://nexus.gtnewhorizons.com/repository/public/")
+        mavenContent {
+            includeGroup("com.gtnewhorizons")
+            includeGroupByRegex("com\\.gtnewhorizons\\..+")
+        }
+    }
+    gradlePluginPortal()
     mavenCentral()
     mavenLocal()
 }
@@ -78,6 +88,14 @@ minecraft {
 
 tasks.injectTags.configure {
     outputClassName.set("testmod.Tags")
+}
+
+tasks.injectInterfaces.configure {
+    // The path here can be anything, it doesn't need to be in injectedInterfaces
+    // The contents of these files must match this:
+    // https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection
+    // Interfaces should only be added to injectedInterfaces, if they are added to main/mixin/test/etc then MC will not compile
+    interfaceInjectionConfigs.setFrom("src/injectedInterfaces/interfaces.json", "src/injectedInterfaces/interfaces2.json");
 }
 
 publishing {

@@ -1,0 +1,3 @@
+{
+  "net/minecraft/client/multiplayer/WorldClient": ["testmod/InjectionTest"]
+}

@@ -41,6 +41,7 @@ import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.file.ProjectLayout;
@@ -91,7 +92,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final TaskProvider<ExtractDependencyATsTask> taskExtractDependencyATs;
 
     private final TaskProvider<DeobfuscateTask> taskDeobfuscateMergedJarToSrg;
-    private final ConfigurableFileCollection preDecompATs, deobfuscationATs;
+    private final ConfigurableFileCollection preDecompATs, deobfuscationATs, interfaceInjectionConfigs;
 
     private final TaskProvider<DecompileTask> taskDecompileSrgJar;
     private final TaskProvider<CleanupDecompiledJarTask> taskCleanupDecompSrgJar;
@@ -103,11 +104,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar;
     private final File remappedSourcesLocation;
     private final File remappedSourcesATLocation;
+    private final File interfaceInjectedJarLocation;
 
     private final TaskProvider<Copy> taskDecompressDecompiledSources;
     private final File decompressedSourcesLocation;
 
     private final TaskProvider<ApplySourceAccessTransformersTask> taskApplySourceAccessTransformers;
+
+    private final TaskProvider<InterfaceInjectionTask> taskInjectInterfaces;
 
     private final Configuration patchedConfiguration;
     private final SourceSet patchedMcSources;
@@ -131,8 +135,13 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
     private final Configuration obfRuntimeClasspathConfiguration;
     private final Configuration reobfJarConfiguration;
     private final TaskProvider<InjectTagsTask> taskInjectTags;
-    private final SourceSet injectedSourceSet;
+
     private final File injectedSourcesLocation;
+    private final SourceSet injectedSourceSet;
+
+    private final File injectedInterfacesSourcesLocation;
+    private final SourceSet injectedInterfacesSourceSet;
+
     public static final String PATCHED_MINECRAFT_CONFIGURATION_NAME = "patchedMinecraft";
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -157,6 +166,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         deobfuscationATs = project.getObjects().fileCollection();
         preDecompATs = project.getObjects().fileCollection();
+        interfaceInjectionConfigs = project.getObjects().fileCollection();
 
         decompiledMcChain = new JarChain();
 
@@ -288,12 +298,29 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 });
         postprocessedMcChain.addTask(taskApplySourceAccessTransformers);
 
+        interfaceInjectedJarLocation = FileUtils.getFile(buildDir, RFG_DIR, "srg_patched_injected_minecraft-sources.jar");
+        taskInjectInterfaces = project.getTasks()
+            .register("injectInterfaces", InterfaceInjectionTask.class, task -> {
+                task.setGroup(TASK_GROUP_INTERNAL);
+
+                task.dependsOn(taskApplySourceAccessTransformers);
+                task.getInputJar().set(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar));
+
+                task.getOutputJar().set(interfaceInjectedJarLocation);
+                task.getJavaLauncher().set(mcExt.getToolchainLauncher(project, 21));
+
+                task.getInterfaceInjectionConfigs().setFrom(interfaceInjectionConfigs);
+                final ConfigurableFileCollection cp = task.getCompileClasspath();
+                cp.from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
+            });
+        postprocessedMcChain.addTask(taskInjectInterfaces);
+
         remappedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_ated_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskApplySourceAccessTransformers);
+            task.dependsOn(taskInjectInterfaces);
             task.getBinaryJar().set(taskDecompileSrgJar.flatMap(IJarTransformTask::getInputJar));
-            task.getInputJar().set(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar));
+            task.getInputJar().set(taskInjectInterfaces.flatMap(IJarOutputTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
             task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
             task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
@@ -334,17 +361,22 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
 
+        injectedInterfacesSourcesLocation = FileUtils.getFile("src", "injectedInterfaces", "java");
+        injectedInterfacesSourceSet = sourceSets.create("injectedInterfaces", sourceSet -> {
+            sourceSet.java(java -> {
+                java.setSrcDirs(objects.fileCollection().from(injectedInterfacesSourcesLocation));
+            });
+        });
+
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
-            sourceSet.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
+            sourceSet.setCompileClasspath(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()).plus(injectedInterfacesSourceSet.getOutput()));
             sourceSet.setRuntimeClasspath(patchedConfiguration);
-            sourceSet.java(
-                    java -> java.setSrcDirs(
-                            objects.fileCollection().from(new File(decompressedSourcesLocation, "java"))
-                                    .builtBy(taskDecompressDecompiledSources)));
-            sourceSet.resources(
-                    java -> java.setSrcDirs(
-                            objects.fileCollection().from(new File(decompressedSourcesLocation, "resources"))
-                                    .builtBy(taskDecompressDecompiledSources)));
+            sourceSet.java(java -> {
+                java.setSrcDirs(objects.fileCollection().from(new File(decompressedSourcesLocation, "java")).builtBy(taskDecompressDecompiledSources));
+            });
+            sourceSet.resources(java -> {
+                java.setSrcDirs(objects.fileCollection().from(new File(decompressedSourcesLocation, "resources")).builtBy(taskDecompressDecompiledSources));
+            });
         });
 
         final SourceSet mainSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
@@ -358,10 +390,14 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             set.setRuntimeClasspath(
                     set.getRuntimeClasspath().plus(patchedConfiguration).plus(mcTasks.getLwjgl2Configuration()));
         });
-        mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(apiSet.getOutput()));
-        mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(apiSet.getOutput()));
-        testSet.setCompileClasspath(testSet.getCompileClasspath().plus(apiSet.getOutput()));
-        testSet.setRuntimeClasspath(testSet.getRuntimeClasspath().plus(apiSet.getOutput()));
+
+        FileCollection common = objects.fileCollection().from(apiSet.getOutput(), injectedInterfacesSourceSet.getOutput());
+
+        mainSet.setCompileClasspath(mainSet.getCompileClasspath().plus(common));
+        mainSet.setRuntimeClasspath(mainSet.getRuntimeClasspath().plus(common));
+        testSet.setCompileClasspath(testSet.getCompileClasspath().plus(common));
+        testSet.setRuntimeClasspath(testSet.getRuntimeClasspath().plus(common));
+
         final Configuration apiCompileCfg = project.getConfigurations()
                 .getByName(apiSet.getCompileClasspathConfigurationName());
         final Configuration apiRuntimeCfg = project.getConfigurations()
@@ -512,6 +548,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     set.getJava()
                             .setSrcDirs(objects.fileCollection().from(injectedSourcesLocation).builtBy(taskInjectTags));
                 });
+
         project.getTasks().named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
         final FileCollection mcCp = launcherSources.getOutput().plus(patchedMcSources.getOutput());
@@ -1062,6 +1099,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
     public ConfigurableFileCollection getDeobfuscationATs() {
         return deobfuscationATs;
+    }
+
+    public ConfigurableFileCollection getInterfaceInjectionConfigs() {
+        return interfaceInjectionConfigs;
     }
 
     public ConfigurableFileCollection getPreDecompATs() {
