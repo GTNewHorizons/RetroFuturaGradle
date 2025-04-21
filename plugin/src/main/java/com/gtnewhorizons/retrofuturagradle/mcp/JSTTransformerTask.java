@@ -38,7 +38,11 @@ import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 
 @CacheableTask
-public abstract class InterfaceInjectionTask extends DefaultTask implements IJarTransformTask {
+public abstract class JSTTransformerTask extends DefaultTask implements IJarTransformTask {
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract ConfigurableFileCollection getAccessTransformerFiles();
 
     @InputFiles
     @PathSensitive(PathSensitivity.NONE)
@@ -46,7 +50,7 @@ public abstract class InterfaceInjectionTask extends DefaultTask implements IJar
 
     @Override
     public MessageDigestConsumer hashInputs() {
-        return HashUtils.addPropertyToHash(getInterfaceInjectionConfigs());
+        return HashUtils.addPropertyToHash(getAccessTransformerFiles()).andThen(HashUtils.addPropertyToHash(getInterfaceInjectionConfigs()));
     }
 
     @InputFiles
@@ -60,11 +64,12 @@ public abstract class InterfaceInjectionTask extends DefaultTask implements IJar
     protected abstract ExecOperations getExecOperations();
 
     @TaskAction
-    public void injectInterfaces() throws IOException {
+    public void applyForgeAccessTransformers() throws IOException {
 
+        final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
         final Set<File> injectionConfigs = new ImmutableSet.Builder<File>().addAll(getInterfaceInjectionConfigs()).build();
 
-        if (injectionConfigs.isEmpty()) {
+        if (atFiles.isEmpty() && injectionConfigs.isEmpty()) {
             Files.copy(
                     getInputJar().get().getAsFile().toPath(),
                     getOutputJar().get().getAsFile().toPath(),
@@ -77,30 +82,39 @@ public abstract class InterfaceInjectionTask extends DefaultTask implements IJar
         final File toolExecutable = resolveTool(getProject(), JST_TOOL_ARTIFACT);
         final List<String> programArgs = new ArrayList<>();
 
-        programArgs.add("--enable-interface-injection");
+        if (!atFiles.isEmpty()) {
+            programArgs.add("--enable-accesstransformers");
 
-        for (File config : injectionConfigs) {
-            programArgs.add("--interface-injection-data=" + config.getAbsolutePath());
+            final List<String> loggedAtFiles = new ArrayList<>(atFiles.size());
+
+            for (File atFile : atFiles) {
+                final File patched = patchInvalidAccessTransformer(atFile);
+                loggedAtFiles.add(patched.toString());
+                programArgs.add("--access-transformer");
+                programArgs.add(patched.getAbsolutePath());
+            }
+
+            logger.lifecycle("Applying access transformers: {}", loggedAtFiles);
         }
 
-        logger.lifecycle("Applying interface injection configs: {}", injectionConfigs);
+        if (!injectionConfigs.isEmpty()) {
+            programArgs.add("--enable-interface-injection");
+
+            for (File config : injectionConfigs) {
+                programArgs.add("--interface-injection-data=" + config.getAbsolutePath());
+            }
+
+            logger.lifecycle("Applying interface injection configs: {}", injectionConfigs);
+        }
 
         logger.info("Using JST: {}", toolExecutable);
-
         final File inputJar = getInputJar().get().getAsFile();
         final File outputJar = getOutputJar().get().getAsFile();
 
-        final String libraryPaths = getCompileClasspath()
-            .getFiles()
-            .stream()
-            .map(File::getAbsolutePath)
-            .collect(Collectors.joining(System.lineSeparator()));
-
-        final File librariesFile = project.getResources()
-            .getText()
-            .fromString(libraryPaths)
-            .asFile(StandardCharsets.UTF_8.name());
-
+        final String libraryPaths = getCompileClasspath().getFiles().stream().map(File::getAbsolutePath)
+                .collect(Collectors.joining(System.lineSeparator()));
+        final File librariesFile = project.getResources().getText().fromString(libraryPaths)
+                .asFile(StandardCharsets.UTF_8.name());
         programArgs.add("--libraries-list=" + librariesFile.getAbsolutePath());
 
         programArgs.add(inputJar.getAbsolutePath());
@@ -111,15 +125,16 @@ public abstract class InterfaceInjectionTask extends DefaultTask implements IJar
         getExecOperations().javaexec(exec -> {
             exec.classpath(toolExecutable);
             try {
-                final File logFile = FileUtils.getFile(
-                    project.getLayout().getBuildDirectory().get().getAsFile(),
-                    MCPTasks.RFG_DIR,
-                    "jst_log_" + getName() + ".log");
-                final OutputStream logFileStream = FileUtils.openOutputStream(logFile);
+                final OutputStream logFileStream = FileUtils.openOutputStream(
+                        FileUtils.getFile(
+                                project.getLayout().getBuildDirectory().get().getAsFile(),
+                                MCPTasks.RFG_DIR,
+                                "jst_log_" + getName() + ".log"));
                 final OutputStream logStream = new TeeOutputStream(logFileStream, System.out);
                 exec.setStandardOutput(logStream);
                 exec.setErrorOutput(logStream);
-                logFileStream.write(String.format("%s %s%n", toolExecutable, programArgs).getBytes(StandardCharsets.UTF_8));
+                logFileStream
+                        .write(String.format("%s %s%n", toolExecutable, programArgs).getBytes(StandardCharsets.UTF_8));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -128,7 +143,33 @@ public abstract class InterfaceInjectionTask extends DefaultTask implements IJar
             exec.setArgs(programArgs);
             exec.setExecutable(getJavaLauncher().get().getExecutablePath().toString());
         }).assertNormalExitValue();
+
     }
+
+    private File patchInvalidAccessTransformer(File atFile) {
+        // Fix known invalid AT files shipped by Forge, specifically forge_at.cfg
+        if (!atFile.getName().equals("forge_at.cfg")) {
+            return atFile;
+        }
+
+        final File patched = new File(atFile.getParentFile(), atFile.getName() + ".patched");
+        try {
+            final StringBuilder writer = new StringBuilder((int) Math.max(1024, atFile.length()));
+            for (final String line : Files.readAllLines(atFile.toPath(), StandardCharsets.UTF_8)) {
+                writer.append(line);
+                if (line.endsWith(";)")) {
+                    writer.append('V');
+                }
+                writer.append('\n');
+            }
+            Files.write(patched.toPath(), writer.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return patched;
+    }
+
+    // Stuff borrowed from NeoGradle to get it to work -- refactor as needed
 
     public static File resolveTool(final Project project, final String tool) {
         return project.getConfigurations().detachedConfiguration(project.getDependencies().create(tool)).getFiles()

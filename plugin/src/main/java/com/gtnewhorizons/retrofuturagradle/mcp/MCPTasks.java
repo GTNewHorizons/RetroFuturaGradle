@@ -41,7 +41,6 @@ import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.file.ProjectLayout;
@@ -103,15 +102,12 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
     private final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar;
     private final File remappedSourcesLocation;
-    private final File remappedSourcesATLocation;
-    private final File interfaceInjectedJarLocation;
+    private final File postJSTJarLocation;
 
     private final TaskProvider<Copy> taskDecompressDecompiledSources;
     private final File decompressedSourcesLocation;
 
-    private final TaskProvider<ApplySourceAccessTransformersTask> taskApplySourceAccessTransformers;
-
-    private final TaskProvider<InterfaceInjectionTask> taskInjectInterfaces;
+    private final TaskProvider<JSTTransformerTask> taskApplyJST;
 
     private final Configuration patchedConfiguration;
     private final SourceSet patchedMcSources;
@@ -283,44 +279,32 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
 
         postprocessedMcChain = new JarChain();
 
-        remappedSourcesATLocation = FileUtils.getFile(buildDir, RFG_DIR, "srg_patched_ated_minecraft-sources.jar");
-        taskApplySourceAccessTransformers = project.getTasks()
-                .register("applySourceAccessTransformers", ApplySourceAccessTransformersTask.class, task -> {
+        postJSTJarLocation = FileUtils.getFile(buildDir, RFG_DIR, "post_jst_minecraft-sources.jar");
+        taskApplyJST = project.getTasks()
+                .register("applyJST", JSTTransformerTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
+
                     task.dependsOn(taskPatchDecompiledJar);
+
                     task.getInputJar().set(taskPatchDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
-                    task.getOutputJar().set(remappedSourcesATLocation);
+                    task.getOutputJar().set(postJSTJarLocation);
+
                     task.getJavaLauncher().set(mcExt.getToolchainLauncher(project, 21));
 
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
+                    task.getInterfaceInjectionConfigs().setFrom(interfaceInjectionConfigs);
+
                     final ConfigurableFileCollection cp = task.getCompileClasspath();
                     cp.from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
                 });
-        postprocessedMcChain.addTask(taskApplySourceAccessTransformers);
+        postprocessedMcChain.addTask(taskApplyJST);
 
-        interfaceInjectedJarLocation = FileUtils.getFile(buildDir, RFG_DIR, "srg_patched_injected_minecraft-sources.jar");
-        taskInjectInterfaces = project.getTasks()
-            .register("injectInterfaces", InterfaceInjectionTask.class, task -> {
-                task.setGroup(TASK_GROUP_INTERNAL);
-
-                task.dependsOn(taskApplySourceAccessTransformers);
-                task.getInputJar().set(taskApplySourceAccessTransformers.flatMap(IJarOutputTask::getOutputJar));
-
-                task.getOutputJar().set(interfaceInjectedJarLocation);
-                task.getJavaLauncher().set(mcExt.getToolchainLauncher(project, 21));
-
-                task.getInterfaceInjectionConfigs().setFrom(interfaceInjectionConfigs);
-                final ConfigurableFileCollection cp = task.getCompileClasspath();
-                cp.from(patchedConfiguration.plus(mcTasks.getLwjgl2Configuration()));
-            });
-        postprocessedMcChain.addTask(taskInjectInterfaces);
-
-        remappedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_ated_minecraft-sources.jar");
+        remappedSourcesLocation = FileUtils.getFile(buildDir, RFG_DIR, "mcp_patched_minecraft-sources.jar");
         taskRemapDecompiledJar = project.getTasks().register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
             task.setGroup(TASK_GROUP_INTERNAL);
-            task.dependsOn(taskInjectInterfaces);
+            task.dependsOn(taskApplyJST);
             task.getBinaryJar().set(taskDecompileSrgJar.flatMap(IJarTransformTask::getInputJar));
-            task.getInputJar().set(taskInjectInterfaces.flatMap(IJarOutputTask::getOutputJar));
+            task.getInputJar().set(taskApplyJST.flatMap(IJarOutputTask::getOutputJar));
             task.getOutputJar().set(remappedSourcesLocation);
             task.getFieldCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getFieldsCsv));
             task.getMethodCsv().set(taskGenerateForgeSrgMappings.flatMap(GenSrgMappingsTask::getMethodsCsv));
