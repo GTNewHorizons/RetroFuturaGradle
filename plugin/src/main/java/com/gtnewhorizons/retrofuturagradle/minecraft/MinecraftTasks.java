@@ -241,7 +241,7 @@ public final class MinecraftTasks {
         });
 
         clientRunDirectory = mcExt.getClientRunDirectory();
-        serverRunDirectory = mcExt.getClientRunDirectory();
+        serverRunDirectory = mcExt.getServerRunDirectory();
         natives2Directory = clientRunDirectory.map(dir -> FileUtils.getFile(dir, "natives", "lwjgl2"));
         natives3Directory = clientRunDirectory.map(dir -> FileUtils.getFile(dir, "natives", "lwjgl3"));
 
