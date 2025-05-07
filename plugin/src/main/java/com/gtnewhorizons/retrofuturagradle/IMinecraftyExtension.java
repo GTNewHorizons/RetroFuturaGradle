@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import java.io.File;
 import java.util.Objects;
 
 import javax.inject.Inject;
@@ -37,6 +38,16 @@ public interface IMinecraftyExtension {
     Property<String> getUsername();
 
     Property<String> getUserUUID();
+
+    /**
+     * Client run directory to use when running Minecraft
+     */
+    Property<File> getClientRunDirectory();
+
+    /**
+     * Server run directory to use when running Minecraft
+     */
+    Property<File> getServerRunDirectory();
 
     /**
      * Whether to add all of MC's dependencies automatically as dependencies of your project, default is true.
@@ -150,6 +161,8 @@ public interface IMinecraftyExtension {
         getMcVersion().finalizeValueOnRead();
         getUsername().convention("Developer");
         getUserUUID().convention(getUsername().map(name -> Utilities.resolveUUID(name, gradle).toString()));
+        getClientRunDirectory().convention(new File(project.getProjectDir(), "run"));
+        getServerRunDirectory().convention(new File(project.getProjectDir(), "run"));
         getApplyMcDependencies().convention(Boolean.TRUE);
         getApplyMcDependencies().finalizeValueOnRead();
         getLwjgl2Version().convention("2.9.4-nightly-20150209");

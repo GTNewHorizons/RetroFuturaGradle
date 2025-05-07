@@ -16,6 +16,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileTree;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
@@ -31,7 +32,7 @@ public abstract class ExtractNativesTask extends DefaultTask {
     @OutputDirectory
     public abstract DirectoryProperty getDestinationFolder();
 
-    public void configureMe(Project project, File targetDirectory, Configuration lwjglConfiguration,
+    public void configureMe(Project project, Provider<File> targetDirectory, Configuration lwjglConfiguration,
             Configuration vanillaMcConfiguration) {
         this.getNatives().from(project.provider(() -> {
             final String twitchNatives;
@@ -60,7 +61,12 @@ public abstract class ExtractNativesTask extends DefaultTask {
             return trees;
         }));
         // this.exclude("META-INF/**", "META-INF");
-        this.getDestinationFolder().set(targetDirectory);
+        this.getDestinationFolder().set(project.getLayout().dir(targetDirectory));
+    }
+
+    public void configureMe(Project project, File targetDirectory, Configuration lwjglConfiguration,
+            Configuration vanillaMcConfiguration) {
+        this.configureMe(project, project.provider(() -> targetDirectory), lwjglConfiguration, vanillaMcConfiguration);
     }
 
     @TaskAction

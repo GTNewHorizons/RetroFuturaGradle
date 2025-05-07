@@ -16,6 +16,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -419,7 +421,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     replacements.put("@@MCVERSION@@", mcExt.getMcVersion());
                     replacements.put("@@ASSETINDEX@@", mcExt.getMcVersion());
                     replacements.put("@@ASSETSDIR@@", mcTasks.getVanillaAssetsLocation().getPath());
-                    replacements.put("@@NATIVESDIR@@", mcTasks.getLwjgl2NativesDirectory().getPath());
+                    replacements.put("@@NATIVESDIR@@", mcTasks.getLwjgl2NativesDirectory().map(File::getPath));
                     replacements.put("@@SRGDIR@@", getSrgLocation().map(d -> d.getAsFile().getPath()));
                     replacements.put(
                             "@@SRG_NOTCH_SRG@@",
@@ -564,6 +566,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     taskPackagePatchedMc,
                     "jar");
 
+            task.setWorkingDir(mcExt.getClientRunDirectory());
             task.getUsername().set(mcExt.getUsername());
             task.getUserUUID().set(mcExt.getUserUUID());
             task.classpath(taskPackageMcLauncher);
@@ -581,6 +584,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setDescription("Runs the deobfuscated server with your mod");
             task.dependsOn(launcherSources.getClassesTaskName(), taskPackagePatchedMc, "classes");
 
+            task.setWorkingDir(mcExt.getServerRunDirectory());
             task.getUsername().set(mcExt.getUsername());
             task.getUserUUID().set(mcExt.getUserUUID());
             task.classpath(taskPackageMcLauncher);
@@ -780,27 +784,39 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
                 ObfuscationAttribute.getSrg(project.getObjects()));
 
-        final File obfRunFolder = new File(mcTasks.getRunDirectory(), "obfuscated/");
-        final TaskProvider<Copy> taskPrepareObfMods = project.getTasks()
-                .register("prepareObfModsFolder", Copy.class, task -> {
-                    task.setGroup(TASK_GROUP_INTERNAL);
-                    task.dependsOn(taskPackageMcLauncher, taskPackagePatchedMc, taskReobfJar);
+        final BiFunction<String, Object, TaskProvider<Copy>> buildPrepareObfModsTask = (name, destination) ->
+                project.getTasks()
+                    .register(name, Copy.class, task -> {
+                        task.setGroup(TASK_GROUP_INTERNAL);
+                        task.dependsOn(taskPackageMcLauncher, taskPackagePatchedMc, taskReobfJar);
 
-                    task.from(taskReobfJar);
-                    task.from(obfRuntimeClasspathConfiguration);
+                        task.from(taskReobfJar);
+                        task.from(obfRuntimeClasspathConfiguration);
 
-                    task.into(new File(obfRunFolder, "mods/"));
+                        task.into(destination);
 
-                    task.doFirst(t -> {
-                        final File obfModsFolder = task.getDestinationDir();
-                        final File[] children = obfModsFolder.listFiles();
-                        if (children != null) {
-                            for (final File child : children) {
-                                FileUtils.deleteQuietly(child);
+                        task.doFirst(t -> {
+                            final File obfModsFolder = task.getDestinationDir();
+                            final File[] children = obfModsFolder.listFiles();
+                            if (children != null) {
+                                for (final File child : children) {
+                                    FileUtils.deleteQuietly(child);
+                                }
                             }
-                        }
+                        });
                     });
-                });
+
+        final Provider<File> clientObfRunFolder = mcTasks.getClientRunDirectory().map(dir ->
+                new File(dir, "obfuscated/"));
+        final Provider<File> serverObfRunFolder = mcTasks.getServerRunDirectory().map(dir ->
+                new File(dir, "obfuscated/"));
+
+        final TaskProvider<Copy> taskPrepareClientObfMods = buildPrepareObfModsTask.apply(
+                "prepareClientObfModsFolder",
+                clientObfRunFolder.map(dir -> new File(dir, "mods/")));
+        final TaskProvider<Copy> taskPrepareServerObfMods = buildPrepareObfModsTask.apply(
+                "prepareServerObfModsFolder",
+                serverObfRunFolder.map(dir -> new File(dir, "mods/")));
 
         taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunObfClient.configure(task -> {
@@ -811,9 +827,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     mcTasks.getTaskDownloadVanillaJars(),
                     mcTasks.getTaskDownloadVanillaAssets(),
                     taskReobfJar,
-                    taskPrepareObfMods);
+                    taskPrepareClientObfMods);
 
-            task.setWorkingDir(obfRunFolder);
+            task.setWorkingDir(clientObfRunFolder);
             task.systemProperty("retrofuturagradle.reobfDev", true);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaClientLocation());
@@ -831,9 +847,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setup(project);
             task.setGroup(TASK_GROUP_USER);
             task.setDescription("Runs the Forge obfuscated server with your mod");
-            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar, taskPrepareObfMods);
+            task.dependsOn(mcTasks.getTaskDownloadVanillaJars(), taskReobfJar, taskPrepareServerObfMods);
 
-            task.setWorkingDir(obfRunFolder);
+            task.setWorkingDir(serverObfRunFolder);
             task.systemProperty("retrofuturagradle.reobfDev", true);
             task.classpath(forgeUniversalConfiguration);
             task.classpath(mcTasks.getVanillaServerLocation());

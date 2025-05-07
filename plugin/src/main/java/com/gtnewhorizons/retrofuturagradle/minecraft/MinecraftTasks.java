@@ -67,8 +67,9 @@ public final class MinecraftTasks {
     private final TaskProvider<RunMinecraftTask> taskRunVanillaClient;
     private final TaskProvider<RunMinecraftTask> taskRunVanillaServer;
 
-    private final File runDirectory;
-    private final File natives2Directory, natives3Directory;
+    private final Provider<File> clientRunDirectory;
+    private final Provider<File> serverRunDirectory;
+    private final Provider<File> natives2Directory, natives3Directory;
     private final Configuration vanillaMcConfiguration;
     private final Configuration lwjgl2Configuration;
     private final Configuration lwjgl3Configuration;
@@ -239,9 +240,10 @@ public final class MinecraftTasks {
             });
         });
 
-        runDirectory = new File(project.getProjectDir(), "run");
-        natives2Directory = FileUtils.getFile(runDirectory, "natives", "lwjgl2");
-        natives3Directory = FileUtils.getFile(runDirectory, "natives", "lwjgl3");
+        clientRunDirectory = mcExt.getClientRunDirectory();
+        serverRunDirectory = mcExt.getClientRunDirectory();
+        natives2Directory = clientRunDirectory.map(dir -> FileUtils.getFile(dir, "natives", "lwjgl2"));
+        natives3Directory = clientRunDirectory.map(dir -> FileUtils.getFile(dir, "natives", "lwjgl3"));
 
         this.vanillaMcConfiguration = project.getConfigurations().create("vanilla_minecraft");
         this.vanillaMcConfiguration.setCanBeConsumed(false);
@@ -269,6 +271,7 @@ public final class MinecraftTasks {
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars, taskDownloadVanillaAssets);
 
+            task.setWorkingDir(mcExt.getClientRunDirectory());
             task.getUsername().set(mcExt.getUsername());
             task.getUserUUID().set(mcExt.getUserUUID());
             task.getLwjglVersion().set(2);
@@ -285,6 +288,7 @@ public final class MinecraftTasks {
             task.setGroup(TASK_GROUP_USER);
             task.dependsOn(taskDownloadVanillaJars);
 
+            task.setWorkingDir(mcExt.getServerRunDirectory());
             task.getUsername().set(mcExt.getUsername());
             task.getUserUUID().set(mcExt.getUserUUID());
             task.getLwjglVersion().set(2);
@@ -592,20 +596,24 @@ public final class MinecraftTasks {
         return taskCleanVanillaAssets;
     }
 
-    public File getRunDirectory() {
-        return runDirectory;
+    public Provider<File> getClientRunDirectory() {
+        return clientRunDirectory;
+    }
+
+    public Provider<File> getServerRunDirectory() {
+        return serverRunDirectory;
     }
 
     @Deprecated
     public File getNativesDirectory() {
+        return natives2Directory.get();
+    }
+
+    public Provider<File> getLwjgl2NativesDirectory() {
         return natives2Directory;
     }
 
-    public File getLwjgl2NativesDirectory() {
-        return natives2Directory;
-    }
-
-    public File getLwjgl3NativesDirectory() {
+    public Provider<File> getLwjgl3NativesDirectory() {
         return natives3Directory;
     }
 

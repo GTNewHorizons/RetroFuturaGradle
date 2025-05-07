@@ -109,7 +109,6 @@ public abstract class RunMinecraftTask extends JavaExec {
         MinecraftExtension mcExt = Objects.requireNonNull(project.getExtensions().getByType(MinecraftExtension.class));
         MinecraftTasks mcTasks = Objects.requireNonNull(project.getExtensions().getByType(MinecraftTasks.class));
         getTweakClasses().convention(mcExt.getExtraTweakClasses());
-        setWorkingDir(mcTasks.getRunDirectory());
         getLwjglVersion().convention(mcExt.getMainLwjglVersion());
         getAssetsDirectory().set(mcTasks.getVanillaAssetsLocation());
         getMcVersion().set(mcExt.getMcVersion());
@@ -123,9 +122,9 @@ public abstract class RunMinecraftTask extends JavaExec {
             final String JAVA_LIB_PATH = "java.library.path";
             final Provider<String> libraryPath = getLwjglVersion().map(ver -> {
                 if (ver == 2) {
-                    return mcTasks.getLwjgl2NativesDirectory();
+                    return mcTasks.getLwjgl2NativesDirectory().get();
                 } else if (ver == 3) {
-                    return mcTasks.getLwjgl3NativesDirectory();
+                    return mcTasks.getLwjgl3NativesDirectory().get();
                 } else {
                     throw new IllegalArgumentException("Lwjgl major version " + ver + " not supported");
                 }
