@@ -783,39 +783,36 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                 ObfuscationAttribute.OBFUSCATION_ATTRIBUTE,
                 ObfuscationAttribute.getSrg(project.getObjects()));
 
-        final BiFunction<String, Object, TaskProvider<Copy>> buildPrepareObfModsTask = (name, destination) ->
-                project.getTasks()
-                    .register(name, Copy.class, task -> {
-                        task.setGroup(TASK_GROUP_INTERNAL);
-                        task.dependsOn(taskPackageMcLauncher, taskPackagePatchedMc, taskReobfJar);
+        final BiFunction<String, Object, TaskProvider<Copy>> buildPrepareObfModsTask = (name, destination) -> project
+                .getTasks().register(name, Copy.class, task -> {
+                    task.setGroup(TASK_GROUP_INTERNAL);
+                    task.dependsOn(taskPackageMcLauncher, taskPackagePatchedMc, taskReobfJar);
 
-                        task.from(taskReobfJar);
-                        task.from(obfRuntimeClasspathConfiguration);
+                    task.from(taskReobfJar);
+                    task.from(obfRuntimeClasspathConfiguration);
 
-                        task.into(destination);
+                    task.into(destination);
 
-                        task.doFirst(t -> {
-                            final File obfModsFolder = task.getDestinationDir();
-                            final File[] children = obfModsFolder.listFiles();
-                            if (children != null) {
-                                for (final File child : children) {
-                                    FileUtils.deleteQuietly(child);
-                                }
+                    task.doFirst(t -> {
+                        final File obfModsFolder = task.getDestinationDir();
+                        final File[] children = obfModsFolder.listFiles();
+                        if (children != null) {
+                            for (final File child : children) {
+                                FileUtils.deleteQuietly(child);
                             }
-                        });
+                        }
                     });
+                });
 
-        final Provider<File> clientObfRunFolder = mcTasks.getClientRunDirectory().map(dir ->
-                new File(dir, "obfuscated/"));
-        final Provider<File> serverObfRunFolder = mcTasks.getServerRunDirectory().map(dir ->
-                new File(dir, "obfuscated/"));
+        final Provider<File> clientObfRunFolder = mcTasks.getClientRunDirectory()
+                .map(dir -> new File(dir, "obfuscated/"));
+        final Provider<File> serverObfRunFolder = mcTasks.getServerRunDirectory()
+                .map(dir -> new File(dir, "obfuscated/"));
 
-        final TaskProvider<Copy> taskPrepareClientObfMods = buildPrepareObfModsTask.apply(
-                "prepareClientObfModsFolder",
-                clientObfRunFolder.map(dir -> new File(dir, "mods/")));
-        final TaskProvider<Copy> taskPrepareServerObfMods = buildPrepareObfModsTask.apply(
-                "prepareServerObfModsFolder",
-                serverObfRunFolder.map(dir -> new File(dir, "mods/")));
+        final TaskProvider<Copy> taskPrepareClientObfMods = buildPrepareObfModsTask
+                .apply("prepareClientObfModsFolder", clientObfRunFolder.map(dir -> new File(dir, "mods/")));
+        final TaskProvider<Copy> taskPrepareServerObfMods = buildPrepareObfModsTask
+                .apply("prepareServerObfModsFolder", serverObfRunFolder.map(dir -> new File(dir, "mods/")));
 
         taskRunObfClient = project.getTasks().register("runObfClient", RunMinecraftTask.class, Distribution.CLIENT);
         taskRunObfClient.configure(task -> {
