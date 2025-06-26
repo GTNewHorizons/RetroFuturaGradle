@@ -15,7 +15,6 @@ import javax.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -166,7 +165,8 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
             exec.setWorkingDir(getFernflower().get().getAsFile().getParentFile());
             try {
                 exec.setStandardOutput(
-                        FileUtils.openOutputStream(getBuildDir().file(MCPTasks.RFG_DIR + "/fernflower_log.log").get().getAsFile()));
+                        FileUtils.openOutputStream(
+                                getBuildDir().file(MCPTasks.RFG_DIR + "/fernflower_log.log").get().getAsFile()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

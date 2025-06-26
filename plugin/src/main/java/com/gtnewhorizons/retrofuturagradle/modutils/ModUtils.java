@@ -185,11 +185,13 @@ public class ModUtils {
                 Provider<Directory> tempMixinDir = project.getLayout().getBuildDirectory().dir("tmp/mixins");
                 Provider<RegularFile> mixinSrg = tempMixinDir.map(it -> it.file("mixins.srg"));
                 Provider<RegularFile> mixinRefMapFile = tempMixinDir.map(it -> it.file(mixinRefMap.get()));
-                TaskProvider<ReobfuscatedJar> reobfJarTask = project.getTasks().named("reobfJar", ReobfuscatedJar.class);
+                TaskProvider<ReobfuscatedJar> reobfJarTask = project.getTasks()
+                        .named("reobfJar", ReobfuscatedJar.class);
                 reobfJarTask.configure(task -> task.getExtraSrgFiles().from(mixinSrg));
                 Provider<RegularFile> reobfSrg = reobfJarTask.flatMap(ReobfuscatedJar::getSrg);
-                //getLocationOnly is needed because JavaCompile compile options are read by intellij on project reload, and it causes an error because the srg task hasn't run yet
-                //Adding the file above to the task inputs fixes the task dependency chain breakage caused by this.
+                // getLocationOnly is needed because JavaCompile compile options are read by intellij on project reload,
+                // and it causes an error because the srg task hasn't run yet
+                // Adding the file above to the task inputs fixes the task dependency chain breakage caused by this.
                 Provider<RegularFile> reobfSrgLocation = reobfJarTask.flatMap(task -> task.getSrg().getLocationOnly());
                 SrgCommandLineArgs srgArgs = project.getObjects().newInstance(SrgCommandLineArgs.class);
                 srgArgs.getReobfSrgFile().set(reobfSrgLocation);
@@ -358,18 +360,23 @@ public class ModUtils {
     }
 
     public abstract static class SrgCommandLineArgs implements CommandLineArgumentProvider {
+
         @InputFile
         @PathSensitive(PathSensitivity.RELATIVE)
         public abstract RegularFileProperty getReobfSrgFile();
+
         @OutputFile
         public abstract RegularFileProperty getOutSrgFile();
+
         @OutputFile
         public abstract RegularFileProperty getOutRefMapFile();
+
         @Override
         public Iterable<String> asArguments() {
-            return Arrays.asList("-AreobfSrgFile=" + getReobfSrgFile().get().getAsFile(),
-                                 "-AoutSrgFile=" + getOutSrgFile().get().getAsFile(),
-                                 "-AoutRefMapFile=" + getOutRefMapFile().get().getAsFile());
+            return Arrays.asList(
+                    "-AreobfSrgFile=" + getReobfSrgFile().get().getAsFile(),
+                    "-AoutSrgFile=" + getOutSrgFile().get().getAsFile(),
+                    "-AoutRefMapFile=" + getOutRefMapFile().get().getAsFile());
         }
     }
 }
