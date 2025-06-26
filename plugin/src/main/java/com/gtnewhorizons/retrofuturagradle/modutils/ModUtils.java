@@ -7,13 +7,12 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
@@ -28,16 +27,20 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.scala.ScalaPlugin;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
+import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.gradle.internal.KaptTask;
 import org.jetbrains.kotlin.gradle.plugin.KaptExtension;
@@ -177,25 +180,27 @@ public class ModUtils {
         }
 
         project.afterEvaluate(_p -> {
-            if (this.mixinRefMap.isPresent()) {
-                File tempMixinDir = FileUtils
-                        .getFile(project.getLayout().getBuildDirectory().get().getAsFile(), "tmp", "mixins");
-                File mixinSrg = new File(tempMixinDir, "mixins.srg");
-                File mixinRefMapFile = new File(tempMixinDir, this.mixinRefMap.get());
-                TaskProvider<ReobfuscatedJar> reobfJarTask = project.getTasks()
-                        .named("reobfJar", ReobfuscatedJar.class);
+            Provider<String> mixinRefMap = this.mixinRefMap;
+            if (mixinRefMap.isPresent()) {
+                Provider<Directory> tempMixinDir = project.getLayout().getBuildDirectory().dir("tmp/mixins");
+                Provider<RegularFile> mixinSrg = tempMixinDir.map(it -> it.file("mixins.srg"));
+                Provider<RegularFile> mixinRefMapFile = tempMixinDir.map(it -> it.file(mixinRefMap.get()));
+                TaskProvider<ReobfuscatedJar> reobfJarTask = project.getTasks().named("reobfJar", ReobfuscatedJar.class);
                 reobfJarTask.configure(task -> task.getExtraSrgFiles().from(mixinSrg));
+                Provider<RegularFile> reobfSrg = reobfJarTask.flatMap(ReobfuscatedJar::getSrg);
+                //getLocationOnly is needed because JavaCompile compile options are read by intellij on project reload, and it causes an error because the srg task hasn't run yet
+                //Adding the file above to the task inputs fixes the task dependency chain breakage caused by this.
+                Provider<RegularFile> reobfSrgLocation = reobfJarTask.flatMap(task -> task.getSrg().getLocationOnly());
+                SrgCommandLineArgs srgArgs = project.getObjects().newInstance(SrgCommandLineArgs.class);
+                srgArgs.getReobfSrgFile().set(reobfSrgLocation);
+                srgArgs.getOutSrgFile().set(mixinSrg);
+                srgArgs.getOutRefMapFile().set(mixinRefMapFile);
                 final SourceSet mixinSourceSet = this.mixinSourceSet.get();
                 project.getTasks().named(mixinSourceSet.getCompileJavaTaskName(), JavaCompile.class).configure(task -> {
-                    task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs());
-                    ListProperty<String> reobfSrgFile = project.getObjects().listProperty(String.class);
-                    reobfSrgFile.add(
-                            reobfJarTask.map(ReobfuscatedJar::getSrg).map(RegularFileProperty::get)
-                                    .map(RegularFile::getAsFile).map(f -> "-AreobfSrgFile=" + f));
-                    task.getOptions().getCompilerArgumentProviders().add(reobfSrgFile::get);
-                    List<String> compilerArgs = task.getOptions().getCompilerArgs();
-                    compilerArgs.add("-AoutSrgFile=" + mixinSrg);
-                    compilerArgs.add("-AoutRefMapFile=" + mixinRefMapFile);
+                    task.getInputs().file(reobfSrg);
+                    task.getOutputs().files(mixinSrg, mixinRefMapFile);
+                    task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.get().getAsFile().mkdirs());
+                    task.getOptions().getCompilerArgumentProviders().add(srgArgs);
                 });
                 // Keep as class instead of lambda to ensure it works even if the plugin is not loaded into the
                 // classpath
@@ -207,19 +212,14 @@ public class ModUtils {
                         KaptExtension kapt = project.getExtensions().getByType(KaptExtension.class);
                         kapt.setCorrectErrorTypes(true);
                         kapt.javacOptions(jco -> {
-                            jco.option("-AoutSrgFile=" + mixinSrg);
-                            jco.option("-AoutRefMapFile=" + mixinRefMapFile);
-                            // This is lazily evaluated by the kapt plugin
-                            Provider<String> reobfSrg = reobfJarTask.map(ReobfuscatedJar::getSrg)
-                                    .map(RegularFileProperty::get).map(RegularFile::getAsFile)
-                                    .map(f -> "-AreobfSrgFile=" + f);
-                            if (reobfSrg.isPresent()) {
-                                jco.option(reobfSrg.get());
-                            }
+                            srgArgs.asArguments().forEach(jco::option);
                             return Unit.INSTANCE;
                         });
-                        project.getTasks().withType(KaptTask.class).configureEach(
-                                task -> { task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.mkdirs()); });
+                        project.getTasks().withType(KaptTask.class).configureEach(task -> {
+                            task.getInputs().file(reobfSrg);
+                            task.getOutputs().files(mixinSrg, mixinRefMapFile);
+                            task.doFirst("createTempMixinDirectory", _t -> tempMixinDir.get().getAsFile().mkdirs());
+                        });
                     }
                 });
                 project.getTasks().named(mixinSourceSet.getProcessResourcesTaskName(), ProcessResources.class)
@@ -354,6 +354,22 @@ public class ModUtils {
          */
         public Object deobf(Object depSpec) {
             return ModUtils.this.deobfuscate(depSpec);
+        }
+    }
+
+    public abstract static class SrgCommandLineArgs implements CommandLineArgumentProvider {
+        @InputFile
+        @PathSensitive(PathSensitivity.RELATIVE)
+        public abstract RegularFileProperty getReobfSrgFile();
+        @OutputFile
+        public abstract RegularFileProperty getOutSrgFile();
+        @OutputFile
+        public abstract RegularFileProperty getOutRefMapFile();
+        @Override
+        public Iterable<String> asArguments() {
+            return Arrays.asList("-AreobfSrgFile=" + getReobfSrgFile().get().getAsFile(),
+                                 "-AoutSrgFile=" + getOutSrgFile().get().getAsFile(),
+                                 "-AoutRefMapFile=" + getOutRefMapFile().get().getAsFile());
         }
     }
 }
