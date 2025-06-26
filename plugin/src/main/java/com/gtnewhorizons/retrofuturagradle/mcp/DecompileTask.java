@@ -76,9 +76,17 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
     @Internal
     public abstract Property<JavaLauncher> getJava17Launcher();
 
+    @Internal
+    public abstract DirectoryProperty getBuildDir();
+
+    @Internal
+    public abstract Property<MinecraftExtension> getMinecraftExtension();
+
     @Inject
     public DecompileTask() {
         getMinorMcVersion().convention(7);
+        getBuildDir().convention(getProject().getLayout().getBuildDirectory());
+        getMinecraftExtension().convention(getProject().getExtensions().findByType(MinecraftExtension.class));
     }
 
     @Override
@@ -121,16 +129,15 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         getLogger().lifecycle("Decompiling the srg jar with fernflower");
         final long preDecompileMs = System.currentTimeMillis();
 
-        Project project = getProject();
         final File ffoutdir = new File(taskTempDir, "ff-out");
         ffoutdir.mkdirs();
         final File ffinpcopy = new File(taskTempDir, "mc.jar");
         final File ffoutfile = new File(ffoutdir, "mc.jar");
         FileUtils.copyFile(getInputJar().get().getAsFile(), ffinpcopy);
         if (minorMcVer <= 8) {
-            decompileFg12(project, ffoutdir, ffinpcopy);
+            decompileFg12(ffoutdir, ffinpcopy);
         } else {
-            decompileFg23(project, ffoutdir, ffinpcopy);
+            decompileFg23(ffoutdir, ffinpcopy);
         }
         FileUtils.delete(ffinpcopy);
 
@@ -148,10 +155,10 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         }
     }
 
-    private void decompileFg12(Project project, File ffoutdir, File ffinpcopy) {
+    private void decompileFg12(File ffoutdir, File ffinpcopy) {
         getExecOperations().javaexec(exec -> {
             exec.classpath(getFernflower().get());
-            MinecraftExtension mcExt = project.getExtensions().findByType(MinecraftExtension.class);
+            MinecraftExtension mcExt = getMinecraftExtension().get();
             List<String> args = new ArrayList<>(Objects.requireNonNull(mcExt).getFernflowerArguments().get());
             args.add(ffinpcopy.getAbsolutePath());
             args.add(ffoutdir.getAbsolutePath());
@@ -159,8 +166,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
             exec.setWorkingDir(getFernflower().get().getAsFile().getParentFile());
             try {
                 exec.setStandardOutput(
-                        FileUtils.openOutputStream(
-                                FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "fernflower_log.log")));
+                        FileUtils.openOutputStream(getBuildDir().file(MCPTasks.RFG_DIR + "/fernflower_log.log").get().getAsFile()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -171,7 +177,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         }).assertNormalExitValue();
     }
 
-    private void decompileFg23(Project project, File ffoutdir, File ffinpcopy) {
+    private void decompileFg23(File ffoutdir, File ffinpcopy) {
         final File tempDir = getTemporaryDir();
         final WorkQueue queue = getWorkerExecutor().processIsolation(pws -> {
             final JavaForkOptions fork = pws.getForkOptions();
@@ -185,7 +191,7 @@ public abstract class DecompileTask extends DefaultTask implements IJarTransform
         queue.submit(Fg23DecompTask.class, args -> {
             // setup args
             args.getTempDir().set(tempDir);
-            args.getLogFile().set(FileUtils.getFile(project.getBuildDir(), MCPTasks.RFG_DIR, "fernflower_log.log"));
+            args.getLogFile().set(getBuildDir().file(MCPTasks.RFG_DIR + "/fernflower_log.log"));
             args.getInputJar().set(ffinpcopy);
             args.getOutputDir().set(ffoutdir);
             args.getClasspath().setFrom(this.getClasspath());
