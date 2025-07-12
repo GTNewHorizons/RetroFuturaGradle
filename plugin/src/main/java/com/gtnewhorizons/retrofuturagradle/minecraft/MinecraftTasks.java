@@ -134,6 +134,11 @@ public final class MinecraftTasks {
                         .map(mcVer -> Utilities.getCacheDir(project, "assets", "indexes", mcVer + ".json")));
         final ProviderFactory providers = mcExt.getProviderFactory();
         taskDownloadAssetManifest = project.getTasks().register("downloadAssetManifest", Download.class, task -> {
+            if (project.getGradle().getStartParameter().isOffline()) {
+                task.quiet(true); // Configuration cache compat
+                                  // (Download.class runs getProject() when gradle is in offline mode without the quiet
+                                  // flag)
+            }
             task.setGroup(TASK_GROUP_INTERNAL);
             final Property<String> mcVersion = mcExt.getMcVersion();
             task.src(
@@ -173,6 +178,11 @@ public final class MinecraftTasks {
                 mcExt.getMcVersion()
                         .map(mcVer -> Utilities.getCacheDir(project, MC_DOWNLOAD_PATH, mcVer, "server.jar")));
         taskDownloadVanillaJars = project.getTasks().register("downloadVanillaJars", Download.class, task -> {
+            if (project.getGradle().getStartParameter().isOffline()) {
+                task.quiet(true); // Configuration cache compat
+                                  // (Download.class runs getProject() when gradle is in offline mode without the quiet
+                                  // flag)
+            }
             task.setGroup(TASK_GROUP_INTERNAL);
             final Provider<RegularFile> vanillaClient = vanillaClientLocation;
             final Provider<RegularFile> vanillaServer = vanillaServerLocation;
