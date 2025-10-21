@@ -29,17 +29,10 @@ buildscript {
             }
         }
         maven {
-            name = "paper"
-            url = uri("https://repo.papermc.io/repository/maven-public/")
+            name = "fabric"
+            url = uri("https://maven.fabricmc.net/")
             mavenContent {
-                includeGroup("org.cadixdev")
-            }
-        }
-        maven {
-            name = "sonatype"
-            url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
-            mavenContent {
-                includeGroup("org.cadixdev")
+                includeGroup("net.fabricmc")
             }
         }
         mavenCentral {}
