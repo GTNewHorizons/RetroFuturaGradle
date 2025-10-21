@@ -30,7 +30,6 @@ import org.gradle.api.artifacts.transform.InputArtifactDependencies;
 import org.gradle.api.artifacts.transform.TransformAction;
 import org.gradle.api.artifacts.transform.TransformOutputs;
 import org.gradle.api.artifacts.transform.TransformParameters;
-import org.gradle.api.artifacts.transform.VariantTransformConfigurationException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
@@ -88,7 +87,7 @@ public abstract class DependencyDeobfuscationTransform
         try {
             runTransform(outputs);
         } catch (Exception e) {
-            throw new VariantTransformConfigurationException(
+            throw new RuntimeException(
                     "Error encountered when deobfuscating " + getInputArtifact().get().getAsFile(),
                     e);
         }
