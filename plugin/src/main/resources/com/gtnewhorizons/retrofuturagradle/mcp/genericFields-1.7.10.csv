@@ -403,9 +403,9 @@ net/minecraft/util/RegistrySimple.java,net.minecraft.util.RegistrySimple,func_14
 net/minecraft/util/RegistrySimple.java,net.minecraft.util.RegistrySimple,field_82596_a,registryObjects,@field,java.util.Map,,needed for raw interfaces
 net/minecraft/util/StringTranslate.java,net.minecraft.util.StringTranslate,func_135063_a:97,replaceWith:97,0,java.util.Map,"<String, String>",
 net/minecraft/util/ThreadSafeBoundList.java,net.minecraft.util.ThreadSafeBoundList,"@init:ThreadSafeBoundList:Class,int","@init:ThreadSafeBoundList:Class,int",0,java.lang.Class,<?>,Probably a generic class
-net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,getItem:41,getItem?:41,0,java.util.Collection,<? extends net.minecraft.util.WeightedRandom.Item>,
-net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,func_76273_a:30,getRandomItem:30,1,java.util.Collection,<? extends net.minecraft.util.WeightedRandom.Item>,
-net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,func_76271_a:67,getRandomItem:67,1,java.util.Collection,<? extends net.minecraft.util.WeightedRandom.Item>,
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,func_76271_a:67,getRandomItem:67,1,java.util.Collection,<T>,
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,func_76273_a:30,getRandomItem:30,1,java.util.Collection,<T>,
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,getItem:41,getItem?:41,0,java.util.Collection,<T>,
 net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,func_76272_a:14,getTotalWeight:14,0,java.util.Collection,<? extends net.minecraft.util.WeightedRandom.Item>,
 net/minecraft/village/Village.java,net.minecraft.village.Village,func_75558_f:197,getVillageDoorInfoList:197,@return,java.util.List,<net.minecraft.village.VillageDoorInfo>,
 net/minecraft/village/VillageCollection.java,net.minecraft.village.VillageCollection,func_75540_b:109,getVillageList:109,@return,java.util.List,<net.minecraft.village.Village>,

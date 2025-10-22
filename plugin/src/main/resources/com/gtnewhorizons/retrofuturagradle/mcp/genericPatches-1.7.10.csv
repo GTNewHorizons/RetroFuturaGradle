@@ -5,5 +5,10 @@ net/minecraft/world/chunk/Chunk.java,net.minecraft.world.chunk.Chunk,void getEnt
 net/minecraft/world/chunk/Chunk.java,net.minecraft.world.chunk.Chunk,p_76618_3_.add,entity,(T) entity,The if checks to make sure the cast is valid
 net/minecraft/world/chunk/EmptyChunk.java,net.minecraft.world.chunk.EmptyChunk,void getEntitiesOfTypeWithinAAAB,public,public <T>,Add a generic type binding two arguments together
 net/minecraft/client/renderer/tileentity/TileEntityRendererDispatcher.java,net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher,this.getSpecialRendererByClass(p_147546_1_.getSuperclass());,(p_147546_1_,((Class<? extends net.minecraft.tileentity.TileEntity>)p_147546_1_,The if checks to make sure the cast is valid
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,getItem(Collection,static WeightedRandom.Item,static <T extends net.minecraft.util.WeightedRandom.Item> T,Add a generic type binding the return and argument together
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,            WeightedRandom.Item item;,WeightedRandom.Item,T,Collection type is now generic
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,                item = (WeightedRandom.Item)iterator.next();,WeightedRandom.Item,T,Collection type is now generic
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,getRandomItem(Random p_76271_0_,static WeightedRandom.Item,static <T extends net.minecraft.util.WeightedRandom.Item> T,Add a generic type binding the return and argument together
+net/minecraft/util/WeightedRandom.java,net.minecraft.util.WeightedRandom,getRandomItem(Random p_76273_0_,static WeightedRandom.Item,static <T extends net.minecraft.util.WeightedRandom.Item> T,Add a generic type binding the return and argument together
 net/minecraft/world/World.java,net.minecraft.world.World,getEntitiesWithinAABB(Class,public,public <T>,Add a generic type binding the return and argument together
 net/minecraft/world/World.java,net.minecraft.world.World,selectEntitiesWithinAABB(Class,public,public <T>,Add a generic type binding the return and argument together
