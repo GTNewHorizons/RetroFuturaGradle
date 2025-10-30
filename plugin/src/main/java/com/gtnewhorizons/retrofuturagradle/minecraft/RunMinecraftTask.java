@@ -83,6 +83,7 @@ public abstract class RunMinecraftTask extends JavaExec {
     @Input
     public abstract ListProperty<String> getMcExtExtraRunJvmArguments();
 
+    @Internal
     private final Distribution side;
 
     @Inject
@@ -144,6 +145,10 @@ public abstract class RunMinecraftTask extends JavaExec {
         }
 
         doFirst("setup late-binding arguments", this::setupLateArgs);
+    }
+
+    public Distribution getSide() {
+        return this.side;
     }
 
     public List<String> calculateArgs() {
