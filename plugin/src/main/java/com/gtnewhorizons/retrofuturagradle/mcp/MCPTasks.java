@@ -318,16 +318,18 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.dependsOn(taskRemapDecompiledJar);
                     task.from(
                             archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
-                            subset -> { subset.include("**/*.java"); });
+                            subset -> {
+                                subset.include("**/*.java");
+                            });
                     task.from(
                             archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
-                            subset -> { subset.exclude("**/*.java"); });
-                    task.eachFile(
-                            fcd -> {
-                                fcd.setRelativePath(
-                                        fcd.getRelativePath()
-                                                .prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
+                            subset -> {
+                                subset.exclude("**/*.java");
                             });
+                    task.eachFile(fcd -> {
+                        fcd.setRelativePath(
+                                fcd.getRelativePath().prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
+                    });
                     task.into(decompressedSourcesLocation);
                 });
 
@@ -506,12 +508,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getOutputDir().set(injectedSourcesLocation);
             task.getTags().set(mcExt.getInjectedTags());
         });
-        injectedSourceSet = sourceSets.create(
-                "injectedTags",
-                set -> {
-                    set.getJava()
-                            .setSrcDirs(objects.fileCollection().from(injectedSourcesLocation).builtBy(taskInjectTags));
-                });
+        injectedSourceSet = sourceSets.create("injectedTags", set -> {
+            set.getJava().setSrcDirs(objects.fileCollection().from(injectedSourcesLocation).builtBy(taskInjectTags));
+        });
         project.getTasks().named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
         final FileCollection mcCp = launcherSources.getOutput().plus(patchedMcSources.getOutput());
@@ -715,12 +714,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
             attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
-            project.afterEvaluate(
-                    p -> {
-                        attributes.attribute(
-                                TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
-                                mcExt.getJavaCompatibilityVersion().get());
-                    });
+            project.afterEvaluate(p -> {
+                attributes.attribute(
+                        TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                        mcExt.getJavaCompatibilityVersion().get());
+            });
             attributes.attribute(
                     LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
                     objects.named(LibraryElements.class, LibraryElements.JAR));
@@ -1008,10 +1006,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-compiler:2.11.5")).setTransitive(false);
             ((ModuleDependency) deps
                     .add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-library_2.11:1.0.2"))
-                            .setTransitive(false);
+                    .setTransitive(false);
             ((ModuleDependency) deps
                     .add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-plugin_2.11.1:1.0.2"))
-                            .setTransitive(false);
+                    .setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-library:2.11.5")).setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-parser-combinators_2.11:1.0.1"))
                     .setTransitive(false);

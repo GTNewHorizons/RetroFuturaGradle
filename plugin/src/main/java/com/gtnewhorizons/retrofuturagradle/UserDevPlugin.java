@@ -3,7 +3,6 @@
  */
 package com.gtnewhorizons.retrofuturagradle;
 
-import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaLibraryPlugin;
@@ -22,14 +21,8 @@ public class UserDevPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(JavaLibraryPlugin.class);
 
-        if (GradleVersion.current().compareTo(GradleVersion.version("7.6")) < 0) {
-            throw new IllegalStateException("Using RetroFuturaGradle requires at least Gradle 7.6.");
-        }
-
-        if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
-            project.getLogger().error(
-                    "[DEPRECATION NOTICE] Support for running Gradle using Java versions older than 21 with the RetroFuturaGradle plugin is scheduled to be removed, please upgrade your local and CI workflow Java version to 21 or newer. "
-                            + "This does NOT mean that mod code has to use newer Java, the Gradle process itself will require Java 21 but the compiler and mod code can keep on using Java 8.");
+        if (GradleVersion.current().compareTo(GradleVersion.version("9.2")) < 0) {
+            throw new IllegalStateException("Using RetroFuturaGradle requires at least Gradle 9.2.");
         }
 
         RfgCacheService.register(project.getGradle());

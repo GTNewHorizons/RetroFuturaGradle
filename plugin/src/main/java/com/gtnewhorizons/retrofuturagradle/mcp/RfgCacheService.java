@@ -104,10 +104,9 @@ public abstract class RfgCacheService implements BuildService<RfgCacheService.Pa
     }
 
     public static void register(Gradle gradle) {
-        gradle.getSharedServices().registerIfAbsent(
-                NAME,
-                RfgCacheService.class,
-                spec -> { spec.getParameters().getGradleCacheDirectory().set(Utilities.getRawCacheRoot(gradle)); });
+        gradle.getSharedServices().registerIfAbsent(NAME, RfgCacheService.class, spec -> {
+            spec.getParameters().getGradleCacheDirectory().set(Utilities.getRawCacheRoot(gradle));
+        });
     }
 
     public static RfgCacheService access(Gradle gradle) {

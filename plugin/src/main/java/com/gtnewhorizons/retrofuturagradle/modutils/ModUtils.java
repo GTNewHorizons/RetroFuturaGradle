@@ -308,7 +308,7 @@ public class ModUtils {
     public Object deobfuscate(Object depSpec) {
         if (depSpec instanceof CharSequence) {
             depModulesToDeobf.add(depSpec.toString());
-        } else if (depSpec instanceof Map<?, ?>depMap) {
+        } else if (depSpec instanceof Map<?, ?> depMap) {
             final String group = Utilities.getMapStringOrBlank(depMap, "group");
             final String module = Utilities.getMapStringOrBlank(depMap, "name");
             final String version = Utilities.getMapStringOrBlank(depMap, "version");
