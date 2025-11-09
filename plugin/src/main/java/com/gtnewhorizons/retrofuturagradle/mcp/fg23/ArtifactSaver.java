@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -26,7 +27,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-import com.google.common.base.Charsets;
 import com.gtnewhorizons.retrofuturagradle.fg23shadow.org.jetbrains.java.decompiler.main.DecompilerContext;
 import com.gtnewhorizons.retrofuturagradle.fg23shadow.org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import com.gtnewhorizons.retrofuturagradle.fg23shadow.org.jetbrains.java.decompiler.main.extern.IResultSaver;
@@ -67,7 +67,7 @@ public class ArtifactSaver implements IResultSaver {
     public void saveClassFile(String path, String qualifiedName, String entryName, String content, int[] mapping) {
         File file = new File(getAbsolutePath(path), entryName);
         try {
-            try (Writer out = new OutputStreamWriter(new FileOutputStream(file), Charsets.UTF_8)) {
+            try (Writer out = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
                 out.write(content);
             }
         } catch (IOException ex) {
@@ -137,7 +137,7 @@ public class ArtifactSaver implements IResultSaver {
             ZipOutputStream out = mapArchiveStreams.get(file);
             out.putNextEntry(new ZipEntry(entryName));
             if (content != null) {
-                out.write(content.getBytes(Charsets.UTF_8));
+                out.write(content.getBytes(StandardCharsets.UTF_8));
             }
         } catch (IOException ex) {
             String message = "Cannot write entry " + entryName + " to " + file;

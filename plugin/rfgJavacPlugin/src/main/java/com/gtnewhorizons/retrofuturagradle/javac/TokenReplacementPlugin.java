@@ -78,7 +78,7 @@ public class TokenReplacementPlugin implements Plugin, TaskListener {
             }
             parserFactoryFields.forEach(f -> f.setAccessible(true));
             final ParserFactory originalFactory =
-                    (ParserFactory) parserFactoryFields.get(0).get(compiler);
+                    (ParserFactory) parserFactoryFields.getFirst().get(compiler);
             final Field pfKeyField = originalFactory.getClass().getDeclaredField("parserFactoryKey");
             pfKeyField.setAccessible(true);
             Context.Key<ParserFactory> pfKey = (Context.Key<ParserFactory>) pfKeyField.get(null);

@@ -210,7 +210,7 @@ public abstract class MergeSidedJarsTask extends DefaultTask implements IJarOutp
                         final BufferedInputStream bis = new BufferedInputStream(fis);
                         final LineIterator lines = IOUtils.lineIterator(bis, StandardCharsets.UTF_8)) {
                     while (lines.hasNext()) {
-                        final String line = lines.nextLine().split("#", 2)[0].trim();
+                        final String line = lines.next().split("#", 2)[0].trim();
                         processLine.accept(line);
                     }
                 }

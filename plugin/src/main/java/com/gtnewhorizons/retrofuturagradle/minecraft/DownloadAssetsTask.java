@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -73,7 +74,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         for (AssetManifest.Asset asset : assets) {
             queue.submit(AssetAction.class, action -> {
                 try {
-                    action.getSourceUrl().set(new URL(Constants.URL_ASSETS_ROOT + asset.path));
+                    action.getSourceUrl().set(URI.create(Constants.URL_ASSETS_ROOT + asset.path).toURL());
                 } catch (MalformedURLException e) {
                     throw new RuntimeException(e);
                 }

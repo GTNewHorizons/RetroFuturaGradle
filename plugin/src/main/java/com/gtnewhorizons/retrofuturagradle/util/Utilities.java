@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +41,6 @@ import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.VisitableMappingTree;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.io.FileUtils;
@@ -310,7 +310,7 @@ public final class Utilities {
                 final ArchiveInputStream<?> ais = new ArchiveStreamFactory()
                         .createArchiveInputStream(archiveType, bis)) {
             Utilities.decompressArchive(ais, destination);
-        } catch (ArchiveException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -650,8 +650,8 @@ public final class Utilities {
         UUID onlineUUID = null;
         if (!isOffline) {
             try {
-                URL url = new URL(
-                        Constants.URL_PLAYER_TO_UUID + URLEncoder.encode(username, StandardCharsets.UTF_8.name()));
+                URL url = URI.create(Constants.URL_PLAYER_TO_UUID + URLEncoder.encode(username, StandardCharsets.UTF_8))
+                        .toURL();
                 final String json = IOUtils.toString(url, StandardCharsets.UTF_8);
                 JsonElement root = JsonParser.parseString(json);
                 if (root.isJsonObject()) {

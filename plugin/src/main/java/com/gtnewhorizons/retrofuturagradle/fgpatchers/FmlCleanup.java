@@ -31,7 +31,7 @@ public class FmlCleanup {
     private static final Pattern VAR_CALL = Pattern.compile("(?i)[a-z_$][a-z0-9_\\[\\]]+ var\\d+(?:x)*");
     private static final Pattern VAR = Pattern.compile("var\\d+(?:x)*");
 
-    private static final Comparator<String> COMPARATOR = new Comparator<String>() {
+    private static final Comparator<String> COMPARATOR = new Comparator<>() {
 
         @Override
         public int compare(String str1, String str2) {
@@ -41,7 +41,7 @@ public class FmlCleanup {
 
     public static String renameClass(String text) {
         String[] lines = text.split("(\r\n|\r|\n)");
-        List<String> output = new ArrayList<String>(lines.length);
+        List<String> output = new ArrayList<>(lines.length);
         MethodInfo method = null;
 
         for (String line : lines) {
@@ -146,8 +146,8 @@ public class FmlCleanup {
             if (unnamed.size() > 0) {
                 // We sort the var## names because FF is non-deterministic and sometimes decompiles the declarations in
                 // different orders.
-                List<String> sorted = new ArrayList<String>(unnamed.keySet());
-                Collections.sort(sorted, new Comparator<String>() {
+                List<String> sorted = new ArrayList<>(unnamed.keySet());
+                sorted.sort(new Comparator<>() {
 
                     @Override
                     public int compare(String o1, String o2) {
@@ -171,8 +171,8 @@ public class FmlCleanup {
             String body = buf.toString();
 
             if (renames.size() > 0) {
-                List<String> sortedKeys = new ArrayList<String>(renames.keySet());
-                Collections.sort(sortedKeys, COMPARATOR);
+                List<String> sortedKeys = new ArrayList<>(renames.keySet());
+                sortedKeys.sort(COMPARATOR);
 
                 // closure changes the sort, to sort by the return value of the closure.
                 for (String key : sortedKeys) {
@@ -190,7 +190,7 @@ public class FmlCleanup {
     HashMap<String, String> remap;
 
     private FmlCleanup() {
-        last = new HashMap<String, Holder>();
+        last = new HashMap<>();
         last.put("byte", new Holder(0, false, "b"));
         last.put("char", new Holder(0, false, "c"));
         last.put("short", new Holder(1, false, "short"));
@@ -208,7 +208,7 @@ public class FmlCleanup {
         last.put("Package", new Holder(0, true, "opackage"));
         last.put("Enum", new Holder(0, true, "oenum"));
 
-        remap = new HashMap<String, String>();
+        remap = new HashMap<>();
         remap.put("long", "int");
     }
 
@@ -274,7 +274,7 @@ public class FmlCleanup {
 
         String name;
         if (ammount == 1) {
-            name = names.get(0) + (id == 0 && holder.skip_zero ? "" : id);
+            name = names.getFirst() + (id == 0 && holder.skip_zero ? "" : id);
         } else {
             int num = id / ammount;
             name = names.get(id % ammount) + (id < ammount && holder.skip_zero ? "" : num);

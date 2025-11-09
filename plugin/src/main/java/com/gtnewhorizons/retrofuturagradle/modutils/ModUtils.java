@@ -207,7 +207,7 @@ public class ModUtils {
                 // Keep as class instead of lambda to ensure it works even if the plugin is not loaded into the
                 // classpath
                 // noinspection rawtypes
-                project.getPlugins().withId("org.jetbrains.kotlin.kapt", new Action<Plugin>() {
+                project.getPlugins().withId("org.jetbrains.kotlin.kapt", new Action<>() {
 
                     @Override
                     public void execute(@NotNull Plugin rawPlugin) {
@@ -255,7 +255,7 @@ public class ModUtils {
         for (final String rawUrl : mirrors) {
             final String url = rawUrl.replaceFirst("^https", "http");
             try {
-                final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+                final HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
                 connection.setConnectTimeout(timeoutMillis);
                 connection.setReadTimeout(timeoutMillis);
                 connection.setRequestMethod("HEAD");

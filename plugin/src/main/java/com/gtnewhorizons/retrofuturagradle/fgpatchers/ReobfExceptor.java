@@ -88,7 +88,7 @@ public class ReobfExceptor {
         for (File f : csvs) {
             if (f == null) continue;
 
-            Files.readLines(f, Charset.defaultCharset(), new LineProcessor<Object>() {
+            Files.readLines(f, Charset.defaultCharset(), new LineProcessor<>() {
 
                 @Override
                 public boolean processLine(String line) throws IOException {
@@ -146,26 +146,25 @@ public class ReobfExceptor {
 
     private Map<String, String> createClassMap(Map<String, String> markerMap, final List<String> interfaces)
             throws IOException {
-        Map<String, String> excMap = Files
-                .readLines(excConfig, Charset.defaultCharset(), new LineProcessor<Map<String, String>>() {
+        Map<String, String> excMap = Files.readLines(excConfig, Charset.defaultCharset(), new LineProcessor<>() {
 
-                    Map<String, String> tmp = Maps.newHashMap();
+            Map<String, String> tmp = Maps.newHashMap();
 
-                    @Override
-                    public boolean processLine(String line) throws IOException {
-                        if (line.contains(".") || !line.contains("=") || line.startsWith("#")) return true;
+            @Override
+            public boolean processLine(String line) throws IOException {
+                if (line.contains(".") || !line.contains("=") || line.startsWith("#")) return true;
 
-                        String[] s = line.split("=");
-                        if (!interfaces.contains(s[0])) tmp.put(s[0], s[1] + "_");
+                String[] s = line.split("=");
+                if (!interfaces.contains(s[0])) tmp.put(s[0], s[1] + "_");
 
-                        return true;
-                    }
+                return true;
+            }
 
-                    @Override
-                    public Map<String, String> getResult() {
-                        return tmp;
-                    }
-                });
+            @Override
+            public Map<String, String> getResult() {
+                return tmp;
+            }
+        });
 
         Map<String, String> map = Maps.newHashMap();
         for (Entry<String, String> e : excMap.entrySet()) {
@@ -340,7 +339,7 @@ public class ReobfExceptor {
         public String name;
         public String desc;
         public int access;
-        public List<Insn> insns = new ArrayList<Insn>();
+        public List<Insn> insns = new ArrayList<>();
         private String cache = null;
 
         public AccessInfo(String owner, String name, String desc) {

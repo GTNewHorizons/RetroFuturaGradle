@@ -24,6 +24,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
 import org.gradle.api.artifacts.transform.InputArtifactDependencies;
@@ -131,8 +132,8 @@ public abstract class DependencyDeobfuscationTransform
             return;
         }
 
-        final String outFileName = StringUtils.removeEnd(inputLocation.getName(), ".jar") + "-deobf.jar";
-        final String tempCopyName = StringUtils.removeEnd(inputLocation.getName(), ".jar") + "-rfg_tmp_copy.jar";
+        final String outFileName = Strings.CS.removeEnd(inputLocation.getName(), ".jar") + "-deobf.jar";
+        final String tempCopyName = Strings.CS.removeEnd(inputLocation.getName(), ".jar") + "-rfg_tmp_copy.jar";
         final File outFile = outputs.file(outFileName);
         final File outputDir = outFile.getParentFile();
         final File outFileTemp = new File(outputDir, tempCopyName);
@@ -157,17 +158,16 @@ public abstract class DependencyDeobfuscationTransform
                 final JarOutputStream jos = makeTransformerJarOutputStream(jis, bos)) {
             JarEntry entry;
             while ((entry = jis.getNextJarEntry()) != null) {
-                if (StringUtils.endsWithIgnoreCase(entry.getName(), ".dsa")
-                        || StringUtils.endsWithIgnoreCase(entry.getName(), ".rsa")
-                        || StringUtils.endsWithIgnoreCase(entry.getName(), ".sf")
-                        || StringUtils.containsIgnoreCase(entry.getName(), "meta-inf/sig-")) {
+                if (Strings.CI.endsWith(entry.getName(), ".dsa") || Strings.CI.endsWith(entry.getName(), ".rsa")
+                        || Strings.CI.endsWith(entry.getName(), ".sf")
+                        || Strings.CI.contains(entry.getName(), "meta-inf/sig-")) {
                     continue;
                 }
                 jos.putNextEntry(new JarEntry(entry.getName()));
-                if (StringUtils.endsWithIgnoreCase(entry.getName(), ".class")) {
+                if (Strings.CI.endsWith(entry.getName(), ".class")) {
                     byte[] data = IOUtils.toByteArray(jis);
                     IOUtils.write(Utilities.simpleRemapClass(data, combined), jos);
-                } else if (StringUtils.endsWith(entry.getName(), "META-INF/MANIFEST.MF")) {
+                } else if (Strings.CS.endsWith(entry.getName(), "META-INF/MANIFEST.MF")) {
                     // This if will only trigger if the manifest is not one of the first 2 jar entries
                     Manifest mf = new Manifest(CloseShieldInputStream.wrap(jis));
                     transformManifest(mf);
@@ -199,7 +199,7 @@ public abstract class DependencyDeobfuscationTransform
             final Attributes attrs = mfEntry.getValue();
             final Object[] keys = attrs.keySet().toArray(new Object[0]);
             for (Object key : keys) {
-                if (StringUtils.endsWith(key.toString(), "-Digest")) {
+                if (Strings.CS.endsWith(key.toString(), "-Digest")) {
                     attrs.remove(key);
                 }
             }

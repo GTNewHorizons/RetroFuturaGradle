@@ -141,7 +141,7 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
                 }
                 writer.append('\n');
             }
-            Files.write(patched.toPath(), writer.toString().getBytes(StandardCharsets.UTF_8));
+            Files.writeString(patched.toPath(), writer.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

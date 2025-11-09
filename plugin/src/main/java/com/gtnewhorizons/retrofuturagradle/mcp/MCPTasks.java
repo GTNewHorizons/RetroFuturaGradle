@@ -733,8 +733,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     attr -> reobfElements.getAttributes().attribute((Attribute) attr, attributes.getAttribute(attr)));
 
             SoftwareComponent javaComponent = project.getComponents().getByName("java");
-            if (javaComponent instanceof AdhocComponentWithVariants) {
-                AdhocComponentWithVariants java = (AdhocComponentWithVariants) javaComponent;
+            if (javaComponent instanceof AdhocComponentWithVariants java) {
                 java.addVariantsFromConfiguration(reobfElements, ConfigurationVariantDetails::mapToOptional);
             }
         }

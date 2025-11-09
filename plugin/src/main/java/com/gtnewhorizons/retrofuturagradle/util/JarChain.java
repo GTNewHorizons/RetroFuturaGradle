@@ -52,11 +52,11 @@ public class JarChain {
     }
 
     private TaskProvider<? extends IJarOutputTask> getLastTask() {
-        return taskChain.isEmpty() ? null : taskChain.get(taskChain.size() - 1);
+        return taskChain.isEmpty() ? null : taskChain.getLast();
     }
 
     private RegularFileProperty getLastTaskOutput() {
-        return taskChainOutputs.isEmpty() ? null : taskChainOutputs.get(taskChainOutputs.size() - 1);
+        return taskChainOutputs.isEmpty() ? null : taskChainOutputs.getLast();
     }
 
     public void addTask(@Nonnull TaskProvider<? extends IJarOutputTask> newTask) {
