@@ -13,11 +13,11 @@ import java.util.jar.JarFile
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-gradle-plugin")
-  id("io.github.goooler.shadow") version "8.1.7"
-  id("com.palantir.git-version") version "3.0.0"
   id("maven-publish")
-  id("com.diffplug.spotless") version "6.23.1"
-  id("com.github.gmazzo.buildconfig") version "4.2.0"
+  alias(libs.plugins.shadow)
+  alias(libs.plugins.gitVersion)
+  alias(libs.plugins.spotless)
+  alias(libs.plugins.buildconfig)
 }
 
 evaluationDependsOnChildren()
@@ -159,8 +159,7 @@ configurations.api.configure { dependencies.remove(depGradleApi) }
 
 java {
   toolchain {
-    languageVersion.set(JavaLanguageVersion.of(8))
-    vendor.set(JvmVendorSpec.AZUL)
+    languageVersion.set(JavaLanguageVersion.of(25))
   }
 }
 
@@ -168,24 +167,14 @@ java {
 val functionalTestSourceSet = sourceSets.create("functionalTest") {}
 
 tasks.withType<JavaCompile> {
-  sourceCompatibility = "17" // for the IDE support
-  options.release.set(8)
-
-  javaCompiler.set(javaToolchains.compilerFor {
-    languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.AZUL)
-  })
+  options.release.set(25)
 }
 
 tasks.withType<Javadoc>().configureEach {
-  this.javadocTool.set(javaToolchains.javadocToolFor {
-    languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.AZUL)
-  })
   with(options as StandardJavadocDocletOptions) {
     links(
       "https://docs.gradle.org/${gradle.gradleVersion}/javadoc/",
-      "https://docs.oracle.com/en/java/javase/17/docs/api/"
+      "https://docs.oracle.com/en/java/javase/25/docs/api/"
     )
   }
 }
@@ -198,7 +187,7 @@ spotless {
     toggleOffOn()
     importOrderFile("../spotless.importorder")
     removeUnusedImports()
-    eclipse("4.19").configFile("../spotless.eclipseformat.xml")
+    eclipse("4.37.0").configFile("../spotless.eclipseformat.xml")
   }
 }
 
@@ -248,7 +237,7 @@ if(project.properties["rfg.skipJavadoc"].toString().toBoolean()) {
 val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
   archiveClassifier.set("deps")
   archiveVersion.set("0.0") // constant version to prevent task from rerunning when project version changes
-  isEnableRelocation = true
+  enableAutoRelocation = true
   relocationPrefix = "com.gtnewhorizons.retrofuturagradle.shadow"
   configurations.add(project.configurations.runtimeClasspath.get())
   dependencies {

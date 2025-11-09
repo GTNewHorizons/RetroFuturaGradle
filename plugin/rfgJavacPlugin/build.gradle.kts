@@ -2,10 +2,10 @@ plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-library")
   id("scala")
-  id("io.github.goooler.shadow") version "8.1.7"
-  id("com.palantir.git-version") version "3.0.0"
+  alias(libs.plugins.shadow)
+  alias(libs.plugins.gitVersion)
   id("maven-publish")
-  id("com.diffplug.spotless") version "6.23.1"
+  alias(libs.plugins.spotless)
 }
 
 java {
@@ -25,13 +25,13 @@ spotless {
     toggleOffOn()
     importOrder()
     removeUnusedImports()
-    palantirJavaFormat("1.1.0")
+    palantirJavaFormat("2.81.0")
   }
   kotlinGradle {
     toggleOffOn()
-    ktfmt("0.39")
+    ktfmt("0.59")
     trimTrailingWhitespace()
-    indentWithSpaces(4)
+    leadingTabsToSpaces(2)
     endWithNewline()
   }
 }
@@ -42,7 +42,9 @@ dependencies {
       files(
           javaToolchains.compilerFor(java.toolchain).map { tc ->
             File(tc.executablePath.asFile.parentFile.parentFile, "lib/tools.jar")
-          }))
+          }
+      )
+  )
   // These are provided by the scala compiler that runs with the plugin enabled
   compileOnly("org.scala-lang:scala-library:2.11.1")
   compileOnly("org.scala-lang:scala-compiler:2.11.5")
@@ -64,7 +66,7 @@ group = "com.gtnewhorizons"
 version = gitVersion().removeSuffix(".dirty")
 
 tasks.shadowJar {
-  isEnableRelocation = true
+  enableAutoRelocation = true
   relocationPrefix = "com.gtnewhorizons.retrofuturagradle.javac.shadow"
   archiveClassifier.set("")
 }
@@ -88,12 +90,14 @@ tasks.addRule("Pattern: runTestWithJava<VERSION>") {
           javaToolchains.compilerFor({
             languageVersion.set(jVersion)
             vendor.set(JvmVendorSpec.AZUL)
-          }))
+          })
+      )
       classpath = project.tasks.named("shadowJar").get().outputs.files
       // Can't escape spaces, so use URL-encoding
       val replacementsFile = project.file("test/replacements.properties").toURI()
       options.compilerArgs.add(
-          "-Xplugin:RetrofuturagradleTokenReplacement ${replacementsFile.toASCIIString()}")
+          "-Xplugin:RetrofuturagradleTokenReplacement ${replacementsFile.toASCIIString()}"
+      )
       options.isFork = true
       if (jVersion.asInt() > 8) {
         options.forkOptions.jvmArgs =
@@ -111,7 +115,8 @@ tasks.addRule("Pattern: runTestWithJava<VERSION>") {
                 "--add-opens",
                 "jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
                 "--add-opens",
-                "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED")
+                "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+            )
       }
       val testTree = project.fileTree(project.layout.projectDirectory.dir("test"))
       testTree.include("**/*.java")
@@ -131,14 +136,18 @@ tasks.register<ScalaCompile>("runTestWithScala") {
       javaToolchains.launcherFor({
         languageVersion.set(JavaLanguageVersion.of(8))
         vendor.set(JvmVendorSpec.AZUL)
-      }))
+      })
+  )
   analysisMappingFile.set(
-      project.layout.buildDirectory.file("tmp/scala/compilerAnalysis/" + this.name + ".mapping"))
+      project.layout.buildDirectory.file("tmp/scala/compilerAnalysis/" + this.name + ".mapping")
+  )
   val incrementalOptions = scalaCompileOptions.incrementalOptions
   incrementalOptions.analysisFile.set(
-      project.layout.buildDirectory.file("tmp/scala/compilerAnalysis/" + this.name + ".analysis"))
+      project.layout.buildDirectory.file("tmp/scala/compilerAnalysis/" + this.name + ".analysis")
+  )
   incrementalOptions.classfileBackupDir.set(
-      project.layout.buildDirectory.file("tmp/scala/classfileBackup/" + this.name + ".bak"))
+      project.layout.buildDirectory.file("tmp/scala/classfileBackup/" + this.name + ".bak")
+  )
   dependsOn(analysisFiles)
   options.isIncremental = false
 
@@ -163,16 +172,27 @@ tasks.named<JavaCompile>("runTestWithJava11")
 
 tasks.named<JavaCompile>("runTestWithJava17")
 
+tasks.named<JavaCompile>("runTestWithJava21")
+
+tasks.named<JavaCompile>("runTestWithJava25")
+
 tasks.register("runTest") {
   group = "RFG"
   description = "Run javac (8, 11, 17) with the plugin enabled on the test class"
-  dependsOn("runTestWithJava8", "runTestWithJava11", "runTestWithJava17", "runTestWithScala")
+  dependsOn(
+      "runTestWithJava8",
+      "runTestWithJava11",
+      "runTestWithJava17",
+      "runTestWithJava21",
+      "runTestWithJava25",
+      "runTestWithScala",
+  )
 }
 
 publishing {
   publications {
     create<MavenPublication>("rfgJavacPlugin") {
-      shadow.component(this)
+      from(components["shadow"])
       artifact(tasks.named("sourcesJar"))
       artifact(tasks.named("javadocJar"))
       artifactId = "rfg-javac-plugin"
