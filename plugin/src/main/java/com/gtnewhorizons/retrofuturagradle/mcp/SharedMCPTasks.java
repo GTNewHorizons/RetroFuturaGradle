@@ -70,6 +70,11 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         final File fernflower1DownloadLocation = Utilities.getCacheDir(project, "mcp", "fernflower-fixed.zip");
         fernflowerLocation = fernflower1Location;
         taskDownloadFernflower = project.getTasks().register("downloadFernflower", Download.class, task -> {
+            if (project.getGradle().getStartParameter().isOffline()) {
+                task.quiet(true); // Configuration cache compat
+                                  // (Download.class runs getProject() when gradle is in offline mode without the quiet
+                                  // flag)
+            }
             task.setGroup(TASK_GROUP_INTERNAL);
             task.src(Constants.URL_FERNFLOWER_1);
             final Provider<Integer> minorMcVersion = mcExt.getMinorMcVersion();

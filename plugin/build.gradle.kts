@@ -46,22 +46,15 @@ repositories {
     }
   }
   maven {
+    name = "fabric"
+    url = uri("https://maven.fabricmc.net/")
+    mavenContent {
+      includeGroup("net.fabricmc")
+    }
+  }
+  maven {
     name = "gtnh"
     url = uri("https://nexus.gtnewhorizons.com/repository/public/")
-  }
-  maven {
-    name = "paper"
-    url = uri("https://repo.papermc.io/repository/maven-public/")
-    mavenContent {
-      includeGroup("org.cadixdev")
-    }
-  }
-  maven {
-    name = "sonatype"
-    url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
-    mavenContent {
-      includeGroup("org.cadixdev")
-    }
   }
   mavenCentral {}
   gradlePluginPortal()
@@ -131,10 +124,8 @@ dependencies {
   // Forge utilities (to be merged into the source tree in the future)
 
   // Source remapping
-  // We use Paper's Mercury fork because it both supports Java 17 and is binary compatible with mercurymixin.
-  implementation("org.cadixdev:mercury:0.1.2-paperweight-SNAPSHOT")
-  implementation("org.cadixdev:mercurymixin:0.1.0-SNAPSHOT")
-  implementation("net.fabricmc:mapping-io:0.5.1")
+  implementation("net.fabricmc:mercury:0.6.0")
+  implementation("net.fabricmc:mapping-io:0.7.1")
   // Use JUnit Jupiter for testing.
   testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -309,6 +300,7 @@ val combinedShadowJar = tasks.register<Jar>("combinedShadowJar") {
   from("LICENSE", "docs", tasks.named("classes"))
   val oldAsmJarTask = project(":oldasmwrapper").tasks.named<Jar>("allJar")
   dependsOn(oldAsmJarTask)
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   from(zipTree(oldAsmJarTask.get().archiveFile)) // cheaper shadow of an already shaded jar
 
   // dependencies are relocated in a separate task so the results can be reused

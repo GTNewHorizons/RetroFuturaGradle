@@ -1,9 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle.modutils;
 
-import java.io.CharArrayReader;
-import java.io.CharArrayWriter;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.stream.Collectors;
@@ -13,16 +10,12 @@ import javax.inject.Inject;
 import net.fabricmc.mappingio.adapter.MappingNsRenamer;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.srg.SrgFileReader;
-import net.fabricmc.mappingio.format.srg.SrgFileWriter;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
-import net.fabricmc.mappingio.tree.VisitableMappingTree;
+import net.fabricmc.tinyremapper.IMappingProvider;
+import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.TinyUtils;
 
-import org.cadixdev.lorenz.MappingSet;
-import org.cadixdev.lorenz.io.MappingFormats;
-import org.cadixdev.lorenz.io.MappingsReader;
-import org.cadixdev.lorenz.io.MappingsWriter;
 import org.cadixdev.mercury.Mercury;
-import org.cadixdev.mercury.mixin.MixinRemapper;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -43,8 +36,6 @@ import org.gradle.api.tasks.options.Option;
 import com.gtnewhorizons.retrofuturagradle.util.Utilities;
 
 public abstract class MigrateMappingsTask extends DefaultTask {
-
-    private static final boolean DEBUG_WRITE_DIFF = Boolean.parseBoolean(System.getenv("RFG_DEBUG_WRITE_MAPPING_DIFF"));
 
     @Optional
     @InputDirectory
@@ -121,14 +112,8 @@ public abstract class MigrateMappingsTask extends DefaultTask {
         joinedSrgMcp.accept(new MappingSourceNsSwitch(diffMcp, "mcpSource"));
         diffMcp.setDstNamespaces(Collections.singletonList("mcpTarget"));
 
-        MappingSet diffMcpLorenz = mappingIoToLorenz(diffMcp);
-
-        if (DEBUG_WRITE_DIFF) {
-            try (MappingsWriter w = MappingFormats.SRG
-                    .createWriter(new File(getProject().getRootDir(), "diff.srg").toPath())) {
-                w.write(diffMcpLorenz);
-            }
-        }
+        IMappingProvider tinyMap = TinyUtils.createMappingProvider(diffMcp, "srg", "mcpSource");
+        TinyRemapper remapper = TinyRemapper.newRemapper().withMappings(tinyMap).build();
 
         final Mercury mercury = new Mercury();
 
@@ -140,26 +125,12 @@ public abstract class MigrateMappingsTask extends DefaultTask {
         // targets.
         mercury.setGracefulClasspathChecks(true);
 
-        mercury.getProcessors().add(MixinRemapper.create(diffMcpLorenz));
-        mercury.getProcessors().add(MercuryRemapper.create(diffMcpLorenz));
+        mercury.getProcessors().add(MercuryRemapper.create(remapper.getEnvironment()));
 
         mercury.setSourceCompatibility(
                 getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceCompatibility().toString());
 
         mercury.rewrite(getInputDir().getAsFile().get().toPath(), getOutputDir().getAsFile().get().toPath());
-    }
-
-    /** Converts a MappingIO mapping to Lorenz's type. May not preserve parameter names and comments. */
-    private static MappingSet mappingIoToLorenz(VisitableMappingTree mappingIoMappings) throws IOException {
-        CharArrayWriter writer = new CharArrayWriter();
-        mappingIoMappings.accept(new SrgFileWriter(writer, false));
-        CharArrayReader reader = new CharArrayReader(writer.toCharArray());
-        MappingSet lorenzMappings = MappingSet.create();
-
-        try (final MappingsReader mappingsReader = MappingFormats.SRG.createReader(reader)) {
-            mappingsReader.read(lorenzMappings);
-        }
-        return lorenzMappings;
     }
 
 }

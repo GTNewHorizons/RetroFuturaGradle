@@ -7,6 +7,8 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
@@ -35,13 +37,14 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
         project.afterEvaluate(this::afterEvaluate);
         final Provider<RfgCacheService> rfgCacheService = RfgCacheService.lazyAccess(project.getGradle());
 
-        final File mergedVanillaJarLocation = FileUtils
-                .getFile(project.getBuildDir(), RFG_DIR, "vanilla_merged_minecraft.jar");
+        final DirectoryProperty buildDir = project.getLayout().getBuildDirectory();
+        final Provider<RegularFile> mergedVanillaJarLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("vanilla_merged_minecraft.jar"));
         final TaskProvider<MergeSidedJarsTask> taskMergeVanillaSidedJars = project.getTasks()
                 .register("mergeVanillaSidedJars", MergeSidedJarsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
                     task.dependsOn(mcTasks.getTaskDownloadVanillaJars());
-                    task.onlyIf(t -> !mergedVanillaJarLocation.exists());
+                    task.onlyIf(t -> !mergedVanillaJarLocation.get().getAsFile().exists());
                     task.getClientJar().set(mcTasks.getVanillaClientLocation());
                     task.getServerJar().set(mcTasks.getVanillaServerLocation());
                     task.getOutputJar().set(mergedVanillaJarLocation);
@@ -49,7 +52,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getMcVersion().set(mcExt.getMcVersion());
                 });
 
-        final File srgMergedJarLocation = FileUtils.getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft.jar");
+        final Provider<RegularFile> srgMergedJarLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("srg_merged_minecraft.jar"));
         final TaskProvider<DeobfuscateTask> taskDeobfuscateMergedJarToSrg = project.getTasks()
                 .register("deobfuscateMergedJarToSrg", DeobfuscateTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -65,10 +69,10 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getAccessTransformerFiles().setFrom(mcExt.getAccessTransformers());
                 });
 
-        final File decompiledSrgLocation = FileUtils
-                .getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources.jar");
-        final File rawDecompiledSrgLocation = FileUtils
-                .getFile(project.getBuildDir(), RFG_DIR, "srg_merged_minecraft-sources-rawff.jar");
+        final Provider<RegularFile> decompiledSrgLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("srg_merged_minecraft-sources.jar"));
+        final Provider<RegularFile> rawDecompiledSrgLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("srg_merged_minecraft-sources-rawff.jar"));
         final TaskProvider<DecompileTask> taskDecompileSrgJar = project.getTasks()
                 .register("decompileSrgJar", DecompileTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -90,8 +94,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getAstyleConfig().set(userdevFile("conf/astyle.cfg"));
                 });
 
-        final File patchedSourcesLocation = FileUtils
-                .getFile(project.getBuildDir(), RFG_DIR, "srg_patched_minecraft-sources.jar");
+        final Provider<RegularFile> patchedSourcesLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("srg_patched_minecraft-sources.jar"));
         final TaskProvider<PatchSourcesTask> taskPatchDecompiledJar = project.getTasks()
                 .register("patchDecompiledJar", PatchSourcesTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -102,8 +106,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getMaxFuzziness().set(2);
                 });
 
-        final File remappedUnpatchedSourcesLocation = FileUtils
-                .getFile(project.getBuildDir(), RFG_DIR, "mcp_unpatched_minecraft-sources.jar");
+        final Provider<RegularFile> remappedUnpatchedSourcesLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("mcp_unpatched_minecraft-sources.jar"));
         final TaskProvider<RemapSourceJarTask> taskRemapDecompiledJar = project.getTasks()
                 .register("remapDecompiledJar", RemapSourceJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -116,8 +120,8 @@ public class PatchDevTasks extends SharedMCPTasks<RfgPatchdevExtension> {
                     task.getAddJavadocs().set(false);
                 });
 
-        final File remappedPatchedSourcesLocation = FileUtils
-                .getFile(project.getBuildDir(), RFG_DIR, "mcp_patched_minecraft-sources.jar");
+        final Provider<RegularFile> remappedPatchedSourcesLocation = buildDir.dir(RFG_DIR)
+                .map(d -> d.file("mcp_patched_minecraft-sources.jar"));
         final TaskProvider<RemapSourceJarTask> taskRemapPatchedJar = project.getTasks()
                 .register("remapPatchedJar", RemapSourceJarTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
