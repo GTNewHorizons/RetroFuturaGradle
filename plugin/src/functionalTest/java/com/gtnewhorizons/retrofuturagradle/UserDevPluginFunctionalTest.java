@@ -175,7 +175,7 @@ class UserDevPluginFunctionalTest {
                 secondResult.tasks(TaskOutcome.SUCCESS).toArray(new BuildTask[0]));
 
         // Check for the absence of net.minecraftforge packages except net.minecraftforge.fml.relauncher
-        try (final ZipFile jar = new ZipFile(new File(getLocalCacheDir(), "mcp_patched_ated_minecraft-sources.jar"))) {
+        try (final ZipFile jar = new ZipFile(new File(getLocalCacheDir(), "post_jst_minecraft-sources.jar"))) {
             Assertions.assertEquals(
                     0,
                     jar.stream().filter(ze -> ze.getName().startsWith("net/minecraftforge"))
