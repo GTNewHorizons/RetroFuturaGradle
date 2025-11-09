@@ -82,30 +82,24 @@ dependencies {
   compileOnly(localGroovy())
   compileOnly(gradleApi())
 
-  annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
-  // workaround for https://github.com/bsideup/jabel/issues/174
-  annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
-  testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
-  compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1") { isTransitive = false }
-
   // Apache Commons utilities
-  implementation("org.apache.commons:commons-lang3:3.14.0")
-  implementation("org.apache.commons:commons-text:1.12.0")
-  implementation("commons-io:commons-io:2.16.1")
-  implementation("commons-codec:commons-codec:1.17.0")
-  implementation("org.apache.commons:commons-compress:1.26.2")
+  implementation("org.apache.commons:commons-lang3:3.19.0")
+  implementation("org.apache.commons:commons-text:1.14.0")
+  implementation("commons-io:commons-io:2.21.0")
+  implementation("commons-codec:commons-codec:1.20.0")
+  implementation("org.apache.commons:commons-compress:1.28.0")
   // Guava utilities
-  implementation("com.google.guava:guava:33.2.1-jre")
+  implementation("com.google.guava:guava:33.5.0-jre")
   // CSV reader, also used by SpecialSource
-  implementation("com.opencsv:opencsv:5.9")
+  implementation("com.opencsv:opencsv:5.12.0")
   // Diffing&Patching
-  implementation("org.ow2.asm:asm:9.7")
+  implementation("org.ow2.asm:asm:9.9")
   implementation("com.cloudbees:diff4j:1.1")
   implementation("com.github.jponge:lzma-java:1.3")
-  implementation("net.md-5:SpecialSource:1.11.4")
+  implementation("net.md-5:SpecialSource:1.11.5")
   // Java source manipulation
-  implementation("com.github.javaparser:javaparser-core:3.25.8")
-  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.8")
+  implementation("com.github.javaparser:javaparser-core:3.27.1")
+  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.27.1")
   // "MCP stuff", shaded manually later
   compileOnly(project(":oldasmwrapper", "fullyShadedElements"))
   testImplementation(project(":oldasmwrapper", "fullyShadedElements"))
@@ -114,13 +108,10 @@ dependencies {
   compileOnly("com.mojang:authlib:1.5.16") { isTransitive = false }
   compileOnly("net.minecraft:launchwrapper:1.12") { isTransitive = false }
   // Provides a file-downloading task implementation for Gradle
-  implementation(
-      group = "de.undercouch.download",
-      name = "de.undercouch.download.gradle.plugin",
-      version = "5.6.0")
-  compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0")
+  implementation("de.undercouch.download:de.undercouch.download.gradle.plugin:5.6.0")
+  compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21")
   // JSON handling for Minecraft manifests etc.
-  implementation("com.google.code.gson:gson:2.10.1")
+  implementation("com.google.code.gson:gson:2.13.2")
   // Forge utilities (to be merged into the source tree in the future)
 
   // Source remapping
