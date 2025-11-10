@@ -2,8 +2,15 @@ package testmod;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.*;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.init.Blocks;
+import net.minecraft.world.World;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,5 +44,21 @@ public class TestMod {
         LOG.info("TestMod postInit");
         Block bed = Blocks.bed;
         LOG.info("Bed name is {}", bed.getUnlocalizedName());
+    }
+
+    @SideOnly(Side.CLIENT)
+    private void interfaceCheck() {
+        // dummy code to make sure everything compiles properly
+
+        // the interface should be injected properly
+        World world = null;
+        world.doTheThing();
+        
+        WorldClient worldClient = null;
+        worldClient.doTheThing();
+
+        // the interface should be accessible to the main source set
+        InjectionTest test = null;
+        test.doTheThing();
     }
 }

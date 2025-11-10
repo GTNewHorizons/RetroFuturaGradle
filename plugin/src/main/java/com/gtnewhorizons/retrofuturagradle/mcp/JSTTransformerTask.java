@@ -38,15 +38,20 @@ import com.gtnewhorizons.retrofuturagradle.util.IJarTransformTask;
 import com.gtnewhorizons.retrofuturagradle.util.MessageDigestConsumer;
 
 @CacheableTask
-public abstract class ApplySourceAccessTransformersTask extends DefaultTask implements IJarTransformTask {
+public abstract class JSTTransformerTask extends DefaultTask implements IJarTransformTask {
 
     @InputFiles
     @PathSensitive(PathSensitivity.NONE)
     public abstract ConfigurableFileCollection getAccessTransformerFiles();
 
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract ConfigurableFileCollection getInterfaceInjectionConfigs();
+
     @Override
     public MessageDigestConsumer hashInputs() {
-        return HashUtils.addPropertyToHash(getAccessTransformerFiles());
+        return HashUtils.addPropertyToHash(getAccessTransformerFiles())
+                .andThen(HashUtils.addPropertyToHash(getInterfaceInjectionConfigs()));
     }
 
     @InputFiles
@@ -62,7 +67,11 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
     @TaskAction
     public void applyForgeAccessTransformers() throws IOException {
 
-        if (getAccessTransformerFiles().isEmpty()) {
+        final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
+        final Set<File> injectionConfigs = new ImmutableSet.Builder<File>().addAll(getInterfaceInjectionConfigs())
+                .build();
+
+        if (atFiles.isEmpty() && injectionConfigs.isEmpty()) {
             Files.copy(
                     getInputJar().get().getAsFile().toPath(),
                     getOutputJar().get().getAsFile().toPath(),
@@ -75,16 +84,30 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
         final File toolExecutable = resolveTool(getProject(), JST_TOOL_ARTIFACT);
         final List<String> programArgs = new ArrayList<>();
 
-        programArgs.add("--enable-accesstransformers");
-        final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
-        final List<String> loggedAtFiles = new ArrayList<>(atFiles.size());
-        for (File atFile : atFiles) {
-            final File patched = patchInvalidAccessTransformer(atFile);
-            loggedAtFiles.add(patched.toString());
-            programArgs.add("--access-transformer");
-            programArgs.add(patched.getAbsolutePath());
+        if (!atFiles.isEmpty()) {
+            programArgs.add("--enable-accesstransformers");
+
+            final List<String> loggedAtFiles = new ArrayList<>(atFiles.size());
+
+            for (File atFile : atFiles) {
+                final File patched = patchInvalidAccessTransformer(atFile);
+                loggedAtFiles.add(patched.toString());
+                programArgs.add("--access-transformer");
+                programArgs.add(patched.getAbsolutePath());
+            }
+
+            logger.lifecycle("Applying access transformers: {}", loggedAtFiles);
         }
-        logger.lifecycle("Applying access transformers: {}", loggedAtFiles);
+
+        if (!injectionConfigs.isEmpty()) {
+            programArgs.add("--enable-interface-injection");
+
+            for (File config : injectionConfigs) {
+                programArgs.add("--interface-injection-data=" + config.getAbsolutePath());
+            }
+
+            logger.lifecycle("Applying interface injection configs: {}", injectionConfigs);
+        }
 
         logger.info("Using JST: {}", toolExecutable);
         final File inputJar = getInputJar().get().getAsFile();
