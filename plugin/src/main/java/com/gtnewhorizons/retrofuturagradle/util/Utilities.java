@@ -53,7 +53,6 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.tree.ClassNode;
 
@@ -200,8 +199,7 @@ public final class Utilities {
     public static ClassNode parseClassBytes(byte[] bytes, String debugName) {
         try {
             ClassReader reader = new ClassReader(bytes);
-            // Do not upgrade encountered classes beyond Java 8 bytecode version
-            ClassNode classNode = new ClassNode(Math.max(reader.readShort(6), Opcodes.V1_8));
+            ClassNode classNode = new ClassNode();
             reader.accept(classNode, 0);
             return classNode;
         } catch (Exception e) {

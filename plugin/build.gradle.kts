@@ -158,7 +158,6 @@ java {
 val functionalTestSourceSet = sourceSets.create("functionalTest") {}
 
 tasks.withType<JavaCompile> {
-  options.release.set(25)
   options.isDeprecation = true
 }
 
@@ -206,8 +205,11 @@ gradlePlugin {
   }
 }
 
+var java8SourceSet: SourceSet? = null
+
 java {
   sourceSets {
+    java8SourceSet = create("java8")
     // Add the GradleStart tree as sources for IDE support
     create("gradleStart") {
       compileClasspath = configurations.compileClasspath.get()
@@ -216,10 +218,18 @@ java {
         source(sourceSets.main.get().resources)
       }
     }
+    main {
+      compileClasspath += java8SourceSet!!.output
+      runtimeClasspath += java8SourceSet!!.output
+    }
   }
 
   withSourcesJar()
   withJavadocJar()
+}
+
+tasks.named<JavaCompile>(java8SourceSet!!.compileJavaTaskName) {
+  javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(8) }
 }
 
 if(project.properties["rfg.skipJavadoc"].toString().toBoolean()) {
@@ -247,6 +257,7 @@ val mainShadowJar = tasks.register<MainShadowJar>("mainShadowJar") {
   archiveClassifier.set("mainShadow")
 
   from(sourceSets.main.get().output)
+  from(java8SourceSet!!.output)
 
   val configuration = project.configurations.runtimeClasspath.get();
   val allJar = project(":oldasmwrapper").tasks.named<Jar>("allJar").get().archiveFile.get().asFile

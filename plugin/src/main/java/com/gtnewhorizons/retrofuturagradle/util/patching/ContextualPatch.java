@@ -343,7 +343,10 @@ public final class ContextualPatch {
             }
         }
         if (idx == -1) {
-            throw new PatchException("Cannot find hunk target");
+            throw new PatchException(
+                    "Cannot find hunk target: \n" + String.join("\n", hunk.lines)
+                            + "\n\nin target:\n\n"
+                            + String.join("\n", target));
         }
         return applyHunk(target, hunk, idx, false, fuzz, hunkID);
     }
