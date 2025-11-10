@@ -31,10 +31,10 @@ class UserDevPluginFunctionalTest {
 
     public static final String SIMPLE_BUILDSCRIPT = """
             plugins {
-                id('com.gtnewhorizons.retrofuturagradle')
+                id("com.gtnewhorizons.retrofuturagradle")
             }
             minecraft {
-                mcVersion = '1.7.10'
+                mcVersion = "1.7.10"
             }
             """;
 
@@ -42,11 +42,11 @@ class UserDevPluginFunctionalTest {
     File projectDir;
 
     private File getBuildFile() {
-        return new File(projectDir, "build.gradle");
+        return new File(projectDir, "build.gradle.kts");
     }
 
     private File getSettingsFile() {
-        return new File(projectDir, "settings.gradle");
+        return new File(projectDir, "settings.gradle.kts");
     }
 
     private File getBuildDir() {
@@ -66,7 +66,13 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "downloadVanillaJars", "downloadVanillaAssets");
+        runner.withArguments(
+                "--stacktrace",
+                "--build-cache",
+                "--configuration-cache",
+                "--",
+                "downloadVanillaJars",
+                "downloadVanillaAssets");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
@@ -84,7 +90,7 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "downloadFernflower");
+        runner.withArguments("--stacktrace", "--build-cache", "--configuration-cache", "--", "downloadFernflower");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
@@ -102,7 +108,7 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "mergeVanillaSidedJars");
+        runner.withArguments("--stacktrace", "--build-cache", "--configuration-cache", "--", "mergeVanillaSidedJars");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
@@ -120,7 +126,12 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "decompressDecompiledSources");
+        runner.withArguments(
+                "--stacktrace",
+                "--build-cache",
+                "--configuration-cache",
+                "--",
+                "decompressDecompiledSources");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
@@ -138,7 +149,7 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "packagePatchedMc");
+        runner.withArguments("--stacktrace", "--build-cache", "--configuration-cache", "--", "packagePatchedMc");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
@@ -153,10 +164,10 @@ class UserDevPluginFunctionalTest {
         writeString(getSettingsFile(), SIMPLE_SETTINGS);
         String buildscript = """
                 plugins {
-                    id('com.gtnewhorizons.retrofuturagradle')
+                    id("com.gtnewhorizons.retrofuturagradle")
                 }
                 minecraft {
-                    mcVersion = '1.12.2'
+                    mcVersion = "1.12.2"
                     usesForge = false
                 }
                 """;
@@ -166,7 +177,7 @@ class UserDevPluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--", "packagePatchedMc");
+        runner.withArguments("--stacktrace", "--build-cache", "--configuration-cache", "--", "packagePatchedMc");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
         BuildResult secondResult = runner.build();
