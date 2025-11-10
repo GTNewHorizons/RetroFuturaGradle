@@ -50,7 +50,8 @@ public abstract class JSTTransformerTask extends DefaultTask implements IJarTran
 
     @Override
     public MessageDigestConsumer hashInputs() {
-        return HashUtils.addPropertyToHash(getAccessTransformerFiles()).andThen(HashUtils.addPropertyToHash(getInterfaceInjectionConfigs()));
+        return HashUtils.addPropertyToHash(getAccessTransformerFiles())
+                .andThen(HashUtils.addPropertyToHash(getInterfaceInjectionConfigs()));
     }
 
     @InputFiles
@@ -67,7 +68,8 @@ public abstract class JSTTransformerTask extends DefaultTask implements IJarTran
     public void applyForgeAccessTransformers() throws IOException {
 
         final Set<File> atFiles = new ImmutableSet.Builder<File>().addAll(getAccessTransformerFiles()).build();
-        final Set<File> injectionConfigs = new ImmutableSet.Builder<File>().addAll(getInterfaceInjectionConfigs()).build();
+        final Set<File> injectionConfigs = new ImmutableSet.Builder<File>().addAll(getInterfaceInjectionConfigs())
+                .build();
 
         if (atFiles.isEmpty() && injectionConfigs.isEmpty()) {
             Files.copy(
