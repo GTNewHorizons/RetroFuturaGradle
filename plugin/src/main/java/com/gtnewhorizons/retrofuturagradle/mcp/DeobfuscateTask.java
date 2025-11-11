@@ -173,12 +173,14 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
             if (f == null) {
                 continue;
             }
-            FileUtils.lineIterator(f).forEachRemaining(line -> {
-                String[] parts = line.split(",");
-                if (!"searge".equals(parts[0])) {
-                    renames.put(parts[0], parts[1]);
-                }
-            });
+            try (var lines = FileUtils.lineIterator(f)) {
+                lines.forEachRemaining(line -> {
+                    String[] parts = line.split(",");
+                    if (!"searge".equals(parts[0])) {
+                        renames.put(parts[0], parts[1]);
+                    }
+                });
+            }
         }
 
         // Load access transformers
@@ -236,12 +238,14 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
             if (f == null) {
                 continue;
             }
-            FileUtils.lineIterator(f).forEachRemaining(line -> {
-                String[] parts = line.split(",");
-                if (!"searge".equals(parts[0])) {
-                    renames.put(parts[0], parts[1]);
-                }
-            });
+            try (var lines = FileUtils.lineIterator(f)) {
+                lines.forEachRemaining(line -> {
+                    String[] parts = line.split(",");
+                    if (!"searge".equals(parts[0])) {
+                        renames.put(parts[0], parts[1]);
+                    }
+                });
+            }
         }
 
         // Load access transformers

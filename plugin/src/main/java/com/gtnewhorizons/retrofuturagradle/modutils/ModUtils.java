@@ -207,7 +207,7 @@ public class ModUtils {
                 });
                 // Keep as class instead of lambda to ensure it works even if the plugin is not loaded into the
                 // classpath
-                // noinspection rawtypes
+                // noinspection Convert2Lambda
                 project.getPlugins().withId("org.jetbrains.kotlin.kapt", new Action<>() {
 
                     @Override
@@ -323,7 +323,6 @@ public class ModUtils {
                 || depSpec instanceof Path
                 || depSpec instanceof URI
                 || depSpec instanceof URL
-                || depSpec instanceof FileTree
                 || depSpec instanceof FileCollection) {
                     depFilesToDeobf.from(depSpec);
                 } else {

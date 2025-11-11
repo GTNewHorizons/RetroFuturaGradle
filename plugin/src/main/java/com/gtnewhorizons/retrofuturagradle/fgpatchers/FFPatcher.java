@@ -159,8 +159,7 @@ public class FFPatcher {
                 }
 
                 if (Strings.isNullOrEmpty(body)) newLine += matcher.group("end");
-                else newLine = new StringBuilder(newLine).append("(").append(body).append(")")
-                        .append(matcher.group("end")).toString();
+                else newLine = newLine + "(" + body + ")" + matcher.group("end");
             }
 
             // find and replace constructor
@@ -190,8 +189,7 @@ public class FFPatcher {
                     body = Joiner.on(", ").join(args);
                 }
 
-                newLine = new StringBuilder().append(newIndent).append("   ").append(matcher.group("name")).append("(")
-                        .append(body).append(")").append(matcher.group("end")).toString();
+                newLine = newIndent + "   " + matcher.group("name") + "(" + body + ")" + matcher.group("end");
             }
 
             if (prevSynthetic) {
@@ -226,7 +224,7 @@ public class FFPatcher {
         // String arg1 = _REGEXP['typecast'].sub(r'', match.group('arguments'))
         // String arg2 = _REGEXP['typecast'].sub(r'', match.group('arguments2'))
 
-        if (arg1.equals(arg2) && arg1.equals("")) return "";
+        if (arg1.equals(arg2) && arg1.isEmpty()) return "";
 
         String[] args = COMMA_SPACE.split(match.group("arguments"));
         for (int x = 0; x < args.length; x++) args[x] = args[x].split(" ")[1];

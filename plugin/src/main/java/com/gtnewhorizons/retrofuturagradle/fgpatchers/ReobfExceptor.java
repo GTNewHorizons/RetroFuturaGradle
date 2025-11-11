@@ -219,26 +219,28 @@ public class ReobfExceptor {
         @Override
         public boolean processLine(String line) throws IOException {
             String[] split = line.split(" ");
-            if (split[0].equals("CL:")) {
-                split[2] = rename(split[2]);
-            } else if (split[0].equals("FD:")) {
-                String[] s = rsplit(split[2], "/");
-                split[2] = rename(s[0]) + "/" + s[1];
-            } else if (split[0].equals("MD:")) {
-                String[] s = rsplit(split[3], "/");
-                split[3] = rename(s[0]) + "/" + s[1];
-
-                if (access.containsKey(split[3])) {
-                    split[3] = access.get(split[3]);
+            switch (split[0]) {
+                case "CL:" -> split[2] = rename(split[2]);
+                case "FD:" -> {
+                    String[] s = rsplit(split[2], "/");
+                    split[2] = rename(s[0]) + "/" + s[1];
                 }
+                case "MD:" -> {
+                    String[] s = rsplit(split[3], "/");
+                    split[3] = rename(s[0]) + "/" + s[1];
 
-                Matcher m = reg.matcher(split[4]);
-                StringBuffer b = new StringBuffer();
-                while (m.find()) {
-                    m.appendReplacement(b, "L" + rename(m.group(1)).replace("$", "\\$") + ";");
+                    if (access.containsKey(split[3])) {
+                        split[3] = access.get(split[3]);
+                    }
+
+                    Matcher m = reg.matcher(split[4]);
+                    StringBuilder b = new StringBuilder();
+                    while (m.find()) {
+                        m.appendReplacement(b, "L" + rename(m.group(1)).replace("$", "\\$") + ";");
+                    }
+                    m.appendTail(b);
+                    split[4] = b.toString();
                 }
-                m.appendTail(b);
-                split[4] = b.toString();
             }
             out.append(Joiner.on(' ').join(split)).append('\n');
             return true;
@@ -365,32 +367,17 @@ public class ReobfExceptor {
         @Override
         public String toString() {
             String op = "UNKNOWN_" + opcode;
-            switch (opcode) {
-                case GETSTATIC:
-                    op = "GETSTATIC";
-                    break;
-                case PUTSTATIC:
-                    op = "PUTSTATIC";
-                    break;
-                case GETFIELD:
-                    op = "GETFIELD";
-                    break;
-                case PUTFIELD:
-                    op = "PUTFIELD";
-                    break;
-                case INVOKEVIRTUAL:
-                    op = "INVOKEVIRTUAL";
-                    break;
-                case INVOKESPECIAL:
-                    op = "INVOKESPECIAL";
-                    break;
-                case INVOKESTATIC:
-                    op = "INVOKESTATIC";
-                    break;
-                case INVOKEINTERFACE:
-                    op = "INVOKEINTERFACE";
-                    break;
-            }
+            op = switch (opcode) {
+                case GETSTATIC -> "GETSTATIC";
+                case PUTSTATIC -> "PUTSTATIC";
+                case GETFIELD -> "GETFIELD";
+                case PUTFIELD -> "PUTFIELD";
+                case INVOKEVIRTUAL -> "INVOKEVIRTUAL";
+                case INVOKESPECIAL -> "INVOKESPECIAL";
+                case INVOKESTATIC -> "INVOKESTATIC";
+                case INVOKEINTERFACE -> "INVOKEINTERFACE";
+                default -> op;
+            };
             return op + " " + owner + "/" + name + " " + desc;
         }
     }

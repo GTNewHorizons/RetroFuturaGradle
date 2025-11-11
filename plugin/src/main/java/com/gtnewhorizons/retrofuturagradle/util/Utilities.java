@@ -368,20 +368,15 @@ public final class Utilities {
         }
     }
 
-    public static final class Mapping {
+    public record Mapping(String name, String javadoc) {
 
-        public final String name;
-        public final String javadoc;
-
-        public Mapping(String name, String javadoc) {
+        public Mapping {
             if (name == null) {
                 throw new IllegalArgumentException("Null mapping name passed");
             }
             if (javadoc == null) {
                 javadoc = "";
             }
-            this.name = name;
-            this.javadoc = javadoc;
         }
     }
 
@@ -418,37 +413,7 @@ public final class Utilities {
         }
     }
 
-    public static final class GenericPatch {
-
-        public final String zipEntry;
-        public final String containsFilter;
-        public final String toReplace;
-        public final String replaceWith;
-
-        public GenericPatch(String zipEntry, String containsFilter, String toReplace, String replaceWith) {
-            this.zipEntry = zipEntry;
-            this.containsFilter = containsFilter;
-            this.toReplace = toReplace;
-            this.replaceWith = replaceWith;
-        }
-
-        @Override
-        public String toString() {
-            return "GenericPatch{" + "zipEntry='"
-                    + zipEntry
-                    + '\''
-                    + ", containsFilter='"
-                    + containsFilter
-                    + '\''
-                    + ", toReplace='"
-                    + toReplace
-                    + '\''
-                    + ", replaceWith='"
-                    + replaceWith
-                    + '\''
-                    + '}';
-        }
-    }
+    public record GenericPatch(String zipEntry, String containsFilter, String toReplace, String replaceWith) {}
 
     public static class MappingsSet {
 

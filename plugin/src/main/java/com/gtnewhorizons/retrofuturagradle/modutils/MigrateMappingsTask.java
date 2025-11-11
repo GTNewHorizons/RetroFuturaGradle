@@ -3,7 +3,6 @@ package com.gtnewhorizons.retrofuturagradle.modutils;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.Collections;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -117,9 +116,8 @@ public abstract class MigrateMappingsTask extends DefaultTask {
 
         final Mercury mercury = new Mercury();
 
-        mercury.getClassPath().addAll(
-                getCompileClasspath().getFiles().stream().map(File::toPath).filter(Files::exists)
-                        .collect(Collectors.toList()));
+        mercury.getClassPath()
+                .addAll(getCompileClasspath().getFiles().stream().map(File::toPath).filter(Files::exists).toList());
 
         // Fixes some issues like broken javadoc in Forge, and JDT not understanding Hodgepodge's obfuscated voxelmap
         // targets.

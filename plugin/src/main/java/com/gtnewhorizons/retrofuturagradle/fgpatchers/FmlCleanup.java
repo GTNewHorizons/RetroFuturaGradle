@@ -31,13 +31,7 @@ public class FmlCleanup {
     private static final Pattern VAR_CALL = Pattern.compile("(?i)[a-z_$][a-z0-9_\\[\\]]+ var\\d+(?:x)*");
     private static final Pattern VAR = Pattern.compile("var\\d+(?:x)*");
 
-    private static final Comparator<String> COMPARATOR = new Comparator<>() {
-
-        @Override
-        public int compare(String str1, String str2) {
-            return str2.length() - str1.length();
-        }
-    };
+    private static final Comparator<String> COMPARATOR = (str1, str2) -> str2.length() - str1.length();
 
     public static String renameClass(String text) {
         final String lineSep = System.lineSeparator();
@@ -214,16 +208,13 @@ public class FmlCleanup {
     }
 
     private FmlCleanup(FmlCleanup parent) {
-        last = Maps.newHashMap();
+        last = new HashMap<>();
         for (Entry<String, Holder> e : parent.last.entrySet()) {
             Holder v = e.getValue();
             last.put(e.getKey(), new Holder(v.id, v.skip_zero, v.names));
         }
 
-        remap = Maps.newHashMap();
-        for (Entry<String, String> e : parent.remap.entrySet()) {
-            remap.put(e.getKey(), e.getValue());
-        }
+        remap = new HashMap<>(parent.remap);
     }
 
     private String getName(String type, String var) {

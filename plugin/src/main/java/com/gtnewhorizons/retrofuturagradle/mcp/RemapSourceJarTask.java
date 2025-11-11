@@ -199,11 +199,12 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                         final String methodName = mMethod.group(2);
                         final Utilities.Mapping methodMapping = mappings.methodMappings.get(methodName);
                         if ((addJavadocs || addDummyJavadocs) && methodMapping != null
-                                && !methodMapping.javadoc.isEmpty()) {
+                                && !methodMapping.javadoc().isEmpty()) {
                             addBeforeAnnotations(
                                     newLines,
                                     addDummyJavadocs ? (mMethod.group(1) + "// JAVADOC METHOD $$ " + methodName)
-                                            : JavadocAdder.buildJavadoc(mMethod.group(1), methodMapping.javadoc, true));
+                                            : JavadocAdder
+                                                    .buildJavadoc(mMethod.group(1), methodMapping.javadoc(), true));
                         }
                         final List<Utilities.GenericMapping> genMaps = mappings.genericMappings.get(methodName);
                         for (Utilities.GenericMapping genMap : genMaps) {
@@ -267,13 +268,13 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                             final String entityName = mSrg.group();
                             if (entityName.startsWith("func_")) {
                                 final Utilities.Mapping methodMapping = mappings.methodMappings.get(entityName);
-                                if (methodMapping != null && !Strings.isNullOrEmpty(methodMapping.javadoc)) {
-                                    newLine = JavadocAdder.buildJavadoc(indent, methodMapping.javadoc, true);
+                                if (methodMapping != null && !Strings.isNullOrEmpty(methodMapping.javadoc())) {
+                                    newLine = JavadocAdder.buildJavadoc(indent, methodMapping.javadoc(), true);
                                 }
                             } else if (entityName.startsWith("field_")) {
                                 final Utilities.Mapping fieldMapping = mappings.fieldMappings.get(entityName);
-                                if (fieldMapping != null && !Strings.isNullOrEmpty(fieldMapping.javadoc)) {
-                                    newLine = JavadocAdder.buildJavadoc(indent, fieldMapping.javadoc, true);
+                                if (fieldMapping != null && !Strings.isNullOrEmpty(fieldMapping.javadoc())) {
+                                    newLine = JavadocAdder.buildJavadoc(indent, fieldMapping.javadoc(), true);
                                 }
                             }
 
@@ -285,11 +286,12 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                         final String fieldName = mField.group(2);
                         final Utilities.Mapping fieldMapping = mappings.fieldMappings.get(fieldName);
                         if ((addJavadocs || addDummyJavadocs) && fieldMapping != null
-                                && !fieldMapping.javadoc.isEmpty()) {
+                                && !fieldMapping.javadoc().isEmpty()) {
                             addBeforeAnnotations(
                                     newLines,
                                     addDummyJavadocs ? (mField.group(1) + "// JAVADOC FIELD $$ " + fieldName)
-                                            : JavadocAdder.buildJavadoc(mField.group(1), fieldMapping.javadoc, false));
+                                            : JavadocAdder
+                                                    .buildJavadoc(mField.group(1), fieldMapping.javadoc(), false));
                         }
                         final List<Utilities.GenericMapping> genMaps = mappings.genericMappings.get(fieldName);
                         for (Utilities.GenericMapping genMap : genMaps) {
@@ -346,7 +348,7 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                     newLine = newLine.replace("(Object)null", "null");
                 }
                 if (!DEBUG_PRINT_ALL_GENERICS) {
-                    final StringBuffer mappedLine = new StringBuffer();
+                    final StringBuilder mappedLine = new StringBuilder();
                     mSrg.reset(newLine);
                     while (mSrg.find()) {
                         final String found = mSrg.group(1);
@@ -355,10 +357,10 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                             mapped = mappings.paramMappings.getOrDefault(found, found);
                         } else if (found.startsWith("func_")) {
                             final Utilities.Mapping mapping = mappings.methodMappings.get(found);
-                            mapped = (mapping != null) ? mapping.name : found;
+                            mapped = (mapping != null) ? mapping.name() : found;
                         } else if (found.startsWith("field_")) {
                             final Utilities.Mapping mapping = mappings.fieldMappings.get(found);
-                            mapped = (mapping != null) ? mapping.name : found;
+                            mapped = (mapping != null) ? mapping.name() : found;
                         } else {
                             mapped = found;
                         }
@@ -370,8 +372,8 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
 
                     final List<Utilities.GenericPatch> patches = mappings.genericPatches.get(srcEntry.getKey());
                     for (Utilities.GenericPatch patch : patches) {
-                        if (newLine.contains(patch.containsFilter)) {
-                            newLine = newLine.replace(patch.toReplace, patch.replaceWith);
+                        if (newLine.contains(patch.containsFilter())) {
+                            newLine = newLine.replace(patch.toReplace(), patch.replaceWith());
                         }
                     }
                 }
@@ -447,7 +449,7 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                                 rfd.declaringType(),
                                 rDecl,
                                 srgName,
-                                map == null ? (srgName + "?") : map.name,
+                                map == null ? (srgName + "?") : map.name(),
                                 "@field");
                     }
                 } catch (Exception e) {}
@@ -484,7 +486,7 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                     final int declLineIndex = decl.getName().getBegin().orElse(Position.HOME).line;
                     final String srgName = decl.getNameAsString().trim();
                     final Utilities.Mapping map = mappings.methodMappings.get(srgName);
-                    final String mcpName = (map == null ? (srgName + "?") : map.name) + ":" + declLineIndex;
+                    final String mcpName = (map == null ? (srgName + "?") : map.name()) + ":" + declLineIndex;
                     analyzeType(
                             resolved.declaringType(),
                             resolved.getReturnType(),
