@@ -348,6 +348,9 @@ listOf(configurations.runtimeClasspath, configurations.compileClasspath,
   }
 }
 
+functionalTestSourceSet.compileClasspath += java8SourceSet!!.output
+functionalTestSourceSet.runtimeClasspath += java8SourceSet!!.output
+
 gradlePlugin.testSourceSets(functionalTestSourceSet)
 
 tasks.check {
