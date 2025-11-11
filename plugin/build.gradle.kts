@@ -228,6 +228,11 @@ java {
   withJavadocJar()
 }
 
+dependencies {
+  add(java8SourceSet!!.compileOnlyConfigurationName, gradleApi())
+  add(java8SourceSet!!.compileOnlyConfigurationName, project(":oldasmwrapper", "fullyShadedElements"))
+}
+
 tasks.named<JavaCompile>(java8SourceSet!!.compileJavaTaskName) {
   javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(8) }
 }

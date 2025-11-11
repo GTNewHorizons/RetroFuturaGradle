@@ -134,7 +134,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                 if (mcMinor <= 8) {
                     patched = FFPatcher.processFile(entry.getKey(), entry.getValue(), true);
                 } else {
-                    patched = com.gtnewhorizons.retrofuturagradle.mcp.fg23.FFPatcher.processFile(entry.getValue());
+                    patched = com.gtnewhorizons.retrofuturagradle.java8.fg23.FFPatcher.processFile(entry.getValue());
                 }
                 return MutablePair.of(entry.getKey(), patched);
             } catch (IOException e) {
