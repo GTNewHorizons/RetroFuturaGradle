@@ -222,6 +222,10 @@ java {
       compileClasspath += java8SourceSet!!.output
       runtimeClasspath += java8SourceSet!!.output
     }
+    test {
+      compileClasspath += java8SourceSet!!.output
+      runtimeClasspath += java8SourceSet!!.output
+    }
   }
 
   withSourcesJar()
