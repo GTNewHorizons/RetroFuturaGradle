@@ -896,10 +896,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             final File replacementPropFile = new File(injectedSourcesLocation.getParentFile(), "injectTags.resources");
             taskInjectTags.configure(task -> {
                 task.getOutputs().file(replacementPropFile);
+                var tagReplacementFiles = mcExt.getTagReplacementFiles();
                 task.doLast("Generate tag injection resource file", t -> {
                     final Properties props = new Properties();
                     int i = 0;
-                    for (String pattern : mcExt.getTagReplacementFiles().get()) {
+                    for (String pattern : tagReplacementFiles.get()) {
                         props.setProperty("files." + i, pattern);
                     }
                     for (Map.Entry<String, Object> value : task.getTags().get().entrySet()) {
