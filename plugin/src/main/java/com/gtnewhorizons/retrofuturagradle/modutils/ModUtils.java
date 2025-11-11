@@ -119,6 +119,9 @@ public class ModUtils {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription(
                     "Apply MCP decompiler cleanup to the main source set, doing things like replacing numerical OpenGL constants with their names");
+            task.getSourceDirectories().from(
+                    project.getExtensions().getByType(SourceSetContainer.class).getByName("main").getAllJava()
+                            .getSourceDirectories());
         });
 
         project.getTasks().register("migrateMappings", MigrateMappingsTask.class, task -> {

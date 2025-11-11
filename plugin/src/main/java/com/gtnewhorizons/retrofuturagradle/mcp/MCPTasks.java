@@ -1,5 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
+import static com.gtnewhorizons.retrofuturagradle.Constants.JST_TOOL_ARTIFACT;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -282,6 +284,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.getInputJar().set(taskPatchDecompiledJar.flatMap(IJarOutputTask::getOutputJar));
                     task.getOutputJar().set(remappedSourcesATLocation);
                     task.getJavaLauncher().set(mcExt.getToolchainLauncher(project, 21));
+                    task.setJstTool(project, JST_TOOL_ARTIFACT);
 
                     task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
                     final ConfigurableFileCollection cp = task.getCompileClasspath();

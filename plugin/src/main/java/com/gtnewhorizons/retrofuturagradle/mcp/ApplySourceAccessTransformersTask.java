@@ -1,12 +1,11 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
-import static com.gtnewhorizons.retrofuturagradle.Constants.JST_TOOL_ARTIFACT;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +19,8 @@ import org.apache.commons.io.output.TeeOutputStream;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
@@ -59,6 +60,12 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
     @Inject
     protected abstract ExecOperations getExecOperations();
 
+    @Inject
+    protected abstract ProjectLayout getProjectLayout();
+
+    @Classpath
+    public abstract RegularFileProperty getJstTool();
+
     @TaskAction
     public void applyForgeAccessTransformers() throws IOException {
 
@@ -70,9 +77,8 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
             return;
         }
 
-        final Project project = getProject();
         final Logger logger = getLogger();
-        final File toolExecutable = resolveTool(getProject(), JST_TOOL_ARTIFACT);
+        final File toolExecutable = getJstTool().get().getAsFile();
         final List<String> programArgs = new ArrayList<>();
 
         programArgs.add("--enable-accesstransformers");
@@ -92,9 +98,9 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
 
         final String libraryPaths = getCompileClasspath().getFiles().stream().map(File::getAbsolutePath)
                 .collect(Collectors.joining(System.lineSeparator()));
-        final File librariesFile = project.getResources().getText().fromString(libraryPaths)
-                .asFile(StandardCharsets.UTF_8.name());
-        programArgs.add("--libraries-list=" + librariesFile.getAbsolutePath());
+        final Path librariesFile = Files.createTempFile("jst-libs", ".txt");
+        Files.writeString(librariesFile, libraryPaths, StandardCharsets.UTF_8);
+        programArgs.add("--libraries-list=" + librariesFile.toAbsolutePath());
 
         programArgs.add(inputJar.getAbsolutePath());
         programArgs.add(outputJar.getAbsolutePath());
@@ -106,7 +112,7 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
             try {
                 final OutputStream logFileStream = FileUtils.openOutputStream(
                         FileUtils.getFile(
-                                project.getLayout().getBuildDirectory().get().getAsFile(),
+                                getProjectLayout().getBuildDirectory().get().getAsFile(),
                                 MCPTasks.RFG_DIR,
                                 "jst_log_" + getName() + ".log"));
                 final OutputStream logStream = new TeeOutputStream(logFileStream, System.out);
@@ -123,6 +129,7 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
             exec.setExecutable(getJavaLauncher().get().getExecutablePath().toString());
         }).assertNormalExitValue();
 
+        Files.deleteIfExists(librariesFile);
     }
 
     private File patchInvalidAccessTransformer(File atFile) {
@@ -148,10 +155,9 @@ public abstract class ApplySourceAccessTransformersTask extends DefaultTask impl
         return patched;
     }
 
-    // Stuff borrowed from NeoGradle to get it to work -- refactor as needed
-
-    public static File resolveTool(final Project project, final String tool) {
-        return project.getConfigurations().detachedConfiguration(project.getDependencies().create(tool)).getFiles()
-                .iterator().next();
+    public void setJstTool(final Project project, final String tool) {
+        getJstTool().fileProvider(
+                project.getConfigurations().detachedConfiguration(project.getDependencies().create(tool)).getElements()
+                        .map(els -> els.iterator().next().getAsFile()));
     }
 }

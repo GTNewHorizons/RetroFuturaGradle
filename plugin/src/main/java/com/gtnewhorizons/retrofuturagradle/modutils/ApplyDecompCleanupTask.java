@@ -9,16 +9,18 @@ import javax.inject.Inject;
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.specs.Specs;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.TaskAction;
 
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.GLConstantFixer;
 import com.gtnewhorizons.retrofuturagradle.fgpatchers.McpCleanupFg12;
 
-public class ApplyDecompCleanupTask extends DefaultTask {
+public abstract class ApplyDecompCleanupTask extends DefaultTask {
+
+    @InputFiles
+    public abstract ConfigurableFileCollection getSourceDirectories();
 
     @Inject
     public ApplyDecompCleanupTask() {
@@ -27,10 +29,8 @@ public class ApplyDecompCleanupTask extends DefaultTask {
 
     @TaskAction
     public void cleanup() throws IOException {
-        Project proj = getProject();
-        SourceSet main = proj.getExtensions().getByType(SourceSetContainer.class).getByName("main");
         final GLConstantFixer glFixer = new GLConstantFixer();
-        for (File dir : main.getAllJava().getSourceDirectories()) {
+        for (File dir : getSourceDirectories().getFiles()) {
             if (dir.exists()) {
                 getLogger().lifecycle("Running cleanup on {}", dir.getPath());
                 for (File javaFile : new IteratorIterable<>(

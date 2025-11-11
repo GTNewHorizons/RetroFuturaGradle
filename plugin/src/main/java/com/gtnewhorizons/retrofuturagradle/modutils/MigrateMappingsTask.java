@@ -21,7 +21,9 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
@@ -69,10 +71,17 @@ public abstract class MigrateMappingsTask extends DefaultTask {
     @Classpath
     public abstract ConfigurableFileCollection getCompileClasspath();
 
+    @Input
+    public abstract Property<String> getSourceCompatibility();
+
     @Inject
     public MigrateMappingsTask() {
         getInputDir().convention(getProject().getLayout().getProjectDirectory().dir("src/main/java"));
         getOutputDir().convention(getProject().getLayout().getProjectDirectory().dir("src/main/java"));
+        getSourceCompatibility().convention(
+                getProject().provider(
+                        () -> getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceCompatibility()
+                                .toString()));
     }
 
     @TaskAction
@@ -125,8 +134,7 @@ public abstract class MigrateMappingsTask extends DefaultTask {
 
         mercury.getProcessors().add(MercuryRemapper.create(remapper.getEnvironment()));
 
-        mercury.setSourceCompatibility(
-                getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceCompatibility().toString());
+        mercury.setSourceCompatibility(getSourceCompatibility().get());
 
         mercury.rewrite(getInputDir().getAsFile().get().toPath(), getOutputDir().getAsFile().get().toPath());
     }

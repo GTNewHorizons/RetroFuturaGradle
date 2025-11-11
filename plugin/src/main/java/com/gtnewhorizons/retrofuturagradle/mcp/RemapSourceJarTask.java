@@ -108,6 +108,9 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
 
     public RemapSourceJarTask() {
         getAddDummyJavadocs().convention(false);
+        if (DEBUG_PRINT_ALL_GENERICS) {
+            notCompatibleWithConfigurationCache("DEBUG_PRINT_ALL_GENERICS is enabled");
+        }
     }
 
     private final Map<String, byte[]> loadedResources = new HashMap<>();
