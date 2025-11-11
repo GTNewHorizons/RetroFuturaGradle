@@ -53,8 +53,8 @@ public class GLConstantFixer {
     private String annotateConstants(String text) {
         Matcher rootMatch = CALL_REGEX.matcher(text);
         String pack, method, fullCall;
-        StringBuffer out = new StringBuffer(text.length());
-        StringBuffer innerOut;
+        StringBuilder out = new StringBuilder(text.length());
+        StringBuilder innerOut = new StringBuilder(64);
 
         // search with regex.
         while (rootMatch.find()) {
@@ -64,7 +64,7 @@ public class GLConstantFixer {
             method = rootMatch.group(2);
 
             Matcher constantMatcher = CONSTANT_REGEX.matcher(fullCall);
-            innerOut = new StringBuffer(fullCall.length());
+            innerOut.delete(0, innerOut.length());
 
             // search for hardcoded numbers
             while (constantMatcher.find()) {

@@ -1,9 +1,9 @@
 package com.gtnewhorizons.retrofuturagradle.fgpatchers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
+
+import org.apache.commons.text.TextStringBuilder;
 
 import com.google.common.base.Splitter;
 
@@ -25,7 +25,7 @@ public final class JavadocAdder {
         StringBuilder builder = new StringBuilder();
 
         // split and wrap.
-        List<String> list = new LinkedList<>();
+        List<String> list = new ArrayList<>();
         for (String line : Splitter.on("\\n").splitToList(javadoc)) {
             list.addAll(wrapText(line, 120 - (indent.length() + 3)));
         }
@@ -56,28 +56,28 @@ public final class JavadocAdder {
             // builder.append(Constants.NEWLINE);
         }
 
-        return builder.toString().replace(indent, indent);
+        return builder.toString();
     }
 
     private static List<String> wrapText(String text, int len) {
         // return empty array for null text
         if (text == null) {
-            return new ArrayList<>();
+            return List.of();
         }
 
         // return text if len is zero or less
         if (len <= 0) {
-            return new ArrayList<>(Arrays.asList(text));
+            return List.of(text);
         }
 
         // return text if less than length
         if (text.length() <= len) {
-            return new ArrayList<>(Arrays.asList(text));
+            return List.of(text);
         }
 
-        List<String> lines = new LinkedList<>();
-        StringBuilder line = new StringBuilder();
-        StringBuilder word = new StringBuilder();
+        List<String> lines = new ArrayList<>();
+        TextStringBuilder line = new TextStringBuilder();
+        TextStringBuilder word = new TextStringBuilder();
         int tempNum;
 
         // each char in array
@@ -92,13 +92,13 @@ public final class JavadocAdder {
 
                 // subtract tempNum from the length of the word
                 if ((line.length() + word.length() - tempNum) > len) {
-                    lines.add(line.toString());
-                    line.delete(0, line.length());
+                    lines.add(line.trim().toString());
+                    line.clear();
                 }
 
                 // new word, add it to the next line and clear the word
                 line.append(word);
-                word.delete(0, word.length());
+                word.clear();
 
             }
             // not a linebreak char
@@ -109,23 +109,19 @@ public final class JavadocAdder {
         }
 
         // handle any extra chars in current word
-        if (word.length() > 0) {
+        if (!word.isEmpty()) {
             if ((line.length() + word.length()) > len) {
-                lines.add(line.toString());
-                line.delete(0, line.length());
+                lines.add(line.trim().toString());
+                line.clear();
             }
             line.append(word);
         }
 
         // handle extra line
-        if (line.length() > 0) {
-            lines.add(line.toString());
+        if (!line.isEmpty()) {
+            lines.add(line.trim().toString());
         }
 
-        List<String> temp = new ArrayList<>(lines.size());
-        for (String s : lines) {
-            temp.add(s.trim());
-        }
-        return temp;
+        return lines;
     }
 }

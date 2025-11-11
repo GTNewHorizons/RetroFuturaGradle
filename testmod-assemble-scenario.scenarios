@@ -1,0 +1,16 @@
+# Use with https://github.com/gradle/gradle-profiler
+# gradle-profiler --benchmark --scenario-file ./testmod-assemble-scenario.scenarios
+# gradle-profiler --profile jfr --iterations 1 --warmups 2 --scenario-file ./testmod-assemble-scenario.scenarios
+default-scenarios = ["clean_build"]
+
+base {
+    warm-ups = 3
+    iterations = 5
+}
+
+clean_build = ${base} {
+    title = "Clean build"
+    tasks = ["testmod:assemble"]
+    gradle-args = ["--parallel", "--configuration-cache", "--no-build-cache"]
+    cleanup-tasks = [clean]
+}

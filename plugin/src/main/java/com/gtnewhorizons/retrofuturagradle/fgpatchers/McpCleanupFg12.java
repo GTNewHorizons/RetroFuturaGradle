@@ -240,7 +240,7 @@ public class McpCleanupFg12 {
         if (doFormattingChanges) {
             Matcher matcher = CLEANUP_unicode.matcher(text);
             int val;
-            StringBuffer buffer = new StringBuffer(text.length());
+            StringBuilder buffer = new StringBuilder(text.length());
 
             while (matcher.find()) {
                 val = Integer.parseInt(matcher.group(1), 16);

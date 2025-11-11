@@ -11,8 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.TextStringBuilder;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -40,8 +40,9 @@ public class FmlCleanup {
     };
 
     public static String renameClass(String text) {
+        final String lineSep = System.lineSeparator();
         String[] lines = text.split("(\r\n|\r|\n)");
-        List<String> output = new ArrayList<>(lines.length);
+        StringBuilder output = new StringBuilder(text.length());
         MethodInfo method = null;
 
         for (String line : lines) {
@@ -74,14 +75,16 @@ public class FmlCleanup {
                     method = method.parent;
 
                     if (method == null) // dont output if there is a parent method.
-                        output.add(line);
+                        output.append(line);
+                    output.append(lineSep);
                 }
             } else if (method != null && method.ENDING.equals(line)) {
                 method.lines.add(line);
 
                 if (method.parent == null) {
                     for (String l : Splitter.on(System.lineSeparator()).split(method.rename(null))) {
-                        output.add(l);
+                        output.append(l);
+                        output.append(lineSep);
                     }
                 }
 
@@ -102,11 +105,12 @@ public class FmlCleanup {
                 }
             } else // If we get to here, then we are outside of all methods
             {
-                output.add(line);
+                output.append(line);
+                output.append(lineSep);
             }
         }
 
-        return Joiner.on(System.lineSeparator()).join(output);
+        return output.toString();
     }
 
     private static class MethodInfo {
@@ -143,46 +147,43 @@ public class FmlCleanup {
                 else unnamed.put(split[1], split[0]);
             }
 
-            if (unnamed.size() > 0) {
+            if (!unnamed.isEmpty()) {
                 // We sort the var## names because FF is non-deterministic and sometimes decompiles the declarations in
                 // different orders.
                 List<String> sorted = new ArrayList<>(unnamed.keySet());
-                sorted.sort(new Comparator<>() {
-
-                    @Override
-                    public int compare(String o1, String o2) {
-                        if (o1.length() < o2.length()) return -1;
-                        if (o1.length() > o2.length()) return 1;
-                        return o1.compareTo(o2);
-                    }
+                sorted.sort((o1, o2) -> {
+                    if (o1.length() < o2.length()) return -1;
+                    if (o1.length() > o2.length()) return 1;
+                    return o1.compareTo(o2);
                 });
                 for (String s : sorted) {
                     renames.put(s, namer.getName(unnamed.get(s), s));
                 }
             }
 
-            StringBuilder buf = new StringBuilder();
+            TextStringBuilder body = new TextStringBuilder();
             for (Object line : lines) {
-                if (line instanceof MethodInfo)
-                    buf.append(((MethodInfo) line).rename(namer)).append(System.lineSeparator());
-                else buf.append((String) line).append(System.lineSeparator());
+                if (line instanceof MethodInfo) body.appendln(((MethodInfo) line).rename(namer));
+                else body.appendln((String) line);
             }
 
-            String body = buf.toString();
-
-            if (renames.size() > 0) {
+            if (!renames.isEmpty()) {
                 List<String> sortedKeys = new ArrayList<>(renames.keySet());
                 sortedKeys.sort(COMPARATOR);
 
                 // closure changes the sort, to sort by the return value of the closure.
+                final Matcher VAR_MATCHER = VAR.matcher("");
                 for (String key : sortedKeys) {
-                    if (VAR.matcher(key).matches()) {
-                        body = body.replace(key, renames.get(key));
+                    VAR_MATCHER.reset(key);
+                    if (VAR_MATCHER.matches()) {
+                        body = body.replaceAll(key, renames.get(key));
                     }
                 }
             }
 
-            return body.substring(0, body.length() - System.lineSeparator().length());
+            body.delete(body.length() - System.lineSeparator().length(), body.length());
+
+            return body.toString();
         }
     }
 
