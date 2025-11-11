@@ -16,7 +16,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -88,19 +90,9 @@ public class ReobfExceptor {
         for (File f : csvs) {
             if (f == null) continue;
 
-            Files.readLines(f, Charset.defaultCharset(), new LineProcessor<>() {
-
-                @Override
-                public boolean processLine(String line) throws IOException {
-                    String[] s = line.split(",");
-                    csvData.put(s[0], s[1]);
-                    return true;
-                }
-
-                @Override
-                public Object getResult() {
-                    return null;
-                }
+            Files.asCharSource(f, StandardCharsets.UTF_8).lines().forEach(line -> {
+                String[] s = line.split(",");
+                csvData.put(s[0], s[1]);
             });
         }
 
@@ -146,24 +138,12 @@ public class ReobfExceptor {
 
     private Map<String, String> createClassMap(Map<String, String> markerMap, final List<String> interfaces)
             throws IOException {
-        Map<String, String> excMap = Files.readLines(excConfig, Charset.defaultCharset(), new LineProcessor<>() {
+        Map<String, String> excMap = new HashMap<>();
+        Files.asCharSource(excConfig, Charset.defaultCharset()).lines().forEach(line -> {
+            if (line.contains(".") || !line.contains("=") || line.startsWith("#")) return;
 
-            Map<String, String> tmp = Maps.newHashMap();
-
-            @Override
-            public boolean processLine(String line) throws IOException {
-                if (line.contains(".") || !line.contains("=") || line.startsWith("#")) return true;
-
-                String[] s = line.split("=");
-                if (!interfaces.contains(s[0])) tmp.put(s[0], s[1] + "_");
-
-                return true;
-            }
-
-            @Override
-            public Map<String, String> getResult() {
-                return tmp;
-            }
+            String[] s = line.split("=");
+            if (!interfaces.contains(s[0])) excMap.put(s[0], s[1] + "_");
         });
 
         Map<String, String> map = Maps.newHashMap();

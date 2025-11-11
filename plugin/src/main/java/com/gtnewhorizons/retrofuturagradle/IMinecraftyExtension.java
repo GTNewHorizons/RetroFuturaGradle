@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.gradle.api.Project;
 import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -199,7 +199,7 @@ public interface IMinecraftyExtension {
     default Provider<Integer> getMinorMcVersion() {
         return getMcVersion().map(
                 minecraftVersion -> Integer
-                        .parseInt(StringUtils.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10));
+                        .parseInt(Strings.CS.removeStart(minecraftVersion, "1.").replaceAll("\\..+$", ""), 10));
     }
 
     default Provider<JavaLauncher> getToolchainLauncher(Project project) {

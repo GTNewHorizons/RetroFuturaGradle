@@ -46,6 +46,7 @@ import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.SystemUtils;
 import org.gradle.api.Project;
 import org.gradle.api.invocation.Gradle;
@@ -152,11 +153,9 @@ public final class Utilities {
         final String module = pathComponents[modulesCacheIndex + 1];
         final String version = pathComponents[modulesCacheIndex + 2];
         final String jarName = pathComponents[modulesCacheIndex + 4];
-        final String classifier = StringUtils.removeStart(
-                StringUtils.removeEndIgnoreCase(
-                        StringUtils.removeStartIgnoreCase(jarName, module + "-" + version),
-                        ".jar"),
-                "-").trim();
+        final String classifier = Strings.CS
+                .removeStart(Strings.CI.removeEnd(Strings.CI.removeStart(jarName, module + "-" + version), ".jar"), "-")
+                .trim();
         final String gmv = group + ":" + module + ":" + version;
         if (StringUtils.isEmpty(classifier)) {
             return gmv;

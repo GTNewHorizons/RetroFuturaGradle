@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -229,8 +230,8 @@ public class ModUtils {
                             task.from(mixinRefMapFile);
                             final String compileJava = mixinSourceSet.getCompileJavaTaskName();
                             task.dependsOn(compileJava);
-                            final String compileScala = StringUtils.removeEnd(compileJava, "Java") + "Scala";
-                            final String compileKotlin = StringUtils.removeEnd(compileJava, "Java") + "Kotlin";
+                            final String compileScala = Strings.CS.removeEnd(compileJava, "Java") + "Scala";
+                            final String compileKotlin = Strings.CS.removeEnd(compileJava, "Java") + "Kotlin";
                             project.getPlugins().withType(ScalaPlugin.class, scp -> { task.dependsOn(compileScala); });
                             project.getPlugins()
                                     .withId("org.jetbrains.kotlin.jvm", p -> { task.dependsOn(compileKotlin); });

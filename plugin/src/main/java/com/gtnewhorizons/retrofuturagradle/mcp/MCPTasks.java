@@ -19,6 +19,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
@@ -385,7 +386,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources, patchedMcSources.getClassesTaskName());
             task.getArchiveVersion().set(mcExt.getMcVersion());
-            task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLocation.getName(), ".jar"));
+            task.getArchiveBaseName().set(Strings.CS.removeEnd(packagedMcLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLocation.getParentFile());
             task.from(patchedMcSources.getOutput());
         });
@@ -495,7 +496,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());
             task.getArchiveVersion().set(mcExt.getMcVersion());
-            task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
+            task.getArchiveBaseName().set(Strings.CS.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLauncherLocation.getParentFile());
 
             task.from(launcherSources.getOutput());
@@ -603,7 +604,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             if (!taskName.startsWith("reobf")) {
                 return;
             }
-            final String subjectTaskName = StringUtils.uncapitalize(StringUtils.removeStart(taskName, "reobf"));
+            final String subjectTaskName = StringUtils.uncapitalize(Strings.CS.removeStart(taskName, "reobf"));
             final TaskProvider<Jar> subjectTask;
             try {
                 subjectTask = project.getTasks().named(subjectTaskName, Jar.class);
@@ -643,7 +644,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         reobfJarConfiguration = project.getConfigurations().create("reobfJarConfiguration");
         {
             // Based on org.gradle.api.plugins.internal.JvmPluginsHelper.configureDocumentationVariantWithArtifact
-            reobfJarConfiguration.setVisible(true);
             reobfJarConfiguration.setCanBeConsumed(false);
             reobfJarConfiguration.setCanBeResolved(true);
             reobfJarConfiguration.setDescription("Reobfuscated jar");

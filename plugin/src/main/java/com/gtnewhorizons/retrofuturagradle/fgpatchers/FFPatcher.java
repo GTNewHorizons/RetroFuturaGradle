@@ -50,7 +50,7 @@ public class FFPatcher {
     private static final Pattern NEWLINE_PATTERN = Pattern.compile("\r?\n|\r");
 
     public static String processFile(String fileName, String text, boolean fixInterfaces) throws IOException {
-        StringBuffer out = new StringBuffer();
+        StringBuilder out = new StringBuilder();
         Matcher m = SYNTHETICS.matcher(text);
         while (m.find()) {
             m.appendReplacement(out, synthetic_replacement(m).replace("$", "\\$"));
@@ -72,7 +72,7 @@ public class FFPatcher {
         text = RegExUtils.replaceAll(text, EMPTY_SUPER, "");
 
         if (fixInterfaces) {
-            out = new StringBuffer();
+            out.delete(0, out.length());
             m = ABSTRACT.matcher(text);
             while (m.find()) {
                 m.appendReplacement(out, abstract_replacement(m).replace("$", "\\$"));
