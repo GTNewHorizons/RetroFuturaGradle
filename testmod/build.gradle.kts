@@ -58,7 +58,21 @@ repositories {
     }
     gradlePluginPortal()
     mavenCentral()
+    exclusiveContent {
+        forRepository {
+            maven {
+                url = uri("https://cursemaven.com")
+            }
+        }
+        filter {
+            includeGroup("curse.maven")
+        }
+    }
     mavenLocal()
+}
+
+dependencies {
+    compileOnly(rfg.deobf("curse.maven:ic2-242638:2353971"))
 }
 
 java {

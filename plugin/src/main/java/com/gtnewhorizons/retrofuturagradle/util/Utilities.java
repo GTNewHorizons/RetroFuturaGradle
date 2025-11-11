@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -40,12 +41,12 @@ import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.VisitableMappingTree;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.SystemUtils;
 import org.gradle.api.Project;
 import org.gradle.api.invocation.Gradle;
@@ -152,11 +153,9 @@ public final class Utilities {
         final String module = pathComponents[modulesCacheIndex + 1];
         final String version = pathComponents[modulesCacheIndex + 2];
         final String jarName = pathComponents[modulesCacheIndex + 4];
-        final String classifier = StringUtils.removeStart(
-                StringUtils.removeEndIgnoreCase(
-                        StringUtils.removeStartIgnoreCase(jarName, module + "-" + version),
-                        ".jar"),
-                "-").trim();
+        final String classifier = Strings.CS
+                .removeStart(Strings.CI.removeEnd(Strings.CI.removeStart(jarName, module + "-" + version), ".jar"), "-")
+                .trim();
         final String gmv = group + ":" + module + ":" + version;
         if (StringUtils.isEmpty(classifier)) {
             return gmv;
@@ -310,7 +309,7 @@ public final class Utilities {
                 final ArchiveInputStream<?> ais = new ArchiveStreamFactory()
                         .createArchiveInputStream(archiveType, bis)) {
             Utilities.decompressArchive(ais, destination);
-        } catch (ArchiveException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -369,20 +368,15 @@ public final class Utilities {
         }
     }
 
-    public static final class Mapping {
+    public record Mapping(String name, String javadoc) {
 
-        public final String name;
-        public final String javadoc;
-
-        public Mapping(String name, String javadoc) {
+        public Mapping {
             if (name == null) {
                 throw new IllegalArgumentException("Null mapping name passed");
             }
             if (javadoc == null) {
                 javadoc = "";
             }
-            this.name = name;
-            this.javadoc = javadoc;
         }
     }
 
@@ -419,37 +413,7 @@ public final class Utilities {
         }
     }
 
-    public static final class GenericPatch {
-
-        public final String zipEntry;
-        public final String containsFilter;
-        public final String toReplace;
-        public final String replaceWith;
-
-        public GenericPatch(String zipEntry, String containsFilter, String toReplace, String replaceWith) {
-            this.zipEntry = zipEntry;
-            this.containsFilter = containsFilter;
-            this.toReplace = toReplace;
-            this.replaceWith = replaceWith;
-        }
-
-        @Override
-        public String toString() {
-            return "GenericPatch{" + "zipEntry='"
-                    + zipEntry
-                    + '\''
-                    + ", containsFilter='"
-                    + containsFilter
-                    + '\''
-                    + ", toReplace='"
-                    + toReplace
-                    + '\''
-                    + ", replaceWith='"
-                    + replaceWith
-                    + '\''
-                    + '}';
-        }
-    }
+    public record GenericPatch(String zipEntry, String containsFilter, String toReplace, String replaceWith) {}
 
     public static class MappingsSet {
 
@@ -650,8 +614,8 @@ public final class Utilities {
         UUID onlineUUID = null;
         if (!isOffline) {
             try {
-                URL url = new URL(
-                        Constants.URL_PLAYER_TO_UUID + URLEncoder.encode(username, StandardCharsets.UTF_8.name()));
+                URL url = URI.create(Constants.URL_PLAYER_TO_UUID + URLEncoder.encode(username, StandardCharsets.UTF_8))
+                        .toURL();
                 final String json = IOUtils.toString(url, StandardCharsets.UTF_8);
                 JsonElement root = JsonParser.parseString(json);
                 if (root.isJsonObject()) {

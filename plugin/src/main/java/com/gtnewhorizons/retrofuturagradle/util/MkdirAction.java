@@ -8,13 +8,7 @@ import org.gradle.api.Task;
 import org.gradle.api.file.Directory;
 import org.gradle.api.provider.Provider;
 
-public class MkdirAction implements Action<Task> {
-
-    private final Provider<Directory> directory;
-
-    public MkdirAction(Provider<Directory> path) {
-        this.directory = path;
-    }
+public record MkdirAction(Provider<Directory> directory) implements Action<Task> {
 
     @Override
     public void execute(Task task) {

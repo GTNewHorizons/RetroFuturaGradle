@@ -173,12 +173,14 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
             if (f == null) {
                 continue;
             }
-            FileUtils.lineIterator(f).forEachRemaining(line -> {
-                String[] parts = line.split(",");
-                if (!"searge".equals(parts[0])) {
-                    renames.put(parts[0], parts[1]);
-                }
-            });
+            try (var lines = FileUtils.lineIterator(f)) {
+                lines.forEachRemaining(line -> {
+                    String[] parts = line.split(",");
+                    if (!"searge".equals(parts[0])) {
+                        renames.put(parts[0], parts[1]);
+                    }
+                });
+            }
         }
 
         // Load access transformers
@@ -236,12 +238,14 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
             if (f == null) {
                 continue;
             }
-            FileUtils.lineIterator(f).forEachRemaining(line -> {
-                String[] parts = line.split(",");
-                if (!"searge".equals(parts[0])) {
-                    renames.put(parts[0], parts[1]);
-                }
-            });
+            try (var lines = FileUtils.lineIterator(f)) {
+                lines.forEachRemaining(line -> {
+                    String[] parts = line.split(",");
+                    if (!"searge".equals(parts[0])) {
+                        renames.put(parts[0], parts[1]);
+                    }
+                });
+            }
         }
 
         // Load access transformers
@@ -295,7 +299,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
                         final LineIterator lines = IOUtils.lineIterator(bis, StandardCharsets.UTF_8)) {
                     while (lines.hasNext()) {
                         // eg. "a.foo/bar ()desc # comment"
-                        String line = lines.nextLine();
+                        String line = lines.next();
                         int commentIdx = line.indexOf('#');
                         if (commentIdx != -1) {
                             line = line.substring(0, commentIdx);
@@ -378,13 +382,7 @@ public abstract class DeobfuscateTask extends DefaultTask implements IJarTransfo
 
                 // Verify the inner classes in the configuration actually exist in our deobfuscated JAR file
                 if (struct.innerClasses != null) {
-                    Iterator<MCInjectorStruct.InnerClass> innerClasses = struct.innerClasses.iterator();
-                    while (innerClasses.hasNext()) {
-                        MCInjectorStruct.InnerClass innerClass = innerClasses.next();
-                        if (zip.getEntry(innerClass.inner_class + ".class") == null) {
-                            innerClasses.remove();
-                        }
-                    }
+                    struct.innerClasses.removeIf(innerClass -> zip.getEntry(innerClass.inner_class + ".class") == null);
                 }
             }
         }

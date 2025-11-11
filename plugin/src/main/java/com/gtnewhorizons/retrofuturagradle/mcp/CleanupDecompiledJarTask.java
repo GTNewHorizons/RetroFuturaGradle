@@ -23,6 +23,7 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.LogLevel;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
@@ -79,6 +80,9 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
     private File taskTempDir;
 
     @Inject
+    protected abstract ObjectFactory getObjectFactory();
+
+    @Inject
     public CleanupDecompiledJarTask() {
         getMinorMcVersion().convention(7);
     }
@@ -130,7 +134,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                 if (mcMinor <= 8) {
                     patched = FFPatcher.processFile(entry.getKey(), entry.getValue(), true);
                 } else {
-                    patched = com.gtnewhorizons.retrofuturagradle.mcp.fg23.FFPatcher.processFile(entry.getValue());
+                    patched = com.gtnewhorizons.retrofuturagradle.java8.fg23.FFPatcher.processFile(entry.getValue());
                 }
                 return MutablePair.of(entry.getKey(), patched);
             } catch (IOException e) {
@@ -286,7 +290,7 @@ public abstract class CleanupDecompiledJarTask extends DefaultTask implements IJ
                 String root = common.getAbsolutePath().replace('\\', '/');
                 if (!root.endsWith("/")) root += '/';
 
-                for (File commonFile : this.getProject().fileTree(common)) {
+                for (File commonFile : getObjectFactory().fileTree().from(common)) {
                     String absPath = commonFile.getAbsolutePath().replace('\\', '/');
                     String relPath = absPath.substring(root.length());
                     final String contents = FileUtils.readFileToString(commonFile, StandardCharsets.UTF_8);

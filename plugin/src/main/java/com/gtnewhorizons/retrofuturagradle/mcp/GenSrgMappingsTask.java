@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileLock;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +24,6 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 
-import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.gtnewhorizons.retrofuturagradle.fg12shadow.net.minecraftforge.srg2source.rangeapplier.MethodData;
@@ -124,11 +124,12 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
 
         // create streams
 
-        try (BufferedWriter notchToSrg = Files.newWriter(getNotchToSrg().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter notchToMcp = Files.newWriter(getNotchToMcp().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter srgToMcp = Files.newWriter(getSrgToMcp().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter mcpToSrg = Files.newWriter(getMcpToSrg().get().getAsFile(), Charsets.UTF_8);
-                BufferedWriter mcpToNotch = Files.newWriter(getMcpToNotch().get().getAsFile(), Charsets.UTF_8)) {
+        try (BufferedWriter notchToSrg = Files.newWriter(getNotchToSrg().get().getAsFile(), StandardCharsets.UTF_8);
+                BufferedWriter notchToMcp = Files.newWriter(getNotchToMcp().get().getAsFile(), StandardCharsets.UTF_8);
+                BufferedWriter srgToMcp = Files.newWriter(getSrgToMcp().get().getAsFile(), StandardCharsets.UTF_8);
+                BufferedWriter mcpToSrg = Files.newWriter(getMcpToSrg().get().getAsFile(), StandardCharsets.UTF_8);
+                BufferedWriter mcpToNotch = Files
+                        .newWriter(getMcpToNotch().get().getAsFile(), StandardCharsets.UTF_8)) {
             String line, temp, mcpName;
             // packages
             for (Map.Entry<String, String> e : inSrg.packageMap.entrySet()) {
@@ -250,15 +251,15 @@ public abstract class GenSrgMappingsTask extends DefaultTask {
 
         // create streams
         try (BufferedWriter srgOut = com.google.common.io.Files
-                .newWriter(getSrgExc().get().getAsFile(), Charsets.UTF_8);
+                .newWriter(getSrgExc().get().getAsFile(), StandardCharsets.UTF_8);
                 BufferedWriter mcpOut = com.google.common.io.Files
-                        .newWriter(getMcpExc().get().getAsFile(), Charsets.UTF_8)) {
+                        .newWriter(getMcpExc().get().getAsFile(), StandardCharsets.UTF_8)) {
 
             // read and write existing lines
             Set<File> excFiles = new HashSet<>(getExtraExcs().getFiles());
             excFiles.add(getInputExc().get().getAsFile());
             for (File f : excFiles) {
-                List<String> lines = Files.readLines(f, Charsets.UTF_8);
+                List<String> lines = Files.readLines(f, StandardCharsets.UTF_8);
 
                 for (String line : lines) {
                     // these are in MCP names

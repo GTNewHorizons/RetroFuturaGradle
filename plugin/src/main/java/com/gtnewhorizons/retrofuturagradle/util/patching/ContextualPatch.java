@@ -122,11 +122,11 @@ public final class ContextualPatch {
      * @throws IOException    because it reads the patch file
      */
     public List<PatchReport> patch(boolean dryRun) throws PatchException, IOException {
-        List<PatchReport> report = new ArrayList<PatchReport>();
+        List<PatchReport> report = new ArrayList<>();
         init();
         try {
             patchLine = patchReader.readLine();
-            List<SinglePatch> patches = new ArrayList<SinglePatch>();
+            List<SinglePatch> patches = new ArrayList<>();
             for (;;) {
                 SinglePatch patch = getNextPatch();
                 if (patch == null) {
@@ -142,12 +142,7 @@ public final class ContextualPatch {
                     // PatchStatus.Patched, null));
                 } catch (Exception e) {
                     report.add(
-                            new PatchReport(
-                                    patch.targetPath,
-                                    patch.binary,
-                                    PatchStatus.Failure,
-                                    e,
-                                    new ArrayList<HunkReport>()));
+                            new PatchReport(patch.targetPath, patch.binary, PatchStatus.Failure, e, new ArrayList<>()));
                 }
             }
             return report;
@@ -190,7 +185,7 @@ public final class ContextualPatch {
 
     private PatchReport applyPatch(SinglePatch patch, boolean dryRun) throws IOException, PatchException {
         lastPatchedLine = 1;
-        List<HunkReport> ret = new ArrayList<HunkReport>();
+        List<HunkReport> ret = new ArrayList<>();
 
         if (this.contextProvider != null) {
             List<String> target = contextProvider.getData(patch.targetPath);
@@ -204,11 +199,11 @@ public final class ContextualPatch {
                     return new PatchReport(patch.targetPath, patch.binary, PatchStatus.Skipped, null, ret);
                 }
             } else if (target == null) {
-                target = new ArrayList<String>();
+                target = new ArrayList<>();
             }
 
             if (patch.mode == Mode.DELETE) {
-                target = new ArrayList<String>();
+                target = new ArrayList<>();
             } else {
                 if (!patch.binary) {
                     int x = 0;
@@ -239,10 +234,10 @@ public final class ContextualPatch {
                     return new PatchReport(patch.targetPath, patch.binary, PatchStatus.Skipped, null, ret);
                 }
             } else {
-                target = new ArrayList<String>();
+                target = new ArrayList<>();
             }
             if (patch.mode == Mode.DELETE) {
-                target = new ArrayList<String>();
+                target = new ArrayList<>();
             } else {
                 if (!patch.binary) {
                     int x = 0;
@@ -282,7 +277,7 @@ public final class ContextualPatch {
             return false;
         }
 
-        List<String> target = new ArrayList<String>(hunk.modifiedCount);
+        List<String> target = new ArrayList<>(hunk.modifiedCount);
         applyHunk(target, hunk, 0);
         return target.equals(originalFile);
     }
@@ -325,18 +320,15 @@ public final class ContextualPatch {
             if (lines.size() == 0) {
                 return;
             }
-            PrintWriter w = new PrintWriter(
-                    new OutputStreamWriter(new FileOutputStream(patch.targetFile), getEncoding(patch.targetFile)));
-            try {
+            try (PrintWriter w = new PrintWriter(
+                    new OutputStreamWriter(new FileOutputStream(patch.targetFile), getEncoding(patch.targetFile)))) {
                 for (String line : lines.subList(0, lines.size() - 1)) {
                     w.println(line);
                 }
-                w.print(lines.get(lines.size() - 1));
+                w.print(lines.getLast());
                 if (!patch.noEndingNewline) {
                     w.println();
                 }
-            } finally {
-                w.close();
             }
         }
     }
@@ -351,7 +343,10 @@ public final class ContextualPatch {
             }
         }
         if (idx == -1) {
-            throw new PatchException("Cannot find hunk target");
+            throw new PatchException(
+                    "Cannot find hunk target: \n" + String.join("\n", hunk.lines)
+                            + "\n\nin target:\n\n"
+                            + String.join("\n", target));
         }
         return applyHunk(target, hunk, idx, false, fuzz, hunkID);
     }
@@ -441,7 +436,7 @@ public final class ContextualPatch {
     private List<String> readFile(File target) throws IOException {
         BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(target), getEncoding(target)));
         try {
-            List<String> lines = new ArrayList<String>();
+            List<String> lines = new ArrayList<>();
             String line;
             while ((line = r.readLine()) != null) {
                 lines.add(line);
@@ -492,7 +487,7 @@ public final class ContextualPatch {
      * Reads binary diff hunk.
      */
     private void readBinaryPatchContent(SinglePatch patch) throws PatchException, IOException {
-        List<Hunk> hunks = new ArrayList<Hunk>();
+        List<Hunk> hunks = new ArrayList<>();
         Hunk hunk = new Hunk();
         for (;;) {
             String line = readPatchLine();
@@ -514,14 +509,14 @@ public final class ContextualPatch {
                 }
             }
         }
-        patch.hunks = hunks.toArray(new Hunk[hunks.size()]);
+        patch.hunks = hunks.toArray(new Hunk[0]);
     }
 
     /**
      * Reads normal diff hunks.
      */
     private void readNormalPatchContent(SinglePatch patch) throws IOException, PatchException {
-        List<Hunk> hunks = new ArrayList<Hunk>();
+        List<Hunk> hunks = new ArrayList<>();
         Hunk hunk = null;
         Matcher m;
         for (;;) {
@@ -554,7 +549,7 @@ public final class ContextualPatch {
                 }
             }
         }
-        patch.hunks = hunks.toArray(new Hunk[hunks.size()]);
+        patch.hunks = hunks.toArray(new Hunk[0]);
     }
 
     private void parseNormalRange(Hunk hunk, Matcher m) {
@@ -592,7 +587,7 @@ public final class ContextualPatch {
             computeTargetPath(base, modified, patch);
         }
 
-        List<Hunk> hunks = new ArrayList<Hunk>();
+        List<Hunk> hunks = new ArrayList<>();
         Hunk hunk = null;
 
         int lineCount = -1;
@@ -623,7 +618,7 @@ public final class ContextualPatch {
                 }
             }
         }
-        patch.hunks = hunks.toArray(new Hunk[hunks.size()]);
+        patch.hunks = hunks.toArray(new Hunk[0]);
         convertContextToUnified(patch);
     }
 
@@ -653,7 +648,7 @@ public final class ContextualPatch {
 
         int baseIdx = 0;
         int modifiedIdx = split + 1;
-        List<String> unifiedLines = new ArrayList<String>(hunk.lines.size());
+        List<String> unifiedLines = new ArrayList<>(hunk.lines.size());
         for (; baseIdx < split || modifiedIdx < hunk.lines.size();) {
             String baseLine = baseIdx < split ? hunk.lines.get(baseIdx) : "~";
             String modifiedLine = modifiedIdx < hunk.lines.size() ? hunk.lines.get(modifiedIdx) : "~";
@@ -713,7 +708,7 @@ public final class ContextualPatch {
             computeTargetPath(base, modified, patch);
         }
 
-        List<Hunk> hunks = new ArrayList<Hunk>();
+        List<Hunk> hunks = new ArrayList<>();
         Hunk hunk = null;
 
         for (;;) {
@@ -737,7 +732,7 @@ public final class ContextualPatch {
                 break;
             }
         }
-        patch.hunks = hunks.toArray(new Hunk[hunks.size()]);
+        patch.hunks = hunks.toArray(new Hunk[0]);
     }
 
     private void computeTargetPath(String base, String modified, SinglePatch patch) {

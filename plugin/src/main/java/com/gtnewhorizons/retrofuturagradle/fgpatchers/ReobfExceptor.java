@@ -16,7 +16,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -88,19 +90,9 @@ public class ReobfExceptor {
         for (File f : csvs) {
             if (f == null) continue;
 
-            Files.readLines(f, Charset.defaultCharset(), new LineProcessor<Object>() {
-
-                @Override
-                public boolean processLine(String line) throws IOException {
-                    String[] s = line.split(",");
-                    csvData.put(s[0], s[1]);
-                    return true;
-                }
-
-                @Override
-                public Object getResult() {
-                    return null;
-                }
+            Files.asCharSource(f, StandardCharsets.UTF_8).lines().forEach(line -> {
+                String[] s = line.split(",");
+                csvData.put(s[0], s[1]);
             });
         }
 
@@ -146,26 +138,13 @@ public class ReobfExceptor {
 
     private Map<String, String> createClassMap(Map<String, String> markerMap, final List<String> interfaces)
             throws IOException {
-        Map<String, String> excMap = Files
-                .readLines(excConfig, Charset.defaultCharset(), new LineProcessor<Map<String, String>>() {
+        Map<String, String> excMap = new HashMap<>();
+        Files.asCharSource(excConfig, Charset.defaultCharset()).lines().forEach(line -> {
+            if (line.contains(".") || !line.contains("=") || line.startsWith("#")) return;
 
-                    Map<String, String> tmp = Maps.newHashMap();
-
-                    @Override
-                    public boolean processLine(String line) throws IOException {
-                        if (line.contains(".") || !line.contains("=") || line.startsWith("#")) return true;
-
-                        String[] s = line.split("=");
-                        if (!interfaces.contains(s[0])) tmp.put(s[0], s[1] + "_");
-
-                        return true;
-                    }
-
-                    @Override
-                    public Map<String, String> getResult() {
-                        return tmp;
-                    }
-                });
+            String[] s = line.split("=");
+            if (!interfaces.contains(s[0])) excMap.put(s[0], s[1] + "_");
+        });
 
         Map<String, String> map = Maps.newHashMap();
         for (Entry<String, String> e : excMap.entrySet()) {
@@ -240,26 +219,28 @@ public class ReobfExceptor {
         @Override
         public boolean processLine(String line) throws IOException {
             String[] split = line.split(" ");
-            if (split[0].equals("CL:")) {
-                split[2] = rename(split[2]);
-            } else if (split[0].equals("FD:")) {
-                String[] s = rsplit(split[2], "/");
-                split[2] = rename(s[0]) + "/" + s[1];
-            } else if (split[0].equals("MD:")) {
-                String[] s = rsplit(split[3], "/");
-                split[3] = rename(s[0]) + "/" + s[1];
-
-                if (access.containsKey(split[3])) {
-                    split[3] = access.get(split[3]);
+            switch (split[0]) {
+                case "CL:" -> split[2] = rename(split[2]);
+                case "FD:" -> {
+                    String[] s = rsplit(split[2], "/");
+                    split[2] = rename(s[0]) + "/" + s[1];
                 }
+                case "MD:" -> {
+                    String[] s = rsplit(split[3], "/");
+                    split[3] = rename(s[0]) + "/" + s[1];
 
-                Matcher m = reg.matcher(split[4]);
-                StringBuffer b = new StringBuffer();
-                while (m.find()) {
-                    m.appendReplacement(b, "L" + rename(m.group(1)).replace("$", "\\$") + ";");
+                    if (access.containsKey(split[3])) {
+                        split[3] = access.get(split[3]);
+                    }
+
+                    Matcher m = reg.matcher(split[4]);
+                    StringBuilder b = new StringBuilder();
+                    while (m.find()) {
+                        m.appendReplacement(b, "L" + rename(m.group(1)).replace("$", "\\$") + ";");
+                    }
+                    m.appendTail(b);
+                    split[4] = b.toString();
                 }
-                m.appendTail(b);
-                split[4] = b.toString();
             }
             out.append(Joiner.on(' ').join(split)).append('\n');
             return true;
@@ -340,7 +321,7 @@ public class ReobfExceptor {
         public String name;
         public String desc;
         public int access;
-        public List<Insn> insns = new ArrayList<Insn>();
+        public List<Insn> insns = new ArrayList<>();
         private String cache = null;
 
         public AccessInfo(String owner, String name, String desc) {
@@ -386,32 +367,17 @@ public class ReobfExceptor {
         @Override
         public String toString() {
             String op = "UNKNOWN_" + opcode;
-            switch (opcode) {
-                case GETSTATIC:
-                    op = "GETSTATIC";
-                    break;
-                case PUTSTATIC:
-                    op = "PUTSTATIC";
-                    break;
-                case GETFIELD:
-                    op = "GETFIELD";
-                    break;
-                case PUTFIELD:
-                    op = "PUTFIELD";
-                    break;
-                case INVOKEVIRTUAL:
-                    op = "INVOKEVIRTUAL";
-                    break;
-                case INVOKESPECIAL:
-                    op = "INVOKESPECIAL";
-                    break;
-                case INVOKESTATIC:
-                    op = "INVOKESTATIC";
-                    break;
-                case INVOKEINTERFACE:
-                    op = "INVOKEINTERFACE";
-                    break;
-            }
+            op = switch (opcode) {
+                case GETSTATIC -> "GETSTATIC";
+                case PUTSTATIC -> "PUTSTATIC";
+                case GETFIELD -> "GETFIELD";
+                case PUTFIELD -> "PUTFIELD";
+                case INVOKEVIRTUAL -> "INVOKEVIRTUAL";
+                case INVOKESPECIAL -> "INVOKESPECIAL";
+                case INVOKESTATIC -> "INVOKESTATIC";
+                case INVOKEINTERFACE -> "INVOKEINTERFACE";
+                default -> op;
+            };
             return op + " " + owner + "/" + name + " " + desc;
         }
     }

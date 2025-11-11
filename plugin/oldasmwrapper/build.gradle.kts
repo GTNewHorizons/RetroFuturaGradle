@@ -1,14 +1,13 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
-    id("io.github.goooler.shadow") version "8.1.7"
     id("java-library")
+    alias(libs.plugins.shadow)
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
-        vendor.set(JvmVendorSpec.AZUL)
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
@@ -91,7 +90,7 @@ version = "1.0"
 
 val fg12EmuJar = tasks.register<ShadowJar>("fg12EmuJar") {
     archiveClassifier.set("fg12")
-    isEnableRelocation = true
+    enableAutoRelocation = true
     relocationPrefix = "com.gtnewhorizons.retrofuturagradle.fg12shadow"
     configurations.add(fg12Emulation)
     exclude("META-INF/*.SF", "META-INF/*.RSA")
@@ -99,7 +98,7 @@ val fg12EmuJar = tasks.register<ShadowJar>("fg12EmuJar") {
 
 val fg23EmuJar = tasks.register<ShadowJar>("fg23EmuJar") {
     archiveClassifier.set("fg23")
-    isEnableRelocation = true
+    enableAutoRelocation = true
     relocationPrefix = "com.gtnewhorizons.retrofuturagradle.fg23shadow"
     configurations.add(fg23Emulation)
     exclude("META-INF/*.SF", "META-INF/*.RSA")

@@ -5,10 +5,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.api.DefaultTask;
@@ -51,11 +51,12 @@ public abstract class CreateLauncherFiles extends DefaultTask {
     }
 
     public void addResources(String stripPattern, Provider<List<String>> resPathList) {
+        final Pattern pattern = Pattern.compile(stripPattern);
         getInputResources().putAll(
                 resPathList.map(
                         resPaths -> resPaths.stream().collect(
                                 Collectors.toMap(
-                                        p -> RegExUtils.removePattern(p, stripPattern),
+                                        p -> pattern.matcher(p).replaceAll(""),
                                         Utilities::readEmbeddedResourceText))));
     }
 }

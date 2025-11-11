@@ -133,12 +133,10 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                             mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.exc") : mcpFile("joined.exc")));
                     task.getFieldsCsv().set(
                             mcExt.getUseForgeEmbeddedMappings().flatMap(
-                                    useForge -> useForge.booleanValue() ? userdevFile("conf/fields.csv")
-                                            : mcpFile("fields.csv")));
+                                    useForge -> useForge ? userdevFile("conf/fields.csv") : mcpFile("fields.csv")));
                     task.getMethodsCsv().set(
                             mcExt.getUseForgeEmbeddedMappings().flatMap(
-                                    useForge -> useForge.booleanValue() ? userdevFile("conf/methods.csv")
-                                            : mcpFile("methods.csv")));
+                                    useForge -> useForge ? userdevFile("conf/methods.csv") : mcpFile("methods.csv")));
                     // outputs
                     task.getNotchToSrg().set(srgFile("notch-srg.srg"));
                     task.getNotchToMcp().set(srgFile("notch-mcp.srg"));

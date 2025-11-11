@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -118,6 +119,9 @@ public class ModUtils {
             task.setGroup(TASK_GROUP_USER);
             task.setDescription(
                     "Apply MCP decompiler cleanup to the main source set, doing things like replacing numerical OpenGL constants with their names");
+            task.getSourceDirectories().from(
+                    project.getExtensions().getByType(SourceSetContainer.class).getByName("main").getAllJava()
+                            .getSourceDirectories());
         });
 
         project.getTasks().register("migrateMappings", MigrateMappingsTask.class, task -> {
@@ -206,8 +210,8 @@ public class ModUtils {
                 });
                 // Keep as class instead of lambda to ensure it works even if the plugin is not loaded into the
                 // classpath
-                // noinspection rawtypes
-                project.getPlugins().withId("org.jetbrains.kotlin.kapt", new Action<Plugin>() {
+                // noinspection Convert2Lambda
+                project.getPlugins().withId("org.jetbrains.kotlin.kapt", new Action<>() {
 
                     @Override
                     public void execute(@NotNull Plugin rawPlugin) {
@@ -229,8 +233,8 @@ public class ModUtils {
                             task.from(mixinRefMapFile);
                             final String compileJava = mixinSourceSet.getCompileJavaTaskName();
                             task.dependsOn(compileJava);
-                            final String compileScala = StringUtils.removeEnd(compileJava, "Java") + "Scala";
-                            final String compileKotlin = StringUtils.removeEnd(compileJava, "Java") + "Kotlin";
+                            final String compileScala = Strings.CS.removeEnd(compileJava, "Java") + "Scala";
+                            final String compileKotlin = Strings.CS.removeEnd(compileJava, "Java") + "Kotlin";
                             project.getPlugins().withType(ScalaPlugin.class, scp -> { task.dependsOn(compileScala); });
                             project.getPlugins()
                                     .withId("org.jetbrains.kotlin.jvm", p -> { task.dependsOn(compileKotlin); });
@@ -255,7 +259,7 @@ public class ModUtils {
         for (final String rawUrl : mirrors) {
             final String url = rawUrl.replaceFirst("^https", "http");
             try {
-                final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+                final HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
                 connection.setConnectTimeout(timeoutMillis);
                 connection.setReadTimeout(timeoutMillis);
                 connection.setRequestMethod("HEAD");
@@ -308,7 +312,7 @@ public class ModUtils {
     public Object deobfuscate(Object depSpec) {
         if (depSpec instanceof CharSequence) {
             depModulesToDeobf.add(depSpec.toString());
-        } else if (depSpec instanceof Map<?, ?>depMap) {
+        } else if (depSpec instanceof Map<?, ?> depMap) {
             final String group = Utilities.getMapStringOrBlank(depMap, "group");
             final String module = Utilities.getMapStringOrBlank(depMap, "name");
             final String version = Utilities.getMapStringOrBlank(depMap, "version");
@@ -322,7 +326,6 @@ public class ModUtils {
                 || depSpec instanceof Path
                 || depSpec instanceof URI
                 || depSpec instanceof URL
-                || depSpec instanceof FileTree
                 || depSpec instanceof FileCollection) {
                     depFilesToDeobf.from(depSpec);
                 } else {

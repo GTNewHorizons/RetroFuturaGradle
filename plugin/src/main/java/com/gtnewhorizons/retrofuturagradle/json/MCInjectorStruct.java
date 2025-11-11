@@ -19,17 +19,8 @@ public class MCInjectorStruct {
     public EnclosingMethod enclosingMethod = null;
     public ArrayList<InnerClass> innerClasses = null;
 
-    public static class EnclosingMethod {
+    public record EnclosingMethod(String owner, String name, String desc) {
 
-        public final String desc;
-        public final String name;
-        public final String owner;
-
-        EnclosingMethod(String owner, String name, String desc) {
-            this.owner = owner;
-            this.name = name;
-            this.desc = desc;
-        }
     }
 
     public static class InnerClass {

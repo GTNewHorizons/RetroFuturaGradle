@@ -172,7 +172,7 @@ public abstract class RunMinecraftTask extends JavaExec {
                             "--assetIndex",
                             getMcVersion().get(),
                             "--uuid",
-                            getUserUUID().get().toString(),
+                            getUserUUID().get(),
                             "--userProperties",
                             "{}",
                             "--accessToken",

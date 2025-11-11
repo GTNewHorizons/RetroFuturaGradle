@@ -1,5 +1,7 @@
 package com.gtnewhorizons.retrofuturagradle.mcp;
 
+import static com.gtnewhorizons.retrofuturagradle.Constants.JST_TOOL_ARTIFACT;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,6 +21,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
@@ -289,6 +292,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getOutputJar().set(postJSTJarLocation);
 
             task.getJavaLauncher().set(mcExt.getToolchainLauncher(project, 21));
+            task.setJstTool(project, JST_TOOL_ARTIFACT);
 
             task.getAccessTransformerFiles().setFrom(deobfuscationATs, extractedDependencyATs);
             task.getInterfaceInjectionConfigs().setFrom(interfaceInjectionConfigs);
@@ -328,16 +332,18 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     task.dependsOn(taskRemapDecompiledJar);
                     task.from(
                             archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
-                            subset -> { subset.include("**/*.java"); });
+                            subset -> {
+                                subset.include("**/*.java");
+                            });
                     task.from(
                             archives.zipTree(taskRemapDecompiledJar.flatMap(IJarOutputTask::getOutputJar)),
-                            subset -> { subset.exclude("**/*.java"); });
-                    task.eachFile(
-                            fcd -> {
-                                fcd.setRelativePath(
-                                        fcd.getRelativePath()
-                                                .prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
+                            subset -> {
+                                subset.exclude("**/*.java");
                             });
+                    task.eachFile(fcd -> {
+                        fcd.setRelativePath(
+                                fcd.getRelativePath().prepend(fcd.getName().endsWith(".java") ? "java" : "resources"));
+                    });
                     task.into(decompressedSourcesLocation);
                 });
 
@@ -345,16 +351,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         final JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
 
         injectedInterfacesSourcesLocation = FileUtils.getFile("src", "injectedInterfaces", "java");
-        injectedInterfacesSourceSet = sourceSets
-                .create(
-                        "injectedInterfaces",
-                        sourceSet -> {
-                            sourceSet.java(
-                                    java -> {
-                                        java.setSrcDirs(
-                                                objects.fileCollection().from(injectedInterfacesSourcesLocation));
-                                    });
-                        });
+        injectedInterfacesSourceSet = sourceSets.create("injectedInterfaces", sourceSet -> {
+            sourceSet.java(
+                    java -> { java.setSrcDirs(objects.fileCollection().from(injectedInterfacesSourcesLocation)); });
+        });
 
         patchedMcSources = sourceSets.create(SOURCE_SET_PATCHED_MC, sourceSet -> {
             sourceSet.setCompileClasspath(
@@ -414,7 +414,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskBuildPatchedMc, taskDecompressDecompiledSources, patchedMcSources.getClassesTaskName());
             task.getArchiveVersion().set(mcExt.getMcVersion());
-            task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLocation.getName(), ".jar"));
+            task.getArchiveBaseName().set(Strings.CS.removeEnd(packagedMcLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLocation.getParentFile());
             task.from(patchedMcSources.getOutput());
         });
@@ -524,7 +524,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.setGroup(TASK_GROUP_INTERNAL);
             task.dependsOn(taskCreateLauncherFiles, launcherSources.getClassesTaskName());
             task.getArchiveVersion().set(mcExt.getMcVersion());
-            task.getArchiveBaseName().set(StringUtils.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
+            task.getArchiveBaseName().set(Strings.CS.removeEnd(packagedMcLauncherLocation.getName(), ".jar"));
             task.getDestinationDirectory().set(packagedMcLauncherLocation.getParentFile());
 
             task.from(launcherSources.getOutput());
@@ -537,12 +537,9 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             task.getOutputDir().set(injectedSourcesLocation);
             task.getTags().set(mcExt.getInjectedTags());
         });
-        injectedSourceSet = sourceSets.create(
-                "injectedTags",
-                set -> {
-                    set.getJava()
-                            .setSrcDirs(objects.fileCollection().from(injectedSourcesLocation).builtBy(taskInjectTags));
-                });
+        injectedSourceSet = sourceSets.create("injectedTags", set -> {
+            set.getJava().setSrcDirs(objects.fileCollection().from(injectedSourcesLocation).builtBy(taskInjectTags));
+        });
 
         project.getTasks().named(injectedSourceSet.getCompileJavaTaskName())
                 .configure(task -> task.dependsOn(taskInjectTags));
@@ -636,7 +633,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             if (!taskName.startsWith("reobf")) {
                 return;
             }
-            final String subjectTaskName = StringUtils.uncapitalize(StringUtils.removeStart(taskName, "reobf"));
+            final String subjectTaskName = StringUtils.uncapitalize(Strings.CS.removeStart(taskName, "reobf"));
             final TaskProvider<Jar> subjectTask;
             try {
                 subjectTask = project.getTasks().named(subjectTaskName, Jar.class);
@@ -676,7 +673,6 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
         reobfJarConfiguration = project.getConfigurations().create("reobfJarConfiguration");
         {
             // Based on org.gradle.api.plugins.internal.JvmPluginsHelper.configureDocumentationVariantWithArtifact
-            reobfJarConfiguration.setVisible(true);
             reobfJarConfiguration.setCanBeConsumed(false);
             reobfJarConfiguration.setCanBeResolved(true);
             reobfJarConfiguration.setDescription("Reobfuscated jar");
@@ -747,12 +743,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
             attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
-            project.afterEvaluate(
-                    p -> {
-                        attributes.attribute(
-                                TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
-                                mcExt.getJavaCompatibilityVersion().get());
-                    });
+            project.afterEvaluate(p -> {
+                attributes.attribute(
+                        TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                        mcExt.getJavaCompatibilityVersion().get());
+            });
             attributes.attribute(
                     LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
                     objects.named(LibraryElements.class, LibraryElements.JAR));
@@ -767,8 +762,7 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
                     attr -> reobfElements.getAttributes().attribute((Attribute) attr, attributes.getAttribute(attr)));
 
             SoftwareComponent javaComponent = project.getComponents().getByName("java");
-            if (javaComponent instanceof AdhocComponentWithVariants) {
-                AdhocComponentWithVariants java = (AdhocComponentWithVariants) javaComponent;
+            if (javaComponent instanceof AdhocComponentWithVariants java) {
                 java.addVariantsFromConfiguration(reobfElements, ConfigurationVariantDetails::mapToOptional);
             }
         }
@@ -931,10 +925,11 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             final File replacementPropFile = new File(injectedSourcesLocation.getParentFile(), "injectTags.resources");
             taskInjectTags.configure(task -> {
                 task.getOutputs().file(replacementPropFile);
+                var tagReplacementFiles = mcExt.getTagReplacementFiles();
                 task.doLast("Generate tag injection resource file", t -> {
                     final Properties props = new Properties();
                     int i = 0;
-                    for (String pattern : mcExt.getTagReplacementFiles().get()) {
+                    for (String pattern : tagReplacementFiles.get()) {
                         props.setProperty("files." + i, pattern);
                     }
                     for (Map.Entry<String, Object> value : task.getTags().get().entrySet()) {
@@ -1040,10 +1035,10 @@ public class MCPTasks extends SharedMCPTasks<MinecraftExtension> {
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-compiler:2.11.5")).setTransitive(false);
             ((ModuleDependency) deps
                     .add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-library_2.11:1.0.2"))
-                            .setTransitive(false);
+                    .setTransitive(false);
             ((ModuleDependency) deps
                     .add(PATCHED_MC_CFG, "org.scala-lang.plugins:scala-continuations-plugin_2.11.1:1.0.2"))
-                            .setTransitive(false);
+                    .setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-library:2.11.5")).setTransitive(false);
             ((ModuleDependency) deps.add(PATCHED_MC_CFG, "org.scala-lang:scala-parser-combinators_2.11:1.0.1"))
                     .setTransitive(false);

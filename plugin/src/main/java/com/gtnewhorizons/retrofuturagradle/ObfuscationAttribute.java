@@ -53,8 +53,9 @@ public interface ObfuscationAttribute extends Named {
     }
 
     static void configureProject(Project project) {
-        project.getDependencies().getAttributesSchema()
-                .attribute(OBFUSCATION_ATTRIBUTE, attrib -> { attrib.getCompatibilityRules().add(CompatRules.class); });
+        project.getDependencies().getAttributesSchema().attribute(OBFUSCATION_ATTRIBUTE, attrib -> {
+            attrib.getCompatibilityRules().add(CompatRules.class);
+        });
         project.getConfigurations().all(
                 cfg -> cfg.getAttributes()
                         .attribute(ObfuscationAttribute.OBFUSCATION_ATTRIBUTE, getNoMinecraft(project.getObjects())));

@@ -11,8 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.TextStringBuilder;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -31,17 +31,12 @@ public class FmlCleanup {
     private static final Pattern VAR_CALL = Pattern.compile("(?i)[a-z_$][a-z0-9_\\[\\]]+ var\\d+(?:x)*");
     private static final Pattern VAR = Pattern.compile("var\\d+(?:x)*");
 
-    private static final Comparator<String> COMPARATOR = new Comparator<String>() {
-
-        @Override
-        public int compare(String str1, String str2) {
-            return str2.length() - str1.length();
-        }
-    };
+    private static final Comparator<String> COMPARATOR = (str1, str2) -> str2.length() - str1.length();
 
     public static String renameClass(String text) {
+        final String lineSep = System.lineSeparator();
         String[] lines = text.split("(\r\n|\r|\n)");
-        List<String> output = new ArrayList<String>(lines.length);
+        StringBuilder output = new StringBuilder(text.length());
         MethodInfo method = null;
 
         for (String line : lines) {
@@ -74,14 +69,16 @@ public class FmlCleanup {
                     method = method.parent;
 
                     if (method == null) // dont output if there is a parent method.
-                        output.add(line);
+                        output.append(line);
+                    output.append(lineSep);
                 }
             } else if (method != null && method.ENDING.equals(line)) {
                 method.lines.add(line);
 
                 if (method.parent == null) {
                     for (String l : Splitter.on(System.lineSeparator()).split(method.rename(null))) {
-                        output.add(l);
+                        output.append(l);
+                        output.append(lineSep);
                     }
                 }
 
@@ -102,11 +99,12 @@ public class FmlCleanup {
                 }
             } else // If we get to here, then we are outside of all methods
             {
-                output.add(line);
+                output.append(line);
+                output.append(lineSep);
             }
         }
 
-        return Joiner.on(System.lineSeparator()).join(output);
+        return output.toString();
     }
 
     private static class MethodInfo {
@@ -143,46 +141,43 @@ public class FmlCleanup {
                 else unnamed.put(split[1], split[0]);
             }
 
-            if (unnamed.size() > 0) {
+            if (!unnamed.isEmpty()) {
                 // We sort the var## names because FF is non-deterministic and sometimes decompiles the declarations in
                 // different orders.
-                List<String> sorted = new ArrayList<String>(unnamed.keySet());
-                Collections.sort(sorted, new Comparator<String>() {
-
-                    @Override
-                    public int compare(String o1, String o2) {
-                        if (o1.length() < o2.length()) return -1;
-                        if (o1.length() > o2.length()) return 1;
-                        return o1.compareTo(o2);
-                    }
+                List<String> sorted = new ArrayList<>(unnamed.keySet());
+                sorted.sort((o1, o2) -> {
+                    if (o1.length() < o2.length()) return -1;
+                    if (o1.length() > o2.length()) return 1;
+                    return o1.compareTo(o2);
                 });
                 for (String s : sorted) {
                     renames.put(s, namer.getName(unnamed.get(s), s));
                 }
             }
 
-            StringBuilder buf = new StringBuilder();
+            TextStringBuilder body = new TextStringBuilder();
             for (Object line : lines) {
-                if (line instanceof MethodInfo)
-                    buf.append(((MethodInfo) line).rename(namer)).append(System.lineSeparator());
-                else buf.append((String) line).append(System.lineSeparator());
+                if (line instanceof MethodInfo) body.appendln(((MethodInfo) line).rename(namer));
+                else body.appendln((String) line);
             }
 
-            String body = buf.toString();
-
-            if (renames.size() > 0) {
-                List<String> sortedKeys = new ArrayList<String>(renames.keySet());
-                Collections.sort(sortedKeys, COMPARATOR);
+            if (!renames.isEmpty()) {
+                List<String> sortedKeys = new ArrayList<>(renames.keySet());
+                sortedKeys.sort(COMPARATOR);
 
                 // closure changes the sort, to sort by the return value of the closure.
+                final Matcher VAR_MATCHER = VAR.matcher("");
                 for (String key : sortedKeys) {
-                    if (VAR.matcher(key).matches()) {
-                        body = body.replace(key, renames.get(key));
+                    VAR_MATCHER.reset(key);
+                    if (VAR_MATCHER.matches()) {
+                        body = body.replaceAll(key, renames.get(key));
                     }
                 }
             }
 
-            return body.substring(0, body.length() - System.lineSeparator().length());
+            body.delete(body.length() - System.lineSeparator().length(), body.length());
+
+            return body.toString();
         }
     }
 
@@ -190,7 +185,7 @@ public class FmlCleanup {
     HashMap<String, String> remap;
 
     private FmlCleanup() {
-        last = new HashMap<String, Holder>();
+        last = new HashMap<>();
         last.put("byte", new Holder(0, false, "b"));
         last.put("char", new Holder(0, false, "c"));
         last.put("short", new Holder(1, false, "short"));
@@ -208,21 +203,18 @@ public class FmlCleanup {
         last.put("Package", new Holder(0, true, "opackage"));
         last.put("Enum", new Holder(0, true, "oenum"));
 
-        remap = new HashMap<String, String>();
+        remap = new HashMap<>();
         remap.put("long", "int");
     }
 
     private FmlCleanup(FmlCleanup parent) {
-        last = Maps.newHashMap();
+        last = new HashMap<>();
         for (Entry<String, Holder> e : parent.last.entrySet()) {
             Holder v = e.getValue();
             last.put(e.getKey(), new Holder(v.id, v.skip_zero, v.names));
         }
 
-        remap = Maps.newHashMap();
-        for (Entry<String, String> e : parent.remap.entrySet()) {
-            remap.put(e.getKey(), e.getValue());
-        }
+        remap = new HashMap<>(parent.remap);
     }
 
     private String getName(String type, String var) {
@@ -274,7 +266,7 @@ public class FmlCleanup {
 
         String name;
         if (ammount == 1) {
-            name = names.get(0) + (id == 0 && holder.skip_zero ? "" : id);
+            name = names.getFirst() + (id == 0 && holder.skip_zero ? "" : id);
         } else {
             int num = id / ammount;
             name = names.get(id % ammount) + (id < ammount && holder.skip_zero ? "" : num);

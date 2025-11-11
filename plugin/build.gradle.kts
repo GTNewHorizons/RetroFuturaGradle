@@ -13,11 +13,11 @@ import java.util.jar.JarFile
 plugins {
   // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
   id("java-gradle-plugin")
-  id("io.github.goooler.shadow") version "8.1.7"
-  id("com.palantir.git-version") version "3.0.0"
   id("maven-publish")
-  id("com.diffplug.spotless") version "6.23.1"
-  id("com.github.gmazzo.buildconfig") version "4.2.0"
+  alias(libs.plugins.shadow)
+  alias(libs.plugins.gitVersion)
+  alias(libs.plugins.spotless)
+  alias(libs.plugins.buildconfig)
 }
 
 evaluationDependsOnChildren()
@@ -82,30 +82,24 @@ dependencies {
   compileOnly(localGroovy())
   compileOnly(gradleApi())
 
-  annotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
-  // workaround for https://github.com/bsideup/jabel/issues/174
-  annotationProcessor("net.java.dev.jna:jna-platform:5.13.0")
-  testAnnotationProcessor("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1")
-  compileOnly("com.github.bsideup.jabel:jabel-javac-plugin:1.0.1") { isTransitive = false }
-
   // Apache Commons utilities
-  implementation("org.apache.commons:commons-lang3:3.14.0")
-  implementation("org.apache.commons:commons-text:1.12.0")
-  implementation("commons-io:commons-io:2.16.1")
-  implementation("commons-codec:commons-codec:1.17.0")
-  implementation("org.apache.commons:commons-compress:1.26.2")
+  implementation("org.apache.commons:commons-lang3:3.19.0")
+  implementation("org.apache.commons:commons-text:1.14.0")
+  implementation("commons-io:commons-io:2.21.0")
+  implementation("commons-codec:commons-codec:1.20.0")
+  implementation("org.apache.commons:commons-compress:1.28.0")
   // Guava utilities
-  implementation("com.google.guava:guava:33.2.1-jre")
+  implementation("com.google.guava:guava:33.5.0-jre")
   // CSV reader, also used by SpecialSource
-  implementation("com.opencsv:opencsv:5.9")
+  implementation("com.opencsv:opencsv:5.12.0")
   // Diffing&Patching
-  implementation("org.ow2.asm:asm:9.7")
+  implementation("org.ow2.asm:asm:9.9")
   implementation("com.cloudbees:diff4j:1.1")
   implementation("com.github.jponge:lzma-java:1.3")
-  implementation("net.md-5:SpecialSource:1.11.4")
+  implementation("net.md-5:SpecialSource:1.11.5")
   // Java source manipulation
-  implementation("com.github.javaparser:javaparser-core:3.25.8")
-  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.25.8")
+  implementation("com.github.javaparser:javaparser-core:3.27.1")
+  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.27.1")
   // "MCP stuff", shaded manually later
   compileOnly(project(":oldasmwrapper", "fullyShadedElements"))
   testImplementation(project(":oldasmwrapper", "fullyShadedElements"))
@@ -114,13 +108,10 @@ dependencies {
   compileOnly("com.mojang:authlib:1.5.16") { isTransitive = false }
   compileOnly("net.minecraft:launchwrapper:1.12") { isTransitive = false }
   // Provides a file-downloading task implementation for Gradle
-  implementation(
-      group = "de.undercouch.download",
-      name = "de.undercouch.download.gradle.plugin",
-      version = "5.6.0")
-  compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0")
+  implementation("de.undercouch.download:de.undercouch.download.gradle.plugin:5.6.0")
+  compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21")
   // JSON handling for Minecraft manifests etc.
-  implementation("com.google.code.gson:gson:2.10.1")
+  implementation("com.google.code.gson:gson:2.13.2")
   // Forge utilities (to be merged into the source tree in the future)
 
   // Source remapping
@@ -159,8 +150,7 @@ configurations.api.configure { dependencies.remove(depGradleApi) }
 
 java {
   toolchain {
-    languageVersion.set(JavaLanguageVersion.of(8))
-    vendor.set(JvmVendorSpec.AZUL)
+    languageVersion.set(JavaLanguageVersion.of(25))
   }
 }
 
@@ -168,24 +158,14 @@ java {
 val functionalTestSourceSet = sourceSets.create("functionalTest") {}
 
 tasks.withType<JavaCompile> {
-  sourceCompatibility = "17" // for the IDE support
-  options.release.set(8)
-
-  javaCompiler.set(javaToolchains.compilerFor {
-    languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.AZUL)
-  })
+  options.isDeprecation = true
 }
 
 tasks.withType<Javadoc>().configureEach {
-  this.javadocTool.set(javaToolchains.javadocToolFor {
-    languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.AZUL)
-  })
   with(options as StandardJavadocDocletOptions) {
     links(
       "https://docs.gradle.org/${gradle.gradleVersion}/javadoc/",
-      "https://docs.oracle.com/en/java/javase/17/docs/api/"
+      "https://docs.oracle.com/en/java/javase/25/docs/api/"
     )
   }
 }
@@ -198,7 +178,7 @@ spotless {
     toggleOffOn()
     importOrderFile("../spotless.importorder")
     removeUnusedImports()
-    eclipse("4.19").configFile("../spotless.eclipseformat.xml")
+    eclipse("4.37.0").configFile("../spotless.eclipseformat.xml")
   }
 }
 
@@ -225,8 +205,11 @@ gradlePlugin {
   }
 }
 
+var java8SourceSet: SourceSet? = null
+
 java {
   sourceSets {
+    java8SourceSet = create("java8")
     // Add the GradleStart tree as sources for IDE support
     create("gradleStart") {
       compileClasspath = configurations.compileClasspath.get()
@@ -235,10 +218,27 @@ java {
         source(sourceSets.main.get().resources)
       }
     }
+    main {
+      compileClasspath += java8SourceSet!!.output
+      runtimeClasspath += java8SourceSet!!.output
+    }
+    test {
+      compileClasspath += java8SourceSet!!.output
+      runtimeClasspath += java8SourceSet!!.output
+    }
   }
 
   withSourcesJar()
   withJavadocJar()
+}
+
+dependencies {
+  add(java8SourceSet!!.compileOnlyConfigurationName, gradleApi())
+  add(java8SourceSet!!.compileOnlyConfigurationName, project(":oldasmwrapper", "fullyShadedElements"))
+}
+
+tasks.named<JavaCompile>(java8SourceSet!!.compileJavaTaskName) {
+  javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(8) }
 }
 
 if(project.properties["rfg.skipJavadoc"].toString().toBoolean()) {
@@ -248,7 +248,7 @@ if(project.properties["rfg.skipJavadoc"].toString().toBoolean()) {
 val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
   archiveClassifier.set("deps")
   archiveVersion.set("0.0") // constant version to prevent task from rerunning when project version changes
-  isEnableRelocation = true
+  enableAutoRelocation = true
   relocationPrefix = "com.gtnewhorizons.retrofuturagradle.shadow"
   configurations.add(project.configurations.runtimeClasspath.get())
   dependencies {
@@ -258,33 +258,39 @@ val depsShadowJar = tasks.register<ShadowJar>("depsShadowJar") {
   mergeServiceFiles()
 }
 
-val mainShadowJar = tasks.register<ShadowJar>("mainShadowJar") {
+abstract class MainShadowJar : ShadowJar() {
+  @get:InputFiles abstract val addedFiles: ConfigurableFileCollection;
+}
+
+val mainShadowJar = tasks.register<MainShadowJar>("mainShadowJar") {
   archiveClassifier.set("mainShadow")
 
   from(sourceSets.main.get().output)
+  from(java8SourceSet!!.output)
+
+  val configuration = project.configurations.runtimeClasspath.get();
+  val allJar = project(":oldasmwrapper").tasks.named<Jar>("allJar").get().archiveFile.get().asFile
+  addedFiles.from(configuration.files.filter {
+    // we're already shading this in combinedShadowJar
+      f ->
+    f != allJar
+  })
 
   doFirst {
     // Adapted from Shadow's RelocationUtil.groovy
     // We want to relocate references to dependencies but not include the dependencies themselves in this jar.
     // We also don't want to double-shade RFG classes
     val prefix = "com.gtnewhorizons.retrofuturagradle.shadow"
-    val configurations = listOf(project.configurations.runtimeClasspath.get())
 
     val packages = mutableSetOf<String>()
 
-    configurations.iterator().forEach { configuration ->
-      configuration.files.filter {
-        // we're already shading this in combinedShadowJar
-        f ->
-        f != project(":oldasmwrapper").tasks.named<Jar>("allJar").get().archiveFile.get().asFile
-      }.forEach { jar ->
-        JarFile(jar).use {
-          it.entries().iterator().forEach { entry ->
-            if (entry.name.endsWith(".class") && entry.name != "module-info.class") {
-              val pkg = entry.name.substring(0, entry.name.lastIndexOf('/') - 1).replace('/', '.')
-              if (!pkg.startsWith("com.gtnewhorizons.retrofuturagradle")) {
-                packages.add(pkg)
-              }
+    addedFiles.forEach { jar ->
+      JarFile(jar).use {
+        it.entries().iterator().forEach { entry ->
+          if (entry.name.endsWith(".class") && entry.name != "module-info.class") {
+            val pkg = entry.name.substring(0, entry.name.lastIndexOf('/') - 1).replace('/', '.')
+            if (!pkg.startsWith("com.gtnewhorizons.retrofuturagradle")) {
+              packages.add(pkg)
             }
           }
         }
@@ -349,6 +355,10 @@ listOf(configurations.runtimeClasspath, configurations.compileClasspath,
       objects.named(LibraryElements::class, LibraryElements.JAR)
     )
   }
+}
+
+tasks.pluginUnderTestMetadata.configure {
+  pluginClasspath += java8SourceSet!!.output
 }
 
 gradlePlugin.testSourceSets(functionalTestSourceSet)

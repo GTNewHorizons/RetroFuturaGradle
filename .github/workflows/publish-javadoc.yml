@@ -19,19 +19,20 @@ jobs:
     outputs:
       result_hash: ${{ steps.deploy.outputs.hash }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-java@v3
+      - uses: actions/setup-java@v5
         with:
           java-version: |
             8
             17
+            25
           distribution: 'zulu'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           build-scan-publish: true
           build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"

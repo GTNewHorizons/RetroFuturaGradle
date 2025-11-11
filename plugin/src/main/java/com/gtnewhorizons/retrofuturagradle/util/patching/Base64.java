@@ -78,16 +78,12 @@ class Base64 {
         } else if (c >= '0' && c <= '9') {
             return ((int) c) - 48 + 26 + 26;
         } else {
-            switch (c) {
-                case '+':
-                    return 62;
-                case '/':
-                    return 63;
-                case '=':
-                    return 0;
-                default:
-                    throw new RuntimeException("unexpected code: " + c);
-            }
+            return switch (c) {
+                case '+' -> 62;
+                case '/' -> 63;
+                case '=' -> 0;
+                default -> throw new RuntimeException("unexpected code: " + c);
+            };
         }
     }
 }
