@@ -541,19 +541,13 @@ public final class MinecraftTasks {
                 final String LWJGL3_CFG = lwjgl3Configuration.getName();
                 deps.add(LWJGL3_CFG, deps.platform("org.lwjgl:lwjgl-bom:" + lwjgl3Version));
                 deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjgl3Version);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjgl3Version + ":" + lwjgl3Natives);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-glfw:" + lwjgl3Version + ":" + lwjgl3Natives);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-openal:" + lwjgl3Version + ":" + lwjgl3Natives);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-opengl:" + lwjgl3Version + ":" + lwjgl3Natives);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-jemalloc:" + lwjgl3Version + ":" + lwjgl3Natives);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-stb:" + lwjgl3Version + ":" + lwjgl3Natives);
-                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-tinyfd:" + lwjgl3Version + ":" + lwjgl3Natives);
+                for (String binding : mcExt.getLwjgl3Bindings().get()) {
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-%s:%s".formatted(binding, lwjgl3Version));
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-%s:%s:%s".formatted(binding, lwjgl3Version, lwjgl3Natives));
+                }
+                for (String binding : mcExt.getLwjgl3BindingsWithoutNatives().get()) {
+                    deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-%s:%s".formatted(binding, lwjgl3Version));
+                }
 
                 if (mcMinor <= 8) {
                     deps.add(VANILLA_MC_CFG, "tv.twitch:twitch:5.16");

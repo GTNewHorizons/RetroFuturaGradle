@@ -1,5 +1,6 @@
 package com.gtnewhorizons.retrofuturagradle;
 
+import java.util.List;
 import java.util.Objects;
 
 import javax.inject.Inject;
@@ -57,6 +58,16 @@ public interface IMinecraftyExtension {
      * LWJGL 3 version to use. Default is 3.3.1
      */
     Property<String> getLwjgl3Version();
+
+    /**
+     * List of bindings to include in the lwjgl 3 configuration, e.g. "stb", "opengl"
+     */
+    ListProperty<String> getLwjgl3Bindings();
+
+    /**
+     * List of native-less bindings to include in the lwjgl 3 configuration, e.g. "harfbuzz"
+     */
+    ListProperty<String> getLwjgl3BindingsWithoutNatives();
 
     /**
      * Java version to provide source/target compatibility for. Default is 8.
@@ -156,6 +167,10 @@ public interface IMinecraftyExtension {
         getLwjgl2Version().finalizeValueOnRead();
         getLwjgl3Version().convention("3.3.2");
         getLwjgl2Version().finalizeValueOnRead();
+        getLwjgl3Bindings().convention(List.of("glfw", "openal", "opengl", "jemalloc", "stb", "tinyfd"));
+        getLwjgl3Bindings().finalizeValueOnRead();
+        getLwjgl3BindingsWithoutNatives().convention(List.of());
+        getLwjgl3BindingsWithoutNatives().finalizeValueOnRead();
         getJavaCompatibilityVersion().convention(8);
         getJavaCompatibilityVersion().finalizeValueOnRead();
         getJvmLanguageVersion().convention(JavaLanguageVersion.of(8));
