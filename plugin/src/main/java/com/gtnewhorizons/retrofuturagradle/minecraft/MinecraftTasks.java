@@ -541,6 +541,7 @@ public final class MinecraftTasks {
                 final String LWJGL3_CFG = lwjgl3Configuration.getName();
                 deps.add(LWJGL3_CFG, deps.platform("org.lwjgl:lwjgl-bom:" + lwjgl3Version));
                 deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:" + lwjgl3Version);
+                deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl:%s:%s".formatted(lwjgl3Version, lwjgl3Natives));
                 for (String binding : mcExt.getLwjgl3Bindings().get()) {
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-%s:%s".formatted(binding, lwjgl3Version));
                     deps.add(LWJGL3_CFG, "org.lwjgl:lwjgl-%s:%s:%s".formatted(binding, lwjgl3Version, lwjgl3Natives));
