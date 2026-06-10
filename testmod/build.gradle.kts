@@ -91,6 +91,7 @@ minecraft {
     skipSlowTasks.set(true)
     injectedTags.put("TAG_VERSION", version)
     tagReplacementFiles.add("TestMod.java")
+    injectMissingGenerics.set(true)
 }
 
 tasks.injectTags.configure {
