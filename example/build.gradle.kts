@@ -95,7 +95,7 @@ repositories {
 
 dependencies {
   // Adds NotEnoughItems and its dependencies (CCL&CCC) to runClient/runServer
-  runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.87-GTNH:dev")
+  runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.118-GTNH:dev")
   // Example: grab the ic2 jar from curse maven and deobfuscate
   // api(rfg.deobf("curse.maven:ic2-242638:2353971"))
   // Example: grab the ic2 jar from libs/ in the workspace and deobfuscate
