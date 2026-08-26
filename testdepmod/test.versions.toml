@@ -1,0 +1,2 @@
+[libraries]
+mods-nei = { group = "curse.maven", name = "nei-358228", version = "4275622" }

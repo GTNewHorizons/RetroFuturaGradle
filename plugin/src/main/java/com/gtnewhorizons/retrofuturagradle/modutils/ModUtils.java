@@ -19,6 +19,8 @@ import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.DependencyArtifact;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeCompatibilityRule;
@@ -317,6 +319,23 @@ public class ModUtils {
             final String module = Utilities.getMapStringOrBlank(depMap, "name");
             final String version = Utilities.getMapStringOrBlank(depMap, "version");
             final String classifier = Utilities.getMapStringOrBlank(depMap, "classifier");
+            String gmv = group + ":" + module + ":" + version;
+            if (StringUtils.isNotBlank(classifier)) {
+                gmv += ":" + classifier;
+            }
+            depModulesToDeobf.add(gmv);
+        } else if (depSpec instanceof Provider<?> provider
+                && provider.get() instanceof ModuleDependency moduleDependency) {
+            final String group = moduleDependency.getGroup();
+            final String module = moduleDependency.getName();
+            final String version = moduleDependency.getVersion();
+            String classifier = null;
+            for (DependencyArtifact artifacts: moduleDependency.getArtifacts()) {
+                if (artifacts.getClassifier() != null) {
+                    classifier = artifacts.getClassifier();
+                    break;
+                }
+            }
             String gmv = group + ":" + module + ":" + version;
             if (StringUtils.isNotBlank(classifier)) {
                 gmv += ":" + classifier;
