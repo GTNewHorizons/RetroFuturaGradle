@@ -324,6 +324,8 @@ public class ModUtils {
                 gmv += ":" + classifier;
             }
             depModulesToDeobf.add(gmv);
+            // spotless:off
+        // Spotless tries to indent everything below this, at the cost of readability
         } else if (depSpec instanceof Provider<?> provider
                 && provider.get() instanceof ModuleDependency moduleDependency) {
             final String group = moduleDependency.getGroup();
@@ -347,10 +349,11 @@ public class ModUtils {
                 || depSpec instanceof URL
                 || depSpec instanceof FileCollection) {
                     depFilesToDeobf.from(depSpec);
-                } else {
-                    throw new UnsupportedOperationException(
-                            "Unsupported dependency type " + depSpec.getClass() + " for RFG deobfuscation");
-                }
+        } else {
+            throw new UnsupportedOperationException(
+                    "Unsupported dependency type " + depSpec.getClass() + " for RFG deobfuscation");
+        }
+        // spotless:on
         return depSpec;
     }
 
