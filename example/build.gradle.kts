@@ -7,7 +7,7 @@ plugins {
   id("maven-publish")
   id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.8"
   id("eclipse")
-  id("com.gtnewhorizons.retrofuturagradle") version "1.4.0"
+  id("com.gtnewhorizons.retrofuturagradle") version "2.0.2"
 }
 
 // Project properties
@@ -95,7 +95,7 @@ repositories {
 
 dependencies {
   // Adds NotEnoughItems and its dependencies (CCL&CCC) to runClient/runServer
-  runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.3.39-GTNH:dev")
+  runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.118-GTNH:dev")
   // Example: grab the ic2 jar from curse maven and deobfuscate
   // api(rfg.deobf("curse.maven:ic2-242638:2353971"))
   // Example: grab the ic2 jar from libs/ in the workspace and deobfuscate
