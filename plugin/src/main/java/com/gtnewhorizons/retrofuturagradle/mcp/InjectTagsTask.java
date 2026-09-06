@@ -49,9 +49,16 @@ public abstract class InjectTagsTask extends DefaultTask {
     @Input
     public abstract Property<Boolean> getCleanOutputDir();
 
+    /**
+     * Whether to make the output class public. True by default.
+     */
+    @Input
+    public abstract Property<Boolean> getOutputClassPublic();
+
     @Inject
     public InjectTagsTask() {
         getCleanOutputDir().convention(true);
+        getOutputClassPublic().convention(true);
     }
 
     @TaskAction
@@ -82,7 +89,10 @@ public abstract class InjectTagsTask extends DefaultTask {
                 outWriter.append(";\n\n");
             }
             outWriter.append("/** Auto-generated tags from RetroFuturaGradle */\n");
-            outWriter.append("public class ");
+            if (getOutputClassPublic().get()) {
+                outWriter.append("public ");
+            }
+            outWriter.append("class ");
             outWriter.append(outClassName);
             outWriter.append(" {\n    private ");
             outWriter.append(outClassName);
