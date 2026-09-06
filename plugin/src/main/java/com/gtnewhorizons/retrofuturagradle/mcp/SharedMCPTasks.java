@@ -105,18 +105,24 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
         });
 
         final Provider<RfgCacheService> rfgCache = RfgCacheService.lazyAccess(project.getGradle());
+        final Provider<String> mcVersionProp = mcExt.getMcVersion();
+        final Provider<String> mcpMappingChannelProp = mcExt.getMcpMappingChannel();
+        final Provider<String> mcpMappingVersionProp = mcExt.getMcpMappingVersion();
+        final Provider<Boolean> useForgeEmbeddedMappingsProp = mcExt.getUseForgeEmbeddedMappings();
         mcpExtractRoot = layout.dir(
                 rfgCache.map(
                         c -> c.accessMcpMappings(
-                                mcExt.getMcVersion().get(),
-                                mcExt.getMcpMappingChannel().get(),
-                                mcExt.getMcpMappingVersion().get()).toFile()));
+                                mcVersionProp.get(),
+                                mcpMappingChannelProp.get(),
+                                mcpMappingVersionProp.get()).toFile()));
         userdevExtractRoot = layout
                 .dir(rfgCache.zip(mcExt.getForgeVersion(), (c, fv) -> c.accessForgeUserdev(fv).toFile()));
 
-        forgeSrgLocation = mcExt.getUseForgeEmbeddedMappings().flatMap(
-                useForge -> useForge ? userdevExtractRoot.map(root -> root.dir("srgs"))
-                        : mcpExtractRoot.map(root -> root.dir("rfg_srgs")));
+        final Provider<Directory> mcpExtractRootLocal = mcpExtractRoot;
+        final Provider<Directory> userdevExtractRootLocal = userdevExtractRoot;
+        forgeSrgLocation = useForgeEmbeddedMappingsProp.flatMap(
+                useForge -> useForge ? userdevExtractRootLocal.map(root -> root.dir("srgs"))
+                        : mcpExtractRootLocal.map(root -> root.dir("rfg_srgs")));
         taskGenerateForgeSrgMappings = project.getTasks()
                 .register("generateForgeSrgMappings", GenSrgMappingsTask.class, task -> {
                     task.setGroup(TASK_GROUP_INTERNAL);
@@ -127,16 +133,22 @@ public class SharedMCPTasks<McExtType extends IMinecraftyExtension> {
                     });
                     // inputs
                     Provider<Integer> mcVer = mcExt.getMinorMcVersion();
-                    task.getInputSrg().set(
-                            mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.srg") : mcpFile("joined.srg")));
-                    task.getInputExc().set(
-                            mcVer.flatMap(v -> (v <= 8) ? userdevFile("conf/packaged.exc") : mcpFile("joined.exc")));
+                    final Provider<RegularFile> packagedSrg = userdevFile("conf/packaged.srg");
+                    final Provider<RegularFile> joinedSrg = mcpFile("joined.srg");
+                    final Provider<RegularFile> packagedExc = userdevFile("conf/packaged.exc");
+                    final Provider<RegularFile> joinedExc = mcpFile("joined.exc");
+                    final Provider<RegularFile> userdevFieldsCsv = userdevFile("conf/fields.csv");
+                    final Provider<RegularFile> mcpFieldsCsv = mcpFile("fields.csv");
+                    final Provider<RegularFile> userdevMethodsCsv = userdevFile("conf/methods.csv");
+                    final Provider<RegularFile> mcpMethodsCsv = mcpFile("methods.csv");
+                    task.getInputSrg().set(mcVer.flatMap(v -> (v <= 8) ? packagedSrg : joinedSrg));
+                    task.getInputExc().set(mcVer.flatMap(v -> (v <= 8) ? packagedExc : joinedExc));
                     task.getFieldsCsv().set(
-                            mcExt.getUseForgeEmbeddedMappings().flatMap(
-                                    useForge -> useForge ? userdevFile("conf/fields.csv") : mcpFile("fields.csv")));
+                            useForgeEmbeddedMappingsProp
+                                    .flatMap(useForge -> useForge ? userdevFieldsCsv : mcpFieldsCsv));
                     task.getMethodsCsv().set(
-                            mcExt.getUseForgeEmbeddedMappings().flatMap(
-                                    useForge -> useForge ? userdevFile("conf/methods.csv") : mcpFile("methods.csv")));
+                            useForgeEmbeddedMappingsProp
+                                    .flatMap(useForge -> useForge ? userdevMethodsCsv : mcpMethodsCsv));
                     // outputs
                     task.getNotchToSrg().set(srgFile("notch-srg.srg"));
                     task.getNotchToMcp().set(srgFile("notch-mcp.srg"));

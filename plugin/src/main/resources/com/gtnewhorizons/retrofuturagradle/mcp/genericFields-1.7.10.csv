@@ -289,6 +289,8 @@ net/minecraft/item/ItemTool.java,net.minecraft.item.ItemTool,func_111205_h:117,g
 net/minecraft/nbt/JsonToNBT.java,net.minecraft.nbt.JsonToNBT.Compound,field_150491_b,field_150491_b?,@field,java.util.ArrayList,<net.minecraft.nbt.JsonToNBT.Any>,
 net/minecraft/nbt/JsonToNBT.java,net.minecraft.nbt.JsonToNBT.List,field_150492_b,field_150492_b?,@field,java.util.ArrayList,<net.minecraft.nbt.JsonToNBT.Any>,
 net/minecraft/nbt/NBTTagCompound.java,net.minecraft.nbt.NBTTagCompound,func_150296_c:62,func_150296_c?:62,@return,java.util.Set,<String>,
+net/minecraft/nbt/NBTTagCompound.java,net.minecraft.nbt.NBTTagCompound,field_74784_a:21,tagMap:21,@field,java.util.Map,"<String, net.minecraft.nbt.NBTBase>",
+net/minecraft/nbt/NBTTagList.java,net.minecraft.nbt.NBTTagList,field_74747_a:13,tagList:13,@field,java.util.List,<net.minecraft.nbt.NBTBase>,"Probably a generic class, since all members of the list have to be of the same type"
 net/minecraft/network/EnumConnectionState.java,net.minecraft.network.EnumConnectionState,func_150751_a:246,func_150751_a?:246,1,java.lang.Class,<? extends net.minecraft.network.Packet>,
 net/minecraft/network/EnumConnectionState.java,net.minecraft.network.EnumConnectionState,func_150753_a:292,func_150753_a?:292,@return,com.google.common.collect.BiMap,"<Integer, Class<? extends net.minecraft.network.Packet>>",
 net/minecraft/network/EnumConnectionState.java,net.minecraft.network.EnumConnectionState,func_150754_b:307,func_150754_b?:307,@return,com.google.common.collect.BiMap,"<Integer, Class<? extends net.minecraft.network.Packet>>",

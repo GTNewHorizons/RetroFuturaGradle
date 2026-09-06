@@ -19,6 +19,8 @@ import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.DependencyArtifact;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeCompatibilityRule;
@@ -322,16 +324,36 @@ public class ModUtils {
                 gmv += ":" + classifier;
             }
             depModulesToDeobf.add(gmv);
+            // spotless:off
+        // Spotless tries to indent everything below this, at the cost of readability
+        } else if (depSpec instanceof Provider<?> provider
+                && provider.get() instanceof ModuleDependency moduleDependency) {
+            final String group = moduleDependency.getGroup();
+            final String module = moduleDependency.getName();
+            final String version = moduleDependency.getVersion();
+            String classifier = null;
+            for (DependencyArtifact artifacts: moduleDependency.getArtifacts()) {
+                if (artifacts.getClassifier() != null) {
+                    classifier = artifacts.getClassifier();
+                    break;
+                }
+            }
+            String gmv = group + ":" + module + ":" + version;
+            if (StringUtils.isNotBlank(classifier)) {
+                gmv += ":" + classifier;
+            }
+            depModulesToDeobf.add(gmv);
         } else if (depSpec instanceof File || depSpec instanceof RegularFile
                 || depSpec instanceof Path
                 || depSpec instanceof URI
                 || depSpec instanceof URL
                 || depSpec instanceof FileCollection) {
                     depFilesToDeobf.from(depSpec);
-                } else {
-                    throw new UnsupportedOperationException(
-                            "Unsupported dependency type " + depSpec.getClass() + " for RFG deobfuscation");
-                }
+        } else {
+            throw new UnsupportedOperationException(
+                    "Unsupported dependency type " + depSpec.getClass() + " for RFG deobfuscation");
+        }
+        // spotless:on
         return depSpec;
     }
 
