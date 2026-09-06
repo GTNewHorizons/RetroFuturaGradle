@@ -56,6 +56,8 @@ dependencies {
     // For manual testing of dependency code
     // api("curse.maven:nei-358228:4275622-dev-sources")
     // api("com.cloudbees:diff4j:1.1")
+    // For manual testing of deobfuscating version catalogs. See root level settings.gradle.kts
+    // implementation(rfg.deobf(test.mods.nei))
 }
 
 plugins {

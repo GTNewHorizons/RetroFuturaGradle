@@ -21,3 +21,12 @@ plugins {
 include("testmod")
 include("testmod1.12")
 include("testdepmod")
+
+// For manual testing of version catalog deobfuscation
+//dependencyResolutionManagement {
+//    versionCatalogs {
+//        create ("test") {
+//            from(files("testdepmod/test.versions.toml"))
+//        }
+//    }
+//}
