@@ -101,7 +101,7 @@ public abstract class RemapSourceJarTask extends DefaultTask implements IJarTran
                 .andThen(HashUtils.addPropertyToHash(getExtraParamsCsvs()))
                 .andThen(HashUtils.addPropertyToHash(getGenericFieldsCsvName())).andThen(
                         // [UPDATE] Generics version number
-                        HashUtils.addToHash(2))
+                        HashUtils.addToHash(3))
                 .andThen(HashUtils.addPropertyToHash(getAddJavadocs()))
                 .andThen(HashUtils.addPropertyToHash(getAddDummyJavadocs()));
     }
