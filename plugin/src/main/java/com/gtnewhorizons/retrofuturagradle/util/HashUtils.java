@@ -8,9 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -41,8 +41,7 @@ public class HashUtils {
 
     public static final boolean DEBUG_LOG = false;
 
-    private static DigestUtils utils = new DigestUtils(DigestUtils.getSha256Digest());
-    private static Map<File, FileHashCacheEntry> fileHashCache = new HashMap<>();
+    private static final Map<File, FileHashCacheEntry> fileHashCache = new ConcurrentHashMap<>();
 
     public static MessageDigestConsumer addToHash(String value) {
         if (DEBUG_LOG) {
@@ -81,7 +80,9 @@ public class HashUtils {
             final FileHashCacheEntry cacheEntry = fileHashCache.compute(absoluteFile, (f, fhce) -> {
                 if (fhce == null || fhce.lastModified < f.lastModified()) {
                     try {
-                        return new FileHashCacheEntry(f.lastModified(), utils.digest(f));
+                        return new FileHashCacheEntry(
+                                f.lastModified(),
+                                DigestUtils.digest(DigestUtils.getSha256Digest(), f));
                     } catch (IOException e) {
                         throw new RuntimeException("Could not hash file " + f, e);
                     }
