@@ -118,15 +118,16 @@ public abstract class ReobfuscatedJar extends Jar {
                 }
                 mapping.loadMappings(file);
             }
-            final JarRemapper remapper = new JarRemapper(null, mapping);
+            final JarRemapper remapper = new CachingJarRemapper(mapping);
 
-            try (net.md_5.specialsource.Jar inputJar = net.md_5.specialsource.Jar.init(tmpObfedJar)) {
+            final Set<File> cpFiles = getReferenceClasspath().getFiles();
+            // Left open, this keeps the classpath jars locked on Windows for as long as the Gradle daemon runs
+            try (net.md_5.specialsource.Jar inputJar = net.md_5.specialsource.Jar.init(tmpObfedJar);
+                    URLClassLoader classpath = new URLClassLoader(Utilities.filesToURLArray(cpFiles))) {
                 JointProvider inheritanceProviders = new JointProvider();
                 inheritanceProviders.add(new JarProvider(inputJar));
-                Set<File> cpFiles = getReferenceClasspath().getFiles();
                 if (!cpFiles.isEmpty()) {
-                    inheritanceProviders
-                            .add(new ClassLoaderProvider(new URLClassLoader(Utilities.filesToURLArray(cpFiles))));
+                    inheritanceProviders.add(new ClassLoaderProvider(classpath));
                 }
                 mapping.setFallbackInheritanceProvider(inheritanceProviders);
 
